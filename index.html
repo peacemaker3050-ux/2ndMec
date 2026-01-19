@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <!-- أوامر قوية لمنع التخزين المؤقت -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>University Library Bot (Full Data)</title>
+    
+    <style>
+        /* === Reset & Basic Settings === */
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            background-color: #121212;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-color: #0f0f0f;
+            --header-bg: #17212b;
+            --chat-bg: #0e1621;
+            --msg-in: #182533;
+            --msg-out: #2b5278;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --accent-color: #3390ec;
+            --btn-bg: rgba(255, 255, 255, 0.05);
+            --btn-hover: rgba(51, 144, 236, 0.15);
+            --btn-border: rgba(255, 255, 255, 0.1);
+            --file-dummy-bg: rgba(255, 85, 85, 0.1);
+            --file-dummy-text: #ff8888;
+            --menu-bg: #1d2938;
+            --modal-bg: rgba(0, 0, 0, 0.85);
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        /* === Main Container === */
+        .app-container {
+            width: 100%;
+            max-width: 500px; 
+            height: 100%; 
+            margin: 0 auto;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        /* === Header === */
+        header {
+            background-color: var(--header-bg);
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #000;
+            z-index: 20; flex-shrink: 0; user-select: none;
+        }
+
+        .header-info { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        
+        .bot-avatar {
+            width: 42px; height: 42px; border-radius: 50%;
+            background-color: var(--accent-color);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 22px; flex-shrink: 0;
+            background-size: cover; background-position: center;
+            background-repeat: no-repeat; border: 2px solid transparent; color: #fff;
+        }
+
+        .bot-name h2 { font-size: 16px; margin: 0; font-weight: 600; line-height: 1.2; }
+        .bot-status { font-size: 13px; color: var(--text-secondary); margin-top: 2px; display: block; }
+
+        .header-actions { color: var(--text-secondary); font-size: 28px; line-height:1; padding: 5px 10px; cursor: pointer; user-select: none; }
+        .header-actions:hover { color: #fff; }
+
+        /* === Options Menu (Dropdown) === */
+        .menu-dropdown {
+            position: absolute; top: 60px; right: 10px;
+            width: 220px; background-color: var(--menu-bg);
+            border: 1px solid #000; border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: none; flex-direction: column; z-index: 100;
+            overflow: hidden; animation: fadeIn 0.2s ease;
+        }
+        .menu-dropdown.active { display: flex; }
+        .menu-item { padding: 12px 15px; cursor: pointer; color: #fff; font-size: 14px; display: flex; align-items: center; gap: 10px; transition: background 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-item:hover { background-color: rgba(255,255,255,0.1); }
+        .menu-item.danger { color: #ff6b6b; }
+        .menu-item.admin { color: #4dabf7; font-weight: bold; }
+        .menu-item.refresh { color: #ffcc00; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* === Admin Modal === */
+        .admin-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--modal-bg); backdrop-filter: blur(5px);
+            z-index: 200; display: none; flex-direction: column;
+            padding: 20px; overflow-y: auto;
+        }
+        .admin-modal.active { display: flex; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        .modal-title { font-size: 18px; font-weight: bold; color: #fff; }
+        .close-modal { font-size: 28px; color: #ccc; cursor: pointer; line-height: 1; }
+        .close-modal:hover { color: #fff; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 13px; }
+        .form-input, .form-textarea {
+            width: 100%; padding: 10px; background: rgba(255,255,255,0.08); border: 1px solid #444;
+            border-radius: 6px; color: #fff; outline: none; font-family: inherit; transition: border 0.2s;
+        }
+        .form-textarea { height: 60px; resize: vertical; }
+        .form-input:focus, .form-textarea:focus { border-color: var(--accent-color); background: rgba(255,255,255,0.12); }
+        .admin-section-title {
+            color: var(--accent-color); margin-top: 25px; margin-bottom: 12px;
+            font-size: 15px; border-bottom: 1px solid #333; padding-bottom: 5px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-save {
+            width: 100%; padding: 12px; background-color: var(--accent-color);
+            color: #fff; border: none; border-radius: 6px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            margin-top: 20px; transition: background 0.2s;
+        }
+        .btn-save:hover { background-color: #267fd3; }
+        .btn-save:active { transform: scale(0.98); }
+        .admin-list { margin-top: 15px; }
+        .admin-item {
+            background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .admin-name { font-size: 14px; }
+        .btn-remove { background: #ff4444; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .btn-remove:hover { background: #cc0000; }
+
+        /* === Chat Area === */
+        #chat-area {
+            flex: 1; padding: 15px; overflow-y: auto; display: flex;
+            flex-direction: column; gap: 12px;
+            background-color: var(--chat-bg);
+            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px; scroll-behavior: smooth;
+        }
+        #chat-area::-webkit-scrollbar { width: 5px; }
+        #chat-area::-webkit-scrollbar-track { background: transparent; }
+        #chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+        /* === Messages === */
+        .message {
+            width: fit-content; max-width: 90%; padding: 10px 14px;
+            border-radius: 18px; position: relative; font-size: 15px;
+            line-height: 1.5; word-wrap: break-word;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .msg-bot { align-self: flex-start; background-color: var(--msg-in); color: var(--text-primary); border-bottom-left-radius: 4px; } 
+        .msg-user { align-self: flex-end; background-color: var(--msg-out); color: var(--text-primary); border-bottom-right-radius: 4px; } 
+        .msg-bot b { color: #fff; font-weight: 700; }
+        .timestamp { font-size: 10px; color: rgba(255,255,255,0.4); text-align: right; display: block; margin-top: 6px; margin-bottom: 0; float: none; clear: both; user-select: none; }
+
+        /* === File Attachments === */
+        .file-link-btn {
+            display: flex; align-items: center; gap: 10px;
+            background-color: rgba(0,0,0,0.2); padding: 10px;
+            border-radius: 8px; text-decoration: none; color: var(--accent-color);
+            margin-top: 5px; border: 1px solid rgba(51, 144, 236, 0.3);
+            font-size: 14px; cursor: pointer; transition: background 0.2s; overflow-wrap: break-word;
+        }
+        .file-link-btn:hover { background-color: rgba(51, 144, 236, 0.15); }
+        .file-link-dummy {
+            display: flex; align-items: center; gap: 10px;
+            background-color: var(--file-dummy-bg); padding: 10px;
+            border-radius: 8px; color: var(--file-dummy-text);
+            margin-top: 5px; border: 1px solid rgba(255, 85, 85, 0.3);
+            font-size: 14px;
+        }
+
+        /* === Typing Indicator === */
+        .typing-indicator { font-size: 12px; color: var(--text-secondary); margin-left: 15px; margin-bottom: 10px; display: none; font-style: italic; opacity: 0.8; flex-shrink: 0; } 
+        .typing-indicator.active { display: block; }
+
+        /* === Keyboard Area === */
+        #keyboard-area {
+            background-color: var(--header-bg); padding: 10px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+            border-top: 1px solid #000; min-height: 0; max-height: 45vh;
+            overflow-y: auto; flex-shrink: 0;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        .keyboard-btn {
+            background-color: var(--btn-bg); border: 1px solid var(--btn-border);
+            color: var(--text-primary); padding: 12px 8px; border-radius: 10px;
+            cursor: pointer; transition: all 0.15s ease; font-size: 14px;
+            user-select: none; white-space: normal; word-wrap: break-word;
+            word-break: break-word; text-align: center; line-height: 1.3;
+            position: relative; overflow: hidden; min-height: 50px;
+            display: flex; align-items: center; justify-content: center; font-weight: 500;
+        }
+        .keyboard-btn:hover { background-color: var(--btn-hover); }
+        .keyboard-btn:active { transform: scale(0.96); background-color: rgba(255,255,255,0.15); }
+        .keyboard-btn.back-btn {
+            grid-column: span 2; background-color: rgba(0,0,0,0.3);
+            border-color: rgba(255,255,255,0.05); color: var(--text-secondary); font-weight: bold;
+        }
+        @media (max-width: 480px) { .keyboard-btn { font-size: 13px; padding: 12px 6px; line-height: 1.4; min-height: 48px; } }
+        @media (max-width: 350px) { #keyboard-area { grid-template-columns: 1fr; } .keyboard-btn.back-btn { grid-column: span 1; } }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <div class="header-info">
+            <div class="bot-avatar" id="header-avatar">🎓</div>
+            <div class="bot-name">
+                <h2 id="header-name">University Bot</h2>
+                <span class="bot-status" id="header-status">Online</span>
+            </div>
+        </div>
+        
+        <div class="header-actions" id="menu-btn" title="Menu">⋮</div>
+
+        <div class="menu-dropdown" id="menu-dropdown">
+            <div class="menu-item refresh" onclick="window.forceReload()">
+                <span>🔄</span> <span>تحديث قسري (Fix Cache)</span>
+            </div>
+            <div class="menu-item admin" onclick="window.checkAdmin()">
+                <span>⚙️</span> <span>لوحة التحكم (Admin)</span>
+            </div>
+            <div class="menu-item" onclick="window.clearChat()">
+                <span>🗑️</span> <span>مسح الشات</span>
+            </div>
+            <div class="menu-item danger" onclick="window.resetBot()">
+                <span>🏠</span> <span>العودة للبداية</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="chat-area"></div>
+    <div class="typing-indicator" id="typing">جاري المزامنة...</div>
+    <div id="keyboard-area"></div>
+</div>
+
+<!-- Admin Modal -->
+<div class="admin-modal" id="admin-modal">
+    <div class="modal-header">
+        <div class="modal-title">⚙️ إعدادات البوت (JSONBin Sync)</div>
+        <div class="close-modal" onclick="window.closeAdminPanel()">×</div>
+    </div>
+
+    <div class="admin-section-title">الإعدادات الأساسية</div>
+    <div class="form-group"><label class="form-label">اسم البوت</label><input type="text" id="admin-bot-name" class="form-input"></div>
+    <div class="form-group"><label class="form-label">الحالة</label><input type="text" id="admin-bot-status" class="form-input"></div>
+    <div class="form-group"><label class="form-label">رابط الصورة (URL)</label><input type="text" id="admin-bot-img" class="form-input"></div>
+
+    <div class="admin-section-title">ردود المحادثة</div>
+    <div class="form-group"><label class="form-label">رسالة الترحيب</label><textarea id="admin-msg-welcome" class="form-textarea"></textarea></div>
+    <div class="form-group"><label class="form-label">اختيار مادة</label><textarea id="admin-msg-subject" class="form-textarea"></textarea></div>
+    <div class="form-group"><label class="form-label">اختيار دكتور</label><textarea id="admin-msg-doctor" class="form-textarea"></textarea></div>
+    <div class="form-group"><label class="form-label">عرض القوائم</label><textarea id="admin-msg-category" class="form-textarea"></textarea></div>
+    <div class="form-group"><label class="form-label">العودة لمادة</label><textarea id="admin-msg-back-subject" class="form-textarea"></textarea></div>
+    <div class="form-group"><label class="form-label">العودة لدكتور</label><textarea id="admin-msg-back-doctor" class="form-textarea"></textarea></div>
+    <div class="form-group"><label class="form-label">العودة للقائمة الرئيسية</label><textarea id="admin-msg-back-main" class="form-textarea"></textarea></div>
+
+    <div class="admin-section-title">المشرفين</div>
+    <div class="form-group">
+        <label class="form-label">إضافة Admin</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="admin-add-input" class="form-input">
+            <button class="btn-save" style="width: auto; margin: 0; padding: 0 15px;" onclick="window.addAdmin()">+</button>
+        </div>
+    </div>
+    <div class="admin-list" id="admin-list-container"></div>
+
+    <button class="btn-save" onclick="window.saveAdminSettings()">حفظ وتحديث JSONBin</button>
+</div>
+
+<script>
+    // ============================================================
+    // === 1. FORCE RELOAD FUNCTION ===
+    // ============================================================
+    window.forceReload = function() {
+        document.getElementById('menu-dropdown').classList.remove('active');
+        if(confirm("سيتم مسح الذاكرة المؤقتة وإعادة تحميل الصفحة.")) {
+            if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
+            if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function(registrations) { for(let registration of registrations) registration.unregister(); }); }
+            setTimeout(() => { window.location.reload(true); }, 500);
+        }
+    };
+
+    // ============================================================
+    // === 2. JSONBIN CONFIGURATION ===
+    // ============================================================
+    const JSONBIN_BIN_ID = "PUT_YOUR_BIN_ID_HERE";
+    const JSONBIN_ACCESS_KEY = "PUT_YOUR_ACCESS_KEY_HERE";
+
+    const defaultConfig = {
+        botName: "University Library",
+        botStatus: "Online",
+        botIcon: "🎓", botImage: "", typingSpeed: 600, admins: ["owner"],
+        welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.",
+        subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇",
+        doctorPrompt: "<b>{name}</b>\nSelect a section 👇",
+        categoryPrompt: "<b>{name}</b> list:",
+        backSubject: "Back to <b>{name}</b> doctors:",
+        backDoctor: "Back to <b>{name}</b> sections:",
+        backMain: "Back to Main Menu."
+    };
+
+    let CONFIG = { ...defaultConfig };
+
+    // ============================================================
+    // === 3. FULL DATABASE (النظام التفصيلي الكامل) ===
+    // ============================================================
+    
+    const database = {
+        "Physics": {
+            "doctors": ["Dr. Ahmed", "Dr. Mahmoud"],
+            "Dr. Ahmed": {
+                "sections": ["📚 Lectures", "📄 Sheets"],
+                "📚 Lectures": [
+                    { name: "Chapter 1: Mechanics Basics.pdf", link: "https://drive.google.com/file/d/1_iodAsHFokkB3rTyGls5hSGET9XuvtWM/view?usp=drivesdk" },
+                    { name: "Chapter 2: Motion in One Dimension.pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 3: Vectors.pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 4: Motion in Two Dimensions.pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 5: Laws of Motion.pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 6: Work and Energy.pdf", link: "javascript:void(0)" }
+                ],
+                "📄 Sheets": [
+                    { name: "Experiment Sheet 1: Measurements.pdf", link: "javascript:void(0)" },
+                    { name: "Experiment Sheet 2: Simple Pendulum.pdf", link: "javascript:void(0)" },
+                    { name: "Experiment Sheet 3: Hooke's Law.pdf", link: "javascript:void(0)" },
+                    { name: "Solutions Sheet A.pdf", link: "javascript:void(0)" }
+                ]
+            },
+            "Dr. Mahmoud": {
+                "sections": ["📚 Lectures", "📖 References"],
+                "📚 Lectures": [
+                    { name: "Lecture 1: Thermodynamics Intro.pdf", link: "javascript:void(0)" },
+                    { name: "Lecture 2: Heat Transfer.pdf", link: "javascript:void(0)" },
+                    { name: "Lecture 3: Kinetic Theory.pdf", link: "javascript:void(0)" },
+                    { name: "Lecture 4: First Law of Thermodynamics.pdf", link: "javascript:void(0)" },
+                    { name: "Lecture 5: Second Law of Thermodynamics.pdf", link: "javascript:void(0)" }
+                ],
+                "📖 References": [
+                    { name: "Important Equations Summary.pdf", link: "javascript:void(0)" },
+                    { name: "Previous Exams (2019-2023).pdf", link: "javascript:void(0)" },
+                    { name: "Dr. Mahmoud's Notes.pdf", link: "javascript:void(0)" }
+                ]
+            }
+        },
+        "Chemistry": {
+            "doctors": ["Dr. Saeed", "Dr. Mona", "Dr. Kamal"],
+            "Dr. Saeed": {
+                "sections": ["📚 Lectures", "📄 Sheets"],
+                "📚 Lectures": [
+                    { name: "Unit 1: Atomic Structure.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 2: Chemical Bonding.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 3: Periodic Table.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 4: States of Matter.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 5: Thermodynamics.pdf", link: "javascript:void(0)" }
+                ],
+                "📄 Sheets": [
+                    { name: "Organic Reactions Review.pdf", link: "javascript:void(0)" },
+                    { name: "Inorganic Solubility Rules.pdf", link: "javascript:void(0)" }
+                ]
+            },
+            "Dr. Mona": {
+                "sections": ["📚 Lectures", "🧪 Practical"],
+                "📚 Lectures": [
+                    { name: "Analytical Chem: Volumetric Analysis.pdf", link: "javascript:void(0)" },
+                    { name: "Analytical Chem: Gravimetric Analysis.pdf", link: "javascript:void(0)" },
+                    { name: "Qualitative Analysis Flowcharts.pdf", link: "javascript:void(0)" }
+                ],
+                "🧪 Practical": [
+                    { name: "Lab Safety Rules.pdf", link: "javascript:void(0)" },
+                    { name: "Practical Report Template.pdf", link: "javascript:void(0)" },
+                    { name: "Titration Procedures.pdf", link: "javascript:void(0)" },
+                    { name: "Salt Analysis Steps.pdf", link: "javascript:void(0)" }
+                ]
+            },
+            "Dr. Kamal": {
+                "sections": ["📚 Lectures"],
+                "📚 Lectures": [
+                    { name: "Organic Chemistry I: Alkanes.pdf", link: "javascript:void(0)" },
+                    { name: "Organic Chemistry II: Alkenes.pdf", link: "javascript:void(0)" },
+                    { name: "Organic Chemistry III: Alkynes.pdf", link: "javascript:void(0)" },
+                    { name: "Nomenclature Guide.pdf", link: "javascript:void(0)" },
+                    { name: "Isomerism Explained.pdf", link: "javascript:void(0)" }
+                ]
+            }
+        },
+        "Mathematics": {
+            "doctors": ["Dr. Kamel", "Dr. Samy"],
+            "Dr. Kamel": {
+                "sections": ["📚 Lectures", "📖 References"],
+                "📚 Lectures": [
+                    { name: "Calculus I: Limits & Continuity.pdf", link: "javascript:void(0)" },
+                    { name: "Calculus II: Differentiation Rules.pdf", link: "javascript:void(0)" },
+                    { name: "Calculus III: Applications of Derivatives.pdf", link: "javascript:void(0)" },
+                    { name: "Integration Techniques.pdf", link: "javascript:void(0)" },
+                    { name: "Definite & Indefinite Integrals.pdf", link: "javascript:void(0)" }
+                ],
+                "📖 References": [
+                    { name: "Formulas Sheet (Important).pdf", link: "javascript:void(0)" },
+                    { name: "Common Integration Problems.pdf", link: "javascript:void(0)" },
+                    { name: "Graphing Functions Guide.pdf", link: "javascript:void(0)" }
+                ]
+            },
+            "Dr. Samy": {
+                "sections": ["📄 Sheets", "✅ Solutions"],
+                "📄 Sheets": [
+                    { name: "Linear Algebra: Matrices.pdf", link: "javascript:void(0)" },
+                    { name: "Differential Equations.pdf", link: "javascript:void(0)" },
+                    { name: "Geometry: Vectors in 3D.pdf", link: "javascript:void(0)" },
+                    { name: "Complex Numbers Problems.pdf", link: "javascript:void(0)" },
+                    { name: "Statistics & Probability.pdf", link: "javascript:void(0)" }
+                ],
+                "✅ Solutions": [
+                    { name: "Final Exam Solutions 2022.pdf", link: "javascript:void(0)" },
+                    { name: "Sheet 1 Solutions.pdf", link: "javascript:void(0)" },
+                    { name: "Sheet 2 Solutions.pdf", link: "javascript:void(0)" }
+                ]
+            }
+        },
+        "Biology": {
+            "doctors": ["Dr. Laila"],
+            "Dr. Laila": {
+                "sections": ["📚 Lectures", "📄 Sheets", "🖼️ Slides"],
+                "📚 Lectures": [
+                    { name: "Chapter 1: Cell Structure.pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 2: Cell Membrane.pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 3: Cell Division (Mitosis).pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 4: Cell Division (Meiosis).pdf", link: "javascript:void(0)" },
+                    { name: "Chapter 5: Genetics: Mendel.pdf", link: "javascript:void(0)" }
+                ],
+                "📄 Sheets": [
+                    { name: "Monohybrid Cross Problems.pdf", link: "javascript:void(0)" },
+                    { name: "Dihybrid Cross Problems.pdf", link: "javascript:void(0)" },
+                    { name: "Blood Type Genetics.pdf", link: "javascript:void(0)" },
+                    { name: "Pedigree Analysis.pdf", link: "javascript:void(0)" }
+                ],
+                "🖼️ Slides": [
+                    { name: "Week 1 Slides.pptx", link: "javascript:void(0)" },
+                    { name: "Week 2 Slides.pptx", link: "javascript:void(0)" },
+                    { name: "Week 3 Slides.pptx", link: "javascript:void(0)" }
+                ]
+            }
+        },
+        "Geology": {
+            "doctors": ["Dr. Hany", "Dr. Tareq"],
+            "Dr. Hany": {
+                "sections": ["📚 Lectures"],
+                "📚 Lectures": [
+                    { name: "Introduction to Earth Science.pdf", link: "javascript:void(0)" },
+                    { name: "Mineralogy Basics.pdf", link: "javascript:void(0)" },
+                    { name: "Igneous Rocks Formation.pdf", link: "javascript:void(0)" },
+                    { name: "Sedimentary Rocks Formation.pdf", link: "javascript:void(0)" },
+                    { name: "Metamorphic Rocks Formation.pdf", link: "javascript:void(0)" }
+                ]
+            },
+            "Dr. Tareq": {
+                "sections": ["📖 References"],
+                "📖 References": [
+                    { name: "Geological Time Scale.pdf", link: "javascript:void(0)" },
+                    { name: "Plate Tectonics Theory.pdf", link: "javascript:void(0)" },
+                    { name: "Geological Maps Reading Guide.pdf", link: "javascript:void(0)" },
+                    { name: "Egypt's Geomorphology.pdf", link: "javascript:void(0)" },
+                    { name: "Fossils and Paleontology.pdf", link: "javascript:void(0)" }
+                ]
+            }
+        },
+        "English": {
+            "doctors": ["Dr. Sarah", "Dr. Ali"],
+            "Dr. Sarah": {
+                "sections": ["📚 Lectures", "🗣️ Listening"],
+                "📚 Lectures": [
+                    { name: "Unit 1: Communication Skills.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 2: Presentation Skills.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 3: Academic Writing I.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 4: Academic Writing II.pdf", link: "javascript:void(0)" },
+                    { name: "Unit 5: Research Methods.pdf", link: "javascript:void(0)" }
+                ],
+                "🗣️ Listening": [
+                    { name: "Audio Track 1.mp3", link: "javascript:void(0)" },
+                    { name: "Audio Track 2.mp3", link: "javascript:void(0)" },
+                    { name: "Audio Script.pdf", link: "javascript:void(0)" }
+                ]
+            },
+            "Dr. Ali": {
+                "sections": ["✅ Grammar", "📖 Vocabulary"],
+                "✅ Grammar": [
+                    { name: "Review of Tenses.pdf", link: "javascript:void(0)" },
+                    { name: "Passive & Active Voice.pdf", link: "javascript:void(0)" },
+                    { name: "Reported Speech.pdf", link: "javascript:void(0)" },
+                    { name: "Conditionals (0, 1, 2, 3).pdf", link: "javascript:void(0)" },
+                    { name: "Clauses & Conjunctions.pdf", link: "javascript:void(0)" }
+                ],
+                "📖 Vocabulary": [
+                    { name: "Academic Word List (A-C).pdf", link: "javascript:void(0)" },
+                    { name: "Academic Word List (D-F).pdf", link: "javascript:void(0)" },
+                    { name: "Common Idioms for Students.pdf", link: "javascript:void(0)" },
+                    { name: "Phrasal Verbs in Context.pdf", link: "javascript:void(0)" }
+                ]
+            }
+        }
+    };
+
+    // ============================================================
+    // === 4. SYNC LOGIC (POLLING) ===
+    // ============================================================
+    function fetchConfig() {
+        if (!JSONBIN_BIN_ID || JSONBIN_BIN_ID === "PUT_YOUR_BIN_ID_HERE") {
+            applyConfig(CONFIG); return;
+        }
+        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' }
+        })
+        .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
+        .then(data => { CONFIG = { ...defaultConfig, ...data }; applyConfig(CONFIG); })
+        .catch(err => { console.error("Sync Error:", err); });
+    }
+
+    function saveConfigToBin(newConfig) {
+        if (!JSONBIN_BIN_ID || JSONBIN_BIN_ID === "PUT_YOUR_BIN_ID_HERE") { alert("❌ لقد نسيت وضع Bin ID!"); return; }
+        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
+            body: JSON.stringify(newConfig)
+        })
+        .then(res => { if (!res.ok) throw new Error("Save failed"); alert("✅ تم حفظ الإعدادات!"); window.closeAdminPanel(); })
+        .catch(err => { alert("❌ خطأ: " + err.message); });
+    }
+
+    function applyConfig(newConfig) {
+        CONFIG = newConfig;
+        document.getElementById('header-name').innerText = CONFIG.botName;
+        document.getElementById('header-status').innerText = CONFIG.botStatus;
+        const avatarEl = document.getElementById('header-avatar');
+        if (CONFIG.botImage && CONFIG.botImage.trim() !== "") {
+            avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.innerText = ""; 
+        } else {
+            avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon;
+        }
+    }
+
+    function replacePlaceholders(text, name) {
+        let res = text || "";
+        if (name) res = res.replace(/{name}/g, name);
+        res = res.replace(/{botName}/g, CONFIG.botName);
+        return res;
+    }
+
+    // ============================================================
+    // === 5. APP LOGIC ===
+    // ============================================================
+    const subjects = Object.keys(database);
+    let currentSubject = null, currentDoctor = null, currentCategory = null;
+    const chatArea = document.getElementById('chat-area');
+    const keyboardArea = document.getElementById('keyboard-area');
+    const typingIndicator = document.getElementById('typing');
+    const menuBtn = document.getElementById('menu-btn');
+    const menuDropdown = document.getElementById('menu-dropdown');
+    const adminModal = document.getElementById('admin-modal');
+    const adminNameInput = document.getElementById('admin-bot-name');
+    const adminStatusInput = document.getElementById('admin-bot-status');
+    const adminImgInput = document.getElementById('admin-bot-img');
+    const adminAddInput = document.getElementById('admin-add-input');
+    const adminListContainer = document.getElementById('admin-list-container');
+    const respWelcome = document.getElementById('admin-msg-welcome');
+    const respSubject = document.getElementById('admin-msg-subject');
+    const respDoctor = document.getElementById('admin-msg-doctor');
+    const respCategory = document.getElementById('admin-msg-category');
+    const respBackSubject = document.getElementById('admin-msg-back-subject');
+    const respBackDoctor = document.getElementById('admin-msg-back-doctor');
+    const respBackMain = document.getElementById('admin-msg-back-main');
+
+    function addMessage(content, sender, isHtml = false) {
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message', sender === 'bot' ? 'msg-bot' : 'msg-user');
+        if (isHtml) msgDiv.innerHTML = content; else msgDiv.innerText = content;
+        const timeSpan = document.createElement('span');
+        timeSpan.classList.add('timestamp');
+        timeSpan.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        msgDiv.appendChild(timeSpan);
+        chatArea.appendChild(msgDiv);
+        scrollToBottom();
+    }
+
+    function scrollToBottom() { setTimeout(() => { chatArea.scrollTop = chatArea.scrollHeight; }, 0); }
+    function botReply(text, isHtml = false) {
+        typingIndicator.classList.add('active'); scrollToBottom();
+        setTimeout(() => { typingIndicator.classList.remove('active'); addMessage(text, 'bot', isHtml); }, CONFIG.typingSpeed);
+    }
+
+    function createButton(text, onClick, isBack = false) {
+        const btn = document.createElement('div');
+        btn.classList.add('keyboard-btn'); if(isBack) btn.classList.add('back-btn');
+        btn.innerText = text; btn.onclick = onClick; return btn;
+    }
+
+    menuBtn.addEventListener('click', (e) => { e.stopPropagation(); menuDropdown.classList.toggle('active'); });
+    document.addEventListener('click', (e) => { if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active'); });
+
+    window.clearChat = function() {
+        chatArea.innerHTML = ''; resetStateVariables(); menuDropdown.classList.remove('active');
+        setTimeout(() => { botReply("Chat cleared. 🧹<br>Welcome back! Choose a subject 👇", true); }, 100);
+    }
+    window.resetBot = function() {
+        resetStateVariables(); menuDropdown.classList.remove('active');
+        addMessage("🏠 Back to Main Menu", 'user'); botReply("Bot restarted. Please select a subject 👇", true);
+    }
+
+    window.checkAdmin = function() {
+        menuDropdown.classList.remove('active');
+        const password = prompt("Please enter Admin Password:");
+        if (password === "1234") openAdminPanel();
+        else if (password !== null) alert("❌ Wrong Password!");
+    }
+
+    function openAdminPanel() {
+        adminNameInput.value = CONFIG.botName; adminStatusInput.value = CONFIG.botStatus;
+        adminImgInput.value = CONFIG.botImage || ""; respWelcome.value = CONFIG.welcomeMessage;
+        respSubject.value = CONFIG.subjectPrompt; respDoctor.value = CONFIG.doctorPrompt;
+        respCategory.value = CONFIG.categoryPrompt; respBackSubject.value = CONFIG.backSubject;
+        respBackDoctor.value = CONFIG.backDoctor; respBackMain.value = CONFIG.backMain;
+        renderAdminList(); adminModal.classList.add('active');
+    }
+
+    window.closeAdminPanel = function() { adminModal.classList.remove('active'); }
+
+    function renderAdminList() {
+        adminListContainer.innerHTML = '';
+        if (!CONFIG.admins || CONFIG.admins.length === 0) { adminListContainer.innerHTML = '<div style="color:#777; font-size:13px;">No admins added yet.</div>'; return; }
+        CONFIG.admins.forEach((admin, index) => {
+            const div = document.createElement('div'); div.className = 'admin-item';
+            const nameSpan = document.createElement('span'); nameSpan.className = 'admin-name'; nameSpan.innerText = admin;
+            if (admin !== 'owner') {
+                const removeBtn = document.createElement('button'); removeBtn.className = 'btn-remove'; removeBtn.innerText = 'حذف'; removeBtn.onclick = () => removeAdmin(index);
+                div.appendChild(nameSpan); div.appendChild(removeBtn);
+            } else { div.appendChild(nameSpan); div.innerHTML += '<span style="color:#4dabf7; font-size:12px;"> (Owner)</span>'; }
+            adminListContainer.appendChild(div);
+        });
+    }
+
+    window.addAdmin = function() {
+        const name = adminAddInput.value.trim();
+        if (name) { if (!CONFIG.admins) CONFIG.admins = []; if (!CONFIG.admins.includes(name)) { CONFIG.admins.push(name); adminAddInput.value = ''; renderAdminList(); } else alert("Admin already exists!"); }
+    }
+    window.removeAdmin = function(index) { if (confirm("Are you sure?")) { CONFIG.admins.splice(index, 1); renderAdminList(); } }
+
+    window.saveAdminSettings = function() {
+        const newConfig = {
+            botName: adminNameInput.value.trim() || defaultConfig.botName,
+            botStatus: adminStatusInput.value.trim() || defaultConfig.botStatus,
+            botImage: adminImgInput.value.trim(),
+            welcomeMessage: respWelcome.value, subjectPrompt: respSubject.value,
+            doctorPrompt: respDoctor.value, categoryPrompt: respCategory.value,
+            backSubject: respBackSubject.value, backDoctor: respBackDoctor.value,
+            backMain: respBackMain.value, admins: CONFIG.admins
+        };
+        CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
+    }
+
+    function resetStateVariables() { currentSubject = null; currentDoctor = null; currentCategory = null; renderKeyboard(); }
+
+    function renderKeyboard() {
+        keyboardArea.innerHTML = '';
+        if (!currentSubject) { subjects.forEach(sub => { keyboardArea.appendChild(createButton(sub, () => handleSubjectClick(sub))); }); return; }
+        keyboardArea.appendChild(createButton("🔙 Back", goBack, true));
+        if (currentSubject && !currentDoctor) {
+            const subjectDoctors = database[currentSubject].doctors;
+            subjectDoctors.forEach(doc => { keyboardArea.appendChild(createButton(doc, () => handleDoctorClick(doc))); });
+        } else if (currentSubject && currentDoctor && !currentCategory) {
+            const doctorSections = database[currentSubject][currentDoctor].sections;
+            doctorSections.forEach(cat => { keyboardArea.appendChild(createButton(cat, () => handleCategoryClick(cat))); });
+        } else if (currentSubject && currentDoctor && currentCategory) {
+            const fileList = database[currentSubject][currentDoctor][currentCategory] || [];
+            if (fileList.length > 0) { fileList.forEach(file => { keyboardArea.appendChild(createButton(file.name, () => handleFileClick(file))); }); } else {
+                const emptyBtn = createButton("❌ No files available", () => {}); emptyBtn.style.opacity = "0.5"; emptyBtn.style.cursor = "default"; keyboardArea.appendChild(emptyBtn);
+            }
+        }
+    }
+
+    function handleSubjectClick(subjectName) { addMessage(subjectName, 'user'); currentSubject = subjectName; currentDoctor = null; currentCategory = null; const msg = replacePlaceholders(CONFIG.subjectPrompt, subjectName); botReply(msg, true); renderKeyboard(); }
+    function handleDoctorClick(doctorName) { addMessage(doctorName, 'user'); currentDoctor = doctorName; currentCategory = null; const msg = replacePlaceholders(CONFIG.doctorPrompt, doctorName); botReply(msg, true); renderKeyboard(); }
+    function handleCategoryClick(categoryName) { addMessage(categoryName, 'user'); currentCategory = categoryName; const msg = replacePlaceholders(CONFIG.categoryPrompt, categoryName); botReply(msg, true); renderKeyboard(); }
+    function handleFileClick(fileObj) {
+        addMessage(`Open: ${fileObj.name}`, 'user');
+        setTimeout(() => {
+            if (!fileObj.link || fileObj.link.startsWith("javascript:")) { const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div class="file-link-dummy"><span>⚠️</span><span>Link not configured</span></div>`; addMessage(htmlContent, 'bot', true); } else { const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><a href="${fileObj.link}" target="_blank" class="file-link-btn"><span>📂</span><span>Download / Open File</span></a>`; addMessage(htmlContent, 'bot', true); }
+        }, 800);
+    }
+    function goBack() {
+        addMessage("🔙 Back", 'user');
+        if (currentCategory) { currentCategory = null; const msg = replacePlaceholders(CONFIG.backDoctor, currentDoctor); botReply(msg, true); } else if (currentDoctor) { currentDoctor = null; const msg = replacePlaceholders(CONFIG.backSubject, currentSubject); botReply(msg, true); } else if (currentSubject) { currentSubject = null; botReply(CONFIG.backMain, true); }
+        renderKeyboard();
+    }
+
+    // --- Initialization ---
+    window.onload = () => {
+        if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function(registrations) { for(let registration of registrations) registration.unregister(); }); }
+        fetchConfig();
+        setInterval(fetchConfig, 10000);
+        setTimeout(() => { const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); }, 500);
+    };
+
+</script>
+</body>
+</html>
