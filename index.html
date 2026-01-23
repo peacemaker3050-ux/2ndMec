@@ -49,6 +49,7 @@
             --admin-color: #00e676;
             --notification-color: #ff9800;
             --broadcast-color: #ffd700;
+            --success-color: #00e676;
         }
 
         * { box-sizing: border-box; outline: none; }
@@ -72,12 +73,38 @@
             padding: 10px 15px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: space-between; /* Spreads items to ends */
             border-bottom: 1px solid #000;
             z-index: 20; flex-shrink: 0; user-select: none;
+            direction: rtl; /* Default Arabic */
         }
 
-        .header-info { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        /* === Smart Header (LTR Support) === */
+        header.header-ltr {
+            direction: ltr;
+        }
+        /* Adjust text alignment specifically for name/status when LTR */
+        header.header-ltr .bot-name h2 { text-align: left; }
+        header.header-ltr .bot-status { text-align: left; }
+
+        /* Layout Logic: 
+           HTML Order: [header-info, header-actions]
+           RTL: Info(Right), Actions(Left).
+           LTR: Info(Left), Actions(Right).
+        */
+
+        .header-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            cursor: pointer; 
+            /* Inside header-info: HTML order is [Avatar, Name] */
+        }
+
+        /* 
+           RTL: Avatar(Right), Name(Left) -> Perfect.
+           LTR: Avatar(Left), Name(Right) -> Perfect.
+        */
         
         .bot-avatar {
             width: 42px; height: 42px; border-radius: 50%;
@@ -93,21 +120,29 @@
             overflow: hidden;
         }
 
-        .bot-name h2 { font-size: 16px; margin: 0; font-weight: 600; line-height: 1.2; }
-        .bot-status { font-size: 13px; color: var(--text-secondary); margin-top: 2px; display: block; }
+        .bot-name h2 { font-size: 16px; margin: 0; font-weight: 600; line-height: 1.2; text-align: right; }
+        .bot-status { font-size: 13px; color: var(--text-secondary); margin-top: 2px; display: block; text-align: right; }
 
         .header-actions { color: var(--text-secondary); font-size: 28px; line-height:1; padding: 5px 10px; cursor: pointer; user-select: none; }
         .header-actions:hover { color: #fff; }
 
         /* === Options Menu (Dropdown) === */
         .menu-dropdown {
-            position: absolute; top: 60px; left: 10px; 
+            position: absolute; top: 60px; 
             width: 260px; background-color: var(--menu-bg);
             border: 1px solid #000; border-radius: 8px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             display: none; flex-direction: column; z-index: 100;
             overflow: hidden; animation: fadeIn 0.2s ease;
         }
+        
+        /* Fix dropdown position based on language */
+        /* In RTL (default): Actions(Left). Menu should be Left-aligned to Actions. */
+        header .menu-dropdown { right: 10px; left: auto; }
+        
+        /* In LTR: Actions(Right). Menu should be Right-aligned to Actions. */
+        header.header-ltr .menu-dropdown { left: 10px; right: auto; }
+
         .menu-dropdown.active { display: flex; }
         .menu-item { padding: 12px 15px; cursor: pointer; color: #fff; font-size: 14px; display: flex; align-items: center; gap: 10px; transition: background 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .menu-item:last-child { border-bottom: none; }
@@ -358,7 +393,7 @@
 
         .alert-icon { font-size: 50px; margin-bottom: 10px; display: block; }
         .alert-title { font-size: 20px; font-weight: bold; color: #fff; margin-bottom: 10px; }
-        .alert-body { font-size: 16px; color: #eee; margin-bottom: 20px; line-height: 1.5; }
+        .alert-body { font-size: 16px; color: #eee; margin-bottom: 20px; line-height:1.5; white-space: pre-line; text-align: right; }
         .alert-btn {
             background: #fff; color: #1e3c72;
             border: none;
@@ -372,20 +407,85 @@
         }
         .alert-btn:active { transform: scale(0.95); }
 
+        /* === CUSTOM UI REPLACEMENTS (No Native Alerts) === */
+        #toast-container {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; gap: 10px; z-index: 9998;
+            width: 90%; max-width: 400px; pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            color: #fff; padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            font-size: 14px; text-align: center;
+            animation: slideUpToast 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+            border-left: 4px solid var(--accent-color);
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        }
+        .toast.success { border-left-color: var(--success-color); }
+        .toast.error { border-left-color: var(--danger-color); }
+
+        @keyframes slideUpToast {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Generic Input/Confirm Modal */
+        #ui-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 10000;
+            display: none; align-items: center; justify-content: center;
+        }
+        #ui-modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+
+        .ui-modal-box {
+            background: #1e293b; width: 90%; max-width: 350px;
+            border-radius: 12px; padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 1px solid #334155;
+            text-align: center;
+            animation: popIn 0.2s;
+        }
+
+        .ui-modal-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .ui-modal-body { font-size: 15px; color: #cbd5e1; margin-bottom: 20px; }
+        
+        .ui-input-field {
+            width: 100%; background: #0f172a; border: 1px solid #475569;
+            color: #fff; padding: 10px; border-radius: 6px;
+            margin-bottom: 15px; font-size: 16px; text-align: center;
+        }
+
+        .ui-modal-actions { display: flex; gap: 10px; justify-content: center; }
+        .ui-btn {
+            flex: 1; padding: 10px; border: none; border-radius: 6px;
+            font-weight: bold; cursor: pointer; font-size: 14px;
+        }
+        .ui-btn-cancel { background: #475569; color: #fff; }
+        .ui-btn-confirm { background: var(--accent-color); color: #fff; }
+        .ui-btn-confirm:hover { background: #267fd3; }
+
     </style>
 </head>
 <body>
 
 <div class="app-container">
-    <header>
-        <div class="header-actions" id="menu-btn" title="Menu">⋮</div>
+    <header id="main-header">
+        <!-- Reordered HTML: Info first, Actions second -->
         <div class="header-info">
+            <!-- Inside Info: Avatar first, Name second -->
+            <div class="bot-avatar" id="header-avatar">🎓</div>
             <div class="bot-name">
                 <h2 id="header-name">University Bot</h2>
                 <span class="bot-status" id="header-status">Online</span>
             </div>
-            <div class="bot-avatar" id="header-avatar">🎓</div>
         </div>
+
+        <div class="header-actions" id="menu-btn" title="Menu">⋮</div>
 
         <div class="menu-dropdown" id="menu-dropdown">
             <div class="menu-item notif-toggle" onclick="window.enableNotifications()">
@@ -425,11 +525,27 @@
 <div id="visual-alert-overlay">
     <div class="visual-alert-card">
         <span class="alert-icon">🔔</span>
-        <div class="alert-title">رسالة جديدة</div>
-        <div class="alert-body">وصلتك رسالة جديدة من الموقع! اضغط للاستمرار.</div>
-        <button class="alert-btn" onclick="window.closeVisualAlert()">فتح الموقع</button>
+        <div class="alert-title">رسائل جديدة</div>
+        <div class="alert-body" id="visual-alert-body">وصلتك رسائل جديدة...</div>
+        <button class="alert-btn" onclick="window.closeVisualAlert()">فتح التطبيق</button>
     </div>
 </div>
+
+<!-- CUSTOM UI MODAL (Replaces Alert/Prompt) -->
+<div id="ui-modal-overlay">
+    <div class="ui-modal-box">
+        <div class="ui-modal-title" id="ui-modal-title">Title</div>
+        <div class="ui-modal-body" id="ui-modal-body">Message</div>
+        <div id="ui-modal-input-container"></div>
+        <div class="ui-modal-actions">
+            <button class="ui-btn ui-btn-cancel" onclick="window.closeUiModal()">إلغاء</button>
+            <button class="ui-btn ui-btn-confirm" id="ui-modal-confirm-btn">تأكيد</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
 
 <!-- Admin Modal -->
 <div class="admin-modal" id="admin-modal">
@@ -486,7 +602,7 @@
     <div id="tab-notifications" class="tab-content">
         <div class="admin-section-title" style="color: var(--notification-color);">إرسال إشعار للطلاب (دكتور)</div>
         <p style="font-size:13px; color:var(--text-secondary); margin-bottom:15px;">
-            سيتم حفظ هذا الإشعار في قسم "🔔 Notifications" الخاص بالدكتور المختار.
+            سيتم حفظ هذا الإشعار في قسم "🔔 Notifications" الخاص بالدكتور المختار، وسيرسل إشعار فوري للطلاب.
         </p>
 
         <div class="form-group">
@@ -511,7 +627,7 @@
         <div class="admin-section-title" style="color: var(--broadcast-color);">إذاعة عامة (مندوب الدفعة)</div>
         <div style="background: rgba(255, 215, 0, 0.1); padding: 10px; border-radius: 6px; border: 1px solid var(--broadcast-color); margin-bottom: 15px;">
             <p style="font-size:12px; color:#ddd;">
-                هذه الرسالة ستظهر لجميع المستخدمين في أعلى الشات كرسالة مميزة، وسصدر إشعار فوري لهم.
+                هذه الرسالة ستظهر لجميع المستخدمين في أعلى الشات كرسالة مميزة. <b>لن يتم إرسال إشعار (Notification) للنظام.</b>
             </p>
         </div>
 
@@ -557,6 +673,85 @@
 
 <script>
     // ============================================================
+    // === UI UTILITIES (No Native Alerts) ===
+    // ============================================================
+    
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let icon = 'ℹ️';
+        if(type === 'success') icon = '✅';
+        if(type === 'error') icon = '❌';
+
+        toast.innerHTML = `<span>${icon} ${message}</span>`;
+        
+        container.appendChild(toast);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    let currentModalCallback = null;
+
+    function showInputModal(title, placeholder, callback) {
+        const overlay = document.getElementById('ui-modal-overlay');
+        const titleEl = document.getElementById('ui-modal-title');
+        const bodyEl = document.getElementById('ui-modal-body');
+        const inputContainer = document.getElementById('ui-modal-input-container');
+        const confirmBtn = document.getElementById('ui-modal-confirm-btn');
+
+        titleEl.innerText = title;
+        bodyEl.style.display = 'none';
+        inputContainer.style.display = 'block';
+        inputContainer.innerHTML = `<input type="text" class="ui-input-field" id="ui-modal-input" placeholder="${placeholder}">`;
+
+        currentModalCallback = callback;
+
+        overlay.classList.add('active');
+        setTimeout(() => document.getElementById('ui-modal-input').focus(), 100);
+    }
+
+    function showConfirmModal(title, message, callback) {
+        const overlay = document.getElementById('ui-modal-overlay');
+        const titleEl = document.getElementById('ui-modal-title');
+        const bodyEl = document.getElementById('ui-modal-body');
+        const inputContainer = document.getElementById('ui-modal-input-container');
+
+        titleEl.innerText = title;
+        bodyEl.innerText = message;
+        bodyEl.style.display = 'block';
+        inputContainer.style.display = 'none';
+
+        currentModalCallback = callback;
+        overlay.classList.add('active');
+    }
+
+    function closeUiModal() {
+        document.getElementById('ui-modal-overlay').classList.remove('active');
+        currentModalCallback = null;
+    }
+
+    document.getElementById('ui-modal-confirm-btn').addEventListener('click', () => {
+        if (currentModalCallback) {
+            const inputEl = document.getElementById('ui-modal-input');
+            const val = inputEl ? inputEl.value : true;
+            currentModalCallback(val);
+        }
+        closeUiModal();
+    });
+
+    // Close modal on outside click
+    document.getElementById('ui-modal-overlay').addEventListener('click', (e) => {
+        if(e.target.id === 'ui-modal-overlay') closeUiModal();
+    });
+
+    // ============================================================
     // === 0. SERVICE WORKER CODE (Background Notifications) ===
     // ============================================================
     const swCode = `
@@ -565,7 +760,6 @@
         const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
         let lastNotifTime = 0;
-        let lastBroadcastTime = 0;
         let fetchInterval;
 
         self.addEventListener('install', event => {
@@ -583,12 +777,9 @@
             
             // 1. Direct Trigger from Main Thread (Fastest)
             if (data.type === 'SYNCED_NOTIF_DOCTOR') {
-                // Update internal time so SW doesn't fire duplicate later
-                lastNotifTime = data.timestamp;
-                
                 if (Notification.permission === 'granted') {
-                    self.registration.showNotification(data.title, {
-                        body: data.body,
+                    self.registration.showNotification('📢 رسائل جديدة من الدكاترة', {
+                        body: data.body, // This will contain formatted list
                         icon: data.icon,
                         requireInteraction: false,
                         tag: 'doctor-notification',
@@ -598,19 +789,8 @@
                 }
             }
 
-            if (data.type === 'SYNCED_NOTIF_BROADCAST') {
-                lastBroadcastTime = data.timestamp;
-                if (Notification.permission === 'granted') {
-                    self.registration.showNotification(data.title, {
-                        body: data.body,
-                        icon: data.icon,
-                        requireInteraction: true,
-                        tag: 'broadcast-notification',
-                        silent: false,
-                        vibrate: [200, 100, 200]
-                    });
-                }
-            }
+            // Broadcast notifications are DISABLED as per user request
+            // We ignore SYNCED_NOTIF_BROADCAST to ensure only doctor notifs go to system
 
             // 2. Test Notification
             if (data.type === 'TEST_NOTIF') {
@@ -626,7 +806,6 @@
 
         // === POLLING LOGIC (Background only) ===
         function checkNotifications() {
-            // Only poll if we haven't received a fresh update recently to save battery
             const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
             
             fetch(url, {
@@ -636,13 +815,16 @@
             })
             .then(res => res.json())
             .then(data => {
+                // Note: Background polling is less reliable for IDs without local storage access in SW.
+                // Relying mainly on Main Thread for ID tracking, but checking timestamp here as backup.
+                
                 // 1. Check Doctor Notifications
                 if (data && data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
                     lastNotifTime = data.latestNotificationUpdate;
-                    
                     if (Notification.permission === 'granted') {
-                        self.registration.showNotification('📢 رسالة جديدة من الدكتور', {
-                            body: 'اضغط لقراءة التفاصيل',
+                        // Generic message here because SW can't access local storage easily to check which specific ones are new
+                        self.registration.showNotification('📢 رسائل جديدة من الدكاترة', {
+                            body: 'اضغط لفتح التطبيق وقراءة التفاصيل',
                             icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
                             requireInteraction: false,
                             tag: 'doctor-notification',
@@ -652,20 +834,7 @@
                     }
                 }
 
-                // 2. Check General Broadcast
-                if (data && data.generalBroadcast && data.generalBroadcast.active && data.generalBroadcast.timestamp > lastBroadcastTime) {
-                    lastBroadcastTime = data.generalBroadcast.timestamp;
-                    if (Notification.permission === 'granted') {
-                        self.registration.showNotification('📣 رسالة من مندوب الدفعة', {
-                            body: (data.generalBroadcast.title || '') + ': ' + (data.generalBroadcast.body || ''),
-                            icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png',
-                            requireInteraction: true,
-                            tag: 'broadcast-notification',
-                            silent: false,
-                            vibrate: [200, 100, 200]
-                        });
-                    }
-                }
+                // Broadcasts are ignored in System Notifications
             })
             .catch(err => console.error('SW Fetch Error:', err));
         }
@@ -762,6 +931,7 @@
         typingSpeed: 600, 
         admins: [], 
         latestNotificationUpdate: 0,
+        recentUpdates: [], // Array of { id, doctor, subject, timestamp }
         generalBroadcast: { active: false, title: "", body: "", timestamp: 0 },
         welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.",
         subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇",
@@ -777,15 +947,11 @@
     let database = CONFIG.database; 
     let refreshInterval = null;
 
-    // Variables to track what we have already notified
-    let lastKnownServerTime = 0;
-    let lastKnownBroadcastTime = 0;
-
     // ============================================================
     // === 3. AUTH LOGIC ===
     // ============================================================
     window.toggleGoogleLogin = function() {
-        if (!auth) { alert("Firebase not configured correctly."); return; }
+        if (!auth) { showToast("Firebase not configured correctly.", "error"); return; }
         const user = auth.currentUser;
         if (user) {
             auth.signOut().then(() => {
@@ -797,9 +963,10 @@
             auth.signInWithPopup(provider).then((result) => {
                 console.log("User signed in:", result.user);
                 window.updateAuthUI();
+                showToast("تم تسجيل الدخول بنجاح", "success");
             }).catch((error) => {
                 console.error("Login error", error);
-                alert("فشل تسجيل الدخول: " + error.message);
+                showToast("فشل تسجيل الدخول: " + error.message, "error");
             });
         }
     };
@@ -862,7 +1029,7 @@
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                 callback(dataUrl);
             };
-            reader.onerror = (err) => { console.log(err); alert("Error processing image"); };
+            reader.onerror = (err) => { console.log(err); showToast("Error processing image", "error"); };
         };
     }
 
@@ -878,6 +1045,17 @@
         if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
     }
 
+    function updateHeaderDirection() {
+        const header = document.getElementById('main-header');
+        // Simple Regex to detect if name starts with English letter
+        const isEnglish = /^[a-zA-Z]/.test(CONFIG.botName.trim());
+        if (isEnglish) {
+            header.classList.add('header-ltr');
+        } else {
+            header.classList.remove('header-ltr');
+        }
+    }
+
     function fetchConfig() {
         fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
             headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' }
@@ -890,48 +1068,37 @@
             applyConfig(CONFIG); 
             
             // --- HYBRID TRIGGER LOGIC ---
-            // 1. Check Doctor Notification
-            const currentNotifTime = CONFIG.latestNotificationUpdate || 0;
-            if (currentNotifTime > lastKnownServerTime) {
-                // Update local tracker
-                lastKnownServerTime = currentNotifTime;
+            
+            //1. Check Doctor Notifications (Grouping Logic)
+            if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
+                const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
+                const newUpdates = CONFIG.recentUpdates.filter(u => !seenIds.includes(u.id));
                 
-                // Trigger SW directly if available
-                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'SYNCED_NOTIF_DOCTOR',
-                        title: '📢 رسالة جديدة من الدكتور',
-                        body: 'اضغط لقراءة التفاصيل',
-                        icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                        timestamp: currentNotifTime
-                    });
-                    console.log("Main thread triggered Doctor notification via SW");
-                }
-
-                // ALWAYS SHOW VISUAL ALERT FOR WEBSITES
-                showVisualAlert('doctor');
-            }
-
-            // 2. Check Broadcast
-            if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
-                const broadcastTime = CONFIG.generalBroadcast.timestamp || 0;
-                if (broadcastTime > lastKnownBroadcastTime) {
-                    lastKnownBroadcastTime = broadcastTime;
+                if (newUpdates.length > 0) {
+                    const notifBody = newUpdates.map(u => `${u.doctor} (${u.subject})`).join('\n');
                     
                     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
                         navigator.serviceWorker.controller.postMessage({
-                            type: 'SYNCED_NOTIF_BROADCAST',
-                            title: '📣 رسالة من مندوب الدفعة',
-                            body: (CONFIG.generalBroadcast.title || '') + ': ' + (CONFIG.generalBroadcast.body || ''),
-                            icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png',
-                            timestamp: broadcastTime
+                            type: 'SYNCED_NOTIF_DOCTOR',
+                            body: notifBody,
+                            icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+                            timestamp: Date.now()
                         });
-                        console.log("Main thread triggered Broadcast notification via SW");
                     }
                     
-                    // ALWAYS SHOW VISUAL ALERT FOR WEBSITES
-                    showVisualAlert('broadcast');
+                    showVisualAlertWithBody(notifBody);
+                    
+                    const updatedSeenIds = [...seenIds, ...newUpdates.map(u => u.id)];
+                    localStorage.setItem('seenNotifIds', JSON.stringify(updatedSeenIds));
                 }
+            }
+
+            // 2. Check Broadcast
+            // NOTE: System notification (SW) for Broadcast is DISABLED per user request.
+            // Only showing in Chat logic.
+            if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
+                // We only need to show it in chat, no system alert
+                checkAndShowBroadcast();
             }
 
         })
@@ -949,13 +1116,13 @@
             body: JSON.stringify(newConfig)
         })
         .then(res => { if (!res.ok) throw new Error("Save failed"); 
-            alert("✅ تم الحفظ بنجاح!");
+            showToast("✅ تم الحفظ بنجاح!", "success");
             database = newConfig.database;
             CONFIG.database = { ...newConfig.database, ...defaultDatabase };
             database = CONFIG.database;
             if(btnSave) btnSave.innerText = originalText;
         })
-        .catch(err => { alert("❌ خطأ: " + err.message); if(btnSave) btnSave.innerText = originalText; });
+        .catch(err => { showToast("❌ خطأ: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
     }
 
     function applyConfig(newConfig) {
@@ -975,6 +1142,7 @@
         } else { chatArea.style.backgroundImage = "none"; chatArea.style.backgroundColor = "var(--chat-bg)"; chatArea.style.backgroundSize = "20px 20px"; chatArea.classList.remove('has-bg'); }
 
         window.updateAuthUI();
+        updateHeaderDirection(); // Smart Header Logic
         renderKeyboard();
         checkAndShowBroadcast();
     }
@@ -984,32 +1152,27 @@
         if (existingBroadcast) existingBroadcast.remove();
 
         if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
-            const localSeenTime = localStorage.getItem('lastSeenBroadcastTime') || 0;
-            if (parseInt(CONFIG.generalBroadcast.timestamp) > parseInt(localSeenTime)) {
-                const broadcastHTML = `
-                    <div id="app-broadcast-msg" class="message msg-bot broadcast-msg">
-                        <div class="broadcast-header">
-                            <span>📣</span> <span>رسالة من مندوب الدفعة</span>
-                        </div>
-                        <div><b>${CONFIG.generalBroadcast.title}</b></div>
-                        <div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div>
-                        <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
+            const broadcastHTML = `
+                <div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()">
+                    <div class="broadcast-header">
+                        <span>📣</span> <span>رسالة من مندوب الدفعة</span>
                     </div>
-                `;
+                    <div><b>${CONFIG.generalBroadcast.title}</b></div>
+                    <div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div>
+                    <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
+                </div>
+            `;
+            
+            if (!existingBroadcast) {
                 const chatArea = document.getElementById('chat-area');
                 chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
             }
         }
     }
-
-    document.getElementById('chat-area').addEventListener('click', (e) => {
-        const broadcastEl = document.getElementById('app-broadcast-msg');
-        if (broadcastEl && broadcastEl.contains(e.target)) {
-            if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.timestamp) {
-                localStorage.setItem('lastSeenBroadcastTime', CONFIG.generalBroadcast.timestamp);
-            }
-        }
-    });
+    
+    window.markBroadcastRead = function() {
+        // Optionally store seen state locally if needed in future
+    };
 
     function replacePlaceholders(text, name) {
         let res = text || "";
@@ -1021,35 +1184,25 @@
     // ============================================================
     // === 6. VISUAL ALERT SYSTEM (Website Fallback) ===
     // ============================================================
-    function showVisualAlert(type) {
+    function showVisualAlertWithBody(bodyText) {
         const overlay = document.getElementById('visual-alert-overlay');
-        if (overlay.classList.contains('active')) return; // Prevent duplicates
+        if (overlay.classList.contains('active')) return; 
 
+        document.getElementById('visual-alert-body').innerText = bodyText;
         overlay.classList.add('active');
 
-        // Vibrate device if possible
-        if (navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]);
-        }
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         
-        // Play simple sound using AudioContext (no external file needed)
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (AudioContext) {
                 const ctx = new AudioContext();
                 const osc = ctx.createOscillator();
                 const gainNode = ctx.createGain();
-                
-                osc.connect(gainNode);
-                gainNode.connect(ctx.destination);
-                
-                osc.type = 'sine';
-                osc.frequency.setValueAt(440, ctx.currentTime); // A4
-                gainNode.gain.setValueAt(0.1, ctx.currentTime);
-                
-                osc.start();
-                gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
-                osc.stop(ctx.currentTime + 0.5);
+                osc.connect(gainNode); gainNode.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(440, ctx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start(); gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5); osc.stop(ctx.currentTime + 0.5);
             }
         } catch (e) { console.log("Audio play failed", e); }
     }
@@ -1093,17 +1246,19 @@
     };
 
     window.sendDoctorNotification = function() {
-        if (!hasAdminAccess()) return alert("❌ ليس لديك صلاحية.");
+        if (!hasAdminAccess()) return showToast("❌ ليس لديك صلاحية.", "error");
         
         const subject = document.getElementById('notif-subject-select').value;
         const doctor = document.getElementById('notif-doctor-select').value;
         const message = document.getElementById('notif-message-text').value.trim();
 
-        if(!subject || !doctor || !message) return alert("الرجاء ملء جميع الحقول");
+        if(!subject || !doctor || !message) return showToast("الرجاء ملء جميع الحقول", "error");
 
         const timestamp = new Date().toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         const fullDate = Date.now();
+        const updateId = fullDate.toString() + "_" + Math.random().toString(36).substr(2, 5);
 
+        // 1. Add to specific Doctor's list
         if (!database[subject][doctor].sections) database[subject][doctor].sections = [];
         if (!database[subject][doctor].sections.includes("🔔 Notifications")) {
             database[subject][doctor].sections.unshift("🔔 Notifications");
@@ -1111,12 +1266,26 @@
         if (!database[subject][doctor]["🔔 Notifications"]) database[subject][doctor]["🔔 Notifications"] = [];
 
         database[subject][doctor]["🔔 Notifications"].unshift({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+            id: updateId,
             name: message,
             date: timestamp,
             type: "notif",
             fullDate: fullDate
         });
+
+        // 2. Add to Recent Updates (Global for Grouping)
+        if (!CONFIG.recentUpdates) CONFIG.recentUpdates = [];
+        
+        CONFIG.recentUpdates.unshift({
+            id: updateId,
+            doctor: doctor,
+            subject: subject,
+            timestamp: fullDate
+        });
+
+        if (CONFIG.recentUpdates.length > 5) {
+            CONFIG.recentUpdates = CONFIG.recentUpdates.slice(0, 5);
+        }
 
         CONFIG.latestNotificationUpdate = fullDate;
         CONFIG.database = database;
@@ -1132,13 +1301,14 @@
         })
         .then(res => {
             if (!res.ok) throw new Error("Send failed");
-            alert("✅ تم إرسال الإشعار!");
+            showToast("✅ تم إرسال الإشعار!", "success");
             document.getElementById('notif-message-text').value = "";
             saveBtn.innerText = "إرسال الإشعار";
             saveBtn.disabled = false;
+            fetchConfig(); 
         })
         .catch(err => {
-            alert("❌ خطأ: " + err.message);
+            showToast("❌ خطأ: " + err.message, "error");
             saveBtn.innerText = "إرسال الإشعار";
             saveBtn.disabled = false;
         });
@@ -1152,15 +1322,23 @@
         const isOwner = email === OWNER_EMAIL;
         let allowed = isOwner;
         if (!allowed) {
-            const pass = prompt("هذا الأمر للمالك فقط. أدخل كلمة المرور:");
-            if (pass === "1234") allowed = true;
+            showInputModal("تأكيد الهوية", "كلمة المرور (Owner)", (pass) => {
+                if (pass === "1234") {
+                    proceedBroadcastSave();
+                } else {
+                    showToast("كلمة المرور خاطئة", "error");
+                }
+            });
+            return;
         }
-        if (!allowed) return alert("❌ ليس لديك صلاحية.");
+        proceedBroadcastSave();
+    };
 
+    function proceedBroadcastSave() {
         const title = document.getElementById('broadcast-title').value.trim();
         const body = document.getElementById('broadcast-body').value.trim();
 
-        if(!title || !body) return alert("الرجاء كتابة العنوان والنص");
+        if(!title || !body) return showToast("الرجاء كتابة العنوان والنص", "error");
 
         CONFIG.generalBroadcast = {
             active: true,
@@ -1179,15 +1357,16 @@
         })
         .then(res => {
             if (!res.ok) throw new Error("Save failed");
-            alert("✅ تم نشر الإذاعة!");
+            showToast("✅ تم نشر الإذاعة!", "success");
             saveBtn.innerText = "نشر الإذاعة";
             checkAndShowBroadcast();
+            fetchConfig();
         })
         .catch(err => {
-            alert("❌ خطأ: " + err.message);
+            showToast("❌ خطأ: " + err.message, "error");
             saveBtn.innerText = "نشر الإذاعة";
         });
-    };
+    }
 
     window.deleteBroadcast = function() {
         const user = auth.currentUser;
@@ -1195,36 +1374,46 @@
         const isOwner = email === OWNER_EMAIL;
         let allowed = isOwner;
         if (!allowed) {
-            const pass = prompt("أدخل كلمة المرور:");
-            if (pass === "1234") allowed = true;
+             showInputModal("تأكيد الهوية", "كلمة المرور (Owner)", (pass) => {
+                if (pass === "1234") {
+                    proceedBroadcastDelete();
+                } else {
+                    showToast("كلمة المرور خاطئة", "error");
+                }
+            });
+            return;
         }
-        if (!allowed) return alert("❌ ليس لديك صلاحية.");
+        proceedBroadcastDelete();
+    };
 
-        if(!confirm("هل أنت متأكد من حذف الإذاعة؟")) return;
+    function proceedBroadcastDelete() {
+        showConfirmModal("تأكيد الحذف", "هل أنت متأكد من حذف الإذاعة؟", (confirmed) => {
+            if (!confirmed) return;
 
-        CONFIG.generalBroadcast = { active: false, title: "", body: "", timestamp: 0 };
-        document.getElementById('broadcast-title').value = "";
-        document.getElementById('broadcast-body').value = "";
-        
-        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
-            body: JSON.stringify(CONFIG)
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Delete failed");
-            alert("✅ تم الحذف.");
-            const existing = document.getElementById('app-broadcast-msg');
-            if(existing) existing.remove();
-        })
-        .catch(err => alert("❌ خطأ: " + err.message));
+            CONFIG.generalBroadcast = { active: false, title: "", body: "", timestamp: 0 };
+            document.getElementById('broadcast-title').value = "";
+            document.getElementById('broadcast-body').value = "";
+            
+            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
+                body: JSON.stringify(CONFIG)
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Delete failed");
+                showToast("✅ تم الحذف.", "success");
+                const existing = document.getElementById('app-broadcast-msg');
+                if(existing) existing.remove();
+            })
+            .catch(err => showToast("❌ خطأ: " + err.message, "error"));
+        });
     };
 
     // --- Test Notification ---
     window.testNotification = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
         if (!('Notification' in window)) {
-            alert("متصفحك لا يدعم الإشعارات.");
+            showToast("متصفحك لا يدعم الإشعارات.", "error");
             return;
         }
         Notification.requestPermission().then(permission => {
@@ -1234,16 +1423,17 @@
                         type: 'TEST_NOTIF',
                         icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png'
                     });
+                    showToast("تم إرسال إشعار اختبار...", "success");
                 } else {
-                    // Fallback if SW not ready
                     new Notification("✅ اختبار ناجح", {
                         body: "إذا رأيت هذا، فهذا يعني أن الإشعارات تعمل في الهاتف.",
                         icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
                         vibrate: [200, 100, 200]
                     });
+                    showToast("تم إرسال إشعار اختبار...", "success");
                 }
             } else {
-                alert("الإذن مرفوض. الرجاء السماح بالإشعارات من إعدادات المتصفح.");
+                showToast("الإذن مرفوض. الرجاء السماح بالإشعارات.", "error");
             }
         });
     };
@@ -1312,15 +1502,15 @@
     window.enableNotifications = function() {
         menuDropdown.classList.remove('active');
         if (!('Notification' in window)) {
-            alert("متصفحك لا يدعم الإشعارات.");
+            showToast("متصفحك لا يدعم الإشعارات.", "error");
             return;
         }
         Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
-                alert("✅ تم تفعيل الإشعارات بنجاح!");
+                showToast("✅ تم تفعيل الإشعارات بنجاح!", "success");
                 new Notification("تم التفعيل", { body: "ستصلك رسائل الدكاترة والإذاعات الآن." });
             } else {
-                alert("❌ لم يتم السماح بالإشعارات. يمكنك تفعيلها من إعدادات المتصفح.");
+                showToast("❌ لم يتم السماح بالإشعارات.", "error");
             }
         });
     };
@@ -1333,25 +1523,31 @@
                 openAdminPanel();
                 return;
             }
-            alert("❌ ليس لديك صلاحيات للدخول.\nأنت مسجل كـ: " + email);
+            showToast("❌ ليس لديك صلاحيات للدخول.\nأنت مسجل كـ: " + email, "error");
             return;
         }
-        const password = prompt("الرجاء إدخال كلمة مرور المسؤول:");
-        if (password === "1234") openAdminPanel();
-        else if (password !== null) alert("❌ كلمة المرور خاطئة!");
+        showInputModal("تسجيل دخول المسؤول", "كلمة المرور:", (password) => {
+            if (password === "1234") {
+                openAdminPanel();
+            } else {
+                if(password !== null) showToast("❌ كلمة المرور خاطئة!", "error");
+            }
+        });
     }
 
     window.forceReload = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
-        if(confirm("سيتم تحديث البوت بالكامل لتفعيل أحدث نسخة من نظام الإشعارات. هل تريد المتابعة؟")) {
-            if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-            if ('serviceWorker' in navigator) { 
-                navigator.serviceWorker.getRegistrations().then(function(registrations) { 
-                    for(let registration of registrations) registration.unregister(); 
-                });
+        showConfirmModal("تحديث قسري", "سيتم تحديث البوت بالكامل لتفعيل أحدث نسخة من نظام الإشعارات. هل تريد المتابعة؟", (confirm) => {
+            if(confirm) {
+                if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
+                if ('serviceWorker' in navigator) { 
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) { 
+                        for(let registration of registrations) registration.unregister(); 
+                    });
+                }
+                window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime();
             }
-            window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime();
-        }
+        });
     };
 
     // ============================================================
@@ -1444,13 +1640,17 @@
     window.addAdmin = function() {
         const email = adminAddInput.value.trim();
         if (email && (!CONFIG.admins.includes(email))) { 
-            if (!email.includes('@')) return alert("الرجاء إدخال إيميل صحيح");
+            if (!email.includes('@')) return showToast("الرجاء إدخال إيميل صحيح", "error");
             CONFIG.admins.push(email); adminAddInput.value = ''; renderAdminList(); 
-        } else if (email) alert("هذا الإيميل مضاف بالفعل!");
+        } else if (email) showToast("هذا الإيميل مضاف بالفعل!", "error");
     }
     window.removeAdmin = function(index) { 
-        if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { alert("⛔ فقط المالك يمكنه حذف المشرفين."); return; }
-        if (confirm("هل أنت متأكد من حذف هذا المشرف؟")) { CONFIG.admins.splice(index, 1); renderAdminList(); } 
+        if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ فقط المالك يمكنه حذف المشرفين.", "error"); return; }
+        showConfirmModal("حذف مشرف", "هل أنت متأكد من حذف هذا المشرف؟", (confirmed) => {
+            if(confirmed) {
+                CONFIG.admins.splice(index, 1); renderAdminList();
+            }
+        });
     }
 
     window.saveAdminSettings = function() {
@@ -1468,8 +1668,7 @@
             admins: CONFIG.admins,
             generalBroadcast: CONFIG.generalBroadcast,
             latestNotificationUpdate: CONFIG.latestNotificationUpdate,
-            lastNotifSubject: CONFIG.lastNotifSubject,
-            lastNotifDoctor: CONFIG.lastNotifDoctor,
+            recentUpdates: CONFIG.recentUpdates, // Save recent updates
             database: database 
         };
         CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
@@ -1552,27 +1751,29 @@
         const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2];
         const list = database[sub][doc][sec];
         const item = list[index];
-        const newText = prompt("تعديل نص الإشعار:", item.name);
-        if (newText !== null && newText.trim() !== "") {
-            item.name = newText.trim();
-            item.date = new Date().toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute:'2-digit' }) + " (معدل)";
-            renderAdminDataView();
-            alert("⚠️ تأكد من الضغط على 'حفظ الإعدادات' لتطبيق التغييرات.");
-        }
+        
+        showInputModal("تعديل نص الإشعار", "النص الجديد:", (newText) => {
+            if (newText !== null && newText.trim() !== "") {
+                item.name = newText.trim();
+                item.date = new Date().toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute:'2-digit' }) + " (معدل)";
+                renderAdminDataView();
+                showToast("تم التعديل. تأكد من الحفظ.", "info");
+            }
+        });
     }
 
     window.addAdminDataItem = function() {
         const nameInput = document.getElementById('new-item-name'); const linkInput = document.getElementById('new-item-link');
         const name = nameInput.value.trim(); let level = adminNavStack.length;
-        if (!name) return alert("الرجاء كتابة الاسم");
+        if (!name) return showToast("الرجاء كتابة الاسم", "error");
         if (level === 0) { 
-            if (database[name]) return alert("المادة موجودة بالفعل!"); 
+            if (database[name]) return showToast("المادة موجودة بالفعل!", "error"); 
             database[name] = { doctors: [] }; 
         } 
         else if (level === 1) {
             const sub = adminNavStack[0]; 
             if (!database[sub]) database[sub] = { doctors: [] };
-            if (database[sub].doctors.includes(name)) return alert("الدكتور موجود بالفعل!");
+            if (database[sub].doctors.includes(name)) return showToast("الدكتور موجود بالفعل!", "error");
             database[sub].doctors.push(name); 
             database[sub][name] = { sections: ["📚 Lectures", "🔔 Notifications"] }; 
             database[sub][name]["📚 Lectures"] = [];
@@ -1581,7 +1782,7 @@
         else if (level === 2) {
             const sub = adminNavStack[0]; const doc = adminNavStack[1];
             if (!database[sub][doc]) database[sub][doc] = { sections: [] };
-            if (database[sub][doc].sections.includes(name)) return alert("القسم موجود بالفعل!");
+            if (database[sub][doc].sections.includes(name)) return showToast("القسم موجود بالفعل!", "error");
             database[sub][doc].sections.push(name); 
             database[sub][doc][name] = []; 
         } 
@@ -1605,28 +1806,30 @@
 
     function deleteAdminDataItem(index) {
         let level = adminNavStack.length;
-        if(!confirm("هل أنت متأكد من الحذف؟")) return;
-        if (level === 0) { 
-            const subKeys = Object.keys(database); 
-            delete database[subKeys[index]]; 
-        } 
-        else if (level === 1) { 
-            const sub = adminNavStack[0]; 
-            const docName = database[sub].doctors[index];
-            database[sub].doctors.splice(index, 1); 
-            delete database[sub][docName]; 
-        }
-        else if (level === 2) { 
-            const sub = adminNavStack[0]; const doc = adminNavStack[1]; 
-            const secName = database[sub][doc].sections[index];
-            database[sub][doc].sections.splice(index, 1); 
-            delete database[sub][doc][secName]; 
-        }
-        else if (level === 3) { 
-            const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; 
-            database[sub][doc][sec].splice(index, 1); 
-        }
-        renderAdminDataView();
+        showConfirmModal("تأكيد الحذف", "هل أنت متأكد من الحذف؟", (confirmed) => {
+            if(!confirmed) return;
+            if (level === 0) { 
+                const subKeys = Object.keys(database); 
+                delete database[subKeys[index]]; 
+            } 
+            else if (level === 1) { 
+                const sub = adminNavStack[0]; 
+                const docName = database[sub].doctors[index];
+                database[sub].doctors.splice(index, 1); 
+                delete database[sub][docName]; 
+            }
+            else if (level === 2) { 
+                const sub = adminNavStack[0]; const doc = adminNavStack[1]; 
+                const secName = database[sub][doc].sections[index];
+                database[sub][doc].sections.splice(index, 1); 
+                delete database[sub][doc][secName]; 
+            }
+            else if (level === 3) { 
+                const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; 
+                database[sub][doc][sec].splice(index, 1); 
+            }
+            renderAdminDataView();
+        });
     }
 
     // ============================================================
