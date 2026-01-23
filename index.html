@@ -45,10 +45,10 @@
             --admin-tab-active: #3390ec;
             --admin-tab-inactive: #2b2b2b;
             --danger-color: #ff4444;
-            --owner-color: #ffd700; /* Gold for owner */
-            --admin-color: #00e676; /* Green for helper admin */
-            --notification-color: #ff9800; /* Orange for notifications */
-            --broadcast-color: #ffd700; /* Gold for batch rep */
+            --owner-color: #ffd700;
+            --admin-color: #00e676;
+            --notification-color: #ff9800;
+            --broadcast-color: #ffd700;
         }
 
         * { box-sizing: border-box; outline: none; }
@@ -101,7 +101,7 @@
 
         /* === Options Menu (Dropdown) === */
         .menu-dropdown {
-            position: absolute; top: 60px; left: 10px; /* RTL adjusted */
+            position: absolute; top: 60px; left: 10px; 
             width: 260px; background-color: var(--menu-bg);
             border: 1px solid #000; border-radius: 8px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
@@ -285,7 +285,6 @@
             margin-top: 5px; border: 1px solid rgba(255, 85, 85, 0.3);
             font-size: 14px;
         }
-        /* Notification specific styling in chat */
         .notif-display {
             background: rgba(255, 152, 0, 0.1);
             border: 1px solid rgba(255, 152, 0, 0.3);
@@ -343,7 +342,6 @@
         </div>
 
         <div class="menu-dropdown" id="menu-dropdown">
-            <!-- NEW: Enable Notifications Button -->
             <div class="menu-item notif-toggle" onclick="window.enableNotifications()">
                 <span>🔔</span> <span>تفعيل الإشعارات</span>
             </div>
@@ -379,7 +377,6 @@
         <div class="close-modal" onclick="window.closeAdminPanel()">×</div>
     </div>
 
-    <!-- Tabs Navigation -->
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="window.switchTab('settings')">الإعدادات</button>
         <button class="tab-btn" onclick="window.switchTab('notifications')">📢 إشعار دكتور</button>
@@ -387,7 +384,6 @@
         <button class="tab-btn" onclick="window.switchTab('data')">إدارة البيانات</button>
     </div>
 
-    <!-- Tab 1: General Settings -->
     <div id="tab-settings" class="tab-content active">
         <div class="admin-section-title">المظهر والرسائل</div>
         <div class="form-group"><label class="form-label">اسم البوت</label><input type="text" id="admin-bot-name" class="form-input"></div>
@@ -411,7 +407,6 @@
         <div class="form-group"><label class="form-label">نص عرض القوائم</label><textarea id="admin-msg-category" class="form-textarea"></textarea></div>
         <div class="form-group"><label class="form-label">نصوص العودة (Back)</label><textarea id="admin-msg-backs" class="form-textarea" placeholder="Back Subject | Back Doctor | Back Main"></textarea></div>
 
-        <!-- RESTRICTED SECTION: ONLY OWNER -->
         <div id="owner-admin-section" style="display: none;">
             <div class="admin-section-title" style="color: var(--owner-color);">إدارة المشرفين (للمالك فقط)</div>
             <div class="form-group">
@@ -427,7 +422,6 @@
         <button class="btn-save" onclick="window.saveAdminSettings()">حفظ الإعدادات</button>
     </div>
 
-    <!-- Tab 2: Send Notifications (Doctor Specific) -->
     <div id="tab-notifications" class="tab-content">
         <div class="admin-section-title" style="color: var(--notification-color);">إرسال إشعار للطلاب (دكتور)</div>
         <p style="font-size:13px; color:var(--text-secondary); margin-bottom:15px;">
@@ -452,7 +446,6 @@
         <button class="btn-send" onclick="window.sendDoctorNotification()">إرسال الإشعار</button>
     </div>
 
-    <!-- Tab 3: General Broadcast (Owner Only) -->
     <div id="tab-broadcast" class="tab-content">
         <div class="admin-section-title" style="color: var(--broadcast-color);">إذاعة عامة (مندوب الدفعة)</div>
         <div style="background: rgba(255, 215, 0, 0.1); padding: 10px; border-radius: 6px; border: 1px solid var(--broadcast-color); margin-bottom: 15px;">
@@ -479,7 +472,6 @@
         </div>
     </div>
 
-    <!-- Tab 4: Data Management -->
     <div id="tab-data" class="tab-content">
         <div class="data-path" id="admin-data-path">الرئيسية</div>
         
@@ -507,7 +499,7 @@
     // === 0. SERVICE WORKER CODE (Background Notifications) ===
     // ============================================================
     const swCode = `
-        const CACHE_VERSION = 'v3';
+        const CACHE_VERSION = 'v4'; // Incremented to force update
         const BIN_ID = "696e77bfae596e708fe71e9d";
         const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
@@ -516,51 +508,58 @@
         let fetchInterval;
 
         self.addEventListener('install', event => {
-            self.skipWaiting();
+            self.skipWaiting(); // Force new SW to activate
         });
 
         self.addEventListener('activate', event => {
-            event.waitUntil(self.clients.claim());
+            event.waitUntil(self.clients.claim()); // Take control immediately
         });
 
         function checkNotifications() {
-            // FIX: Added 'cache: no-store' and timestamp to URL to ensure fresh data
-            const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
+            // Generate unique URL to bypass any browser-level caching completely
+            const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now() + '&rand=' + Math.random();
             
             fetch(url, {
-                cache: 'no-store',
+                cache: 'no-cache', // Force network request
                 method: 'GET',
                 headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }
             })
             .then(res => res.json())
             .then(data => {
-                // Check Doctor Notifications
-                if (data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
+                // 1. Check Doctor Notifications
+                // We explicitly check if the field exists to avoid errors
+                if (data && data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
                     lastNotifTime = data.latestNotificationUpdate;
+                    
                     if (Notification.permission === 'granted') {
                         self.registration.showNotification('📢 رسالة جديدة من الدكتور', {
                             body: 'اضغط لقراءة التفاصيل',
                             icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
                             requireInteraction: false,
-                            tag: 'doctor-notification'
+                            tag: 'doctor-notification',
+                            silent: false
                         });
                     }
                 }
 
-                // Check General Broadcast
-                if (data.generalBroadcast && data.generalBroadcast.active && data.generalBroadcast.timestamp > lastBroadcastTime) {
+                // 2. Check General Broadcast
+                if (data && data.generalBroadcast && data.generalBroadcast.active && data.generalBroadcast.timestamp > lastBroadcastTime) {
                     lastBroadcastTime = data.generalBroadcast.timestamp;
                     if (Notification.permission === 'granted') {
                         self.registration.showNotification('📣 رسالة من مندوب الدفعة', {
-                            body: data.generalBroadcast.title + ': ' + data.generalBroadcast.body,
+                            body: (data.generalBroadcast.title || '') + ': ' + (data.generalBroadcast.body || ''),
                             icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png',
                             requireInteraction: true,
-                            tag: 'broadcast-notification'
+                            tag: 'broadcast-notification',
+                            silent: false
                         });
                     }
                 }
             })
-            .catch(err => console.error('SW Fetch Error:', err));
+            .catch(err => {
+                // Silent fail in SW to prevent spamming logs if offline
+                console.error('SW Fetch Error:', err);
+            });
         }
 
         self.addEventListener('notificationclick', event => {
@@ -582,8 +581,8 @@
         self.addEventListener('activate', () => {
             // Check immediately
             checkNotifications();
-            // Then poll every 30 seconds (more frequent for better responsiveness)
-            fetchInterval = setInterval(checkNotifications, 30000); 
+            // Poll every 25 seconds (optimized for mobile battery vs responsiveness)
+            fetchInterval = setInterval(checkNotifications, 25000); 
         });
     `;
 
@@ -680,7 +679,7 @@
         if (user) {
             auth.signOut().then(() => {
                 console.log("User signed out.");
-                window.location.reload(); // Reload to clear UI state
+                window.location.reload();
             }).catch((error) => console.error("Sign out error", error));
         } else {
             const provider = new firebase.auth.GoogleAuthProvider();
@@ -818,23 +817,17 @@
             chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`; chatArea.style.backgroundSize = "contain"; chatArea.style.backgroundColor = "transparent"; chatArea.classList.add('has-bg');
         } else { chatArea.style.backgroundImage = "none"; chatArea.style.backgroundColor = "var(--chat-bg)"; chatArea.style.backgroundSize = "20px 20px"; chatArea.classList.remove('has-bg'); }
 
-        // Check Auth UI update on sync
         window.updateAuthUI();
         renderKeyboard();
-        
-        // Display Broadcast if active
         checkAndShowBroadcast();
     }
 
     function checkAndShowBroadcast() {
-        // Remove existing broadcast message from DOM to avoid duplicates
         const existingBroadcast = document.getElementById('app-broadcast-msg');
         if (existingBroadcast) existingBroadcast.remove();
 
         if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
             const localSeenTime = localStorage.getItem('lastSeenBroadcastTime') || 0;
-            // Only show if new or forced (logic simplified: always show for now as per request emphasis, but check LS to hide if needed)
-            // To allow users to dismiss it, we check localStorage.
             if (parseInt(CONFIG.generalBroadcast.timestamp) > parseInt(localSeenTime)) {
                 const broadcastHTML = `
                     <div id="app-broadcast-msg" class="message msg-bot broadcast-msg">
@@ -846,14 +839,12 @@
                         <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
                     </div>
                 `;
-                // Insert at top of chat (after welcome if welcome exists)
                 const chatArea = document.getElementById('chat-area');
                 chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
             }
         }
     }
 
-    // Broadcast Interaction: When user clicks, mark as seen
     document.getElementById('chat-area').addEventListener('click', (e) => {
         const broadcastEl = document.getElementById('app-broadcast-msg');
         if (broadcastEl && broadcastEl.contains(e.target)) {
@@ -874,7 +865,6 @@
     // === 6. NOTIFICATION SYSTEM (ADMIN SIDE) ===
     // ============================================================
     
-    // --- Helper: Check Access (Owner or Admin) ---
     function hasAdminAccess() {
         const user = auth.currentUser;
         if (!user) return false;
@@ -882,7 +872,6 @@
         return email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email));
     }
 
-    // --- Doctor Notification ---
     window.populateNotifSubjects = function() {
         const select = document.getElementById('notif-subject-select');
         select.innerHTML = '<option value="">-- اختر المادة --</option>';
@@ -915,16 +904,14 @@
         if(!subject || !doctor || !message) return alert("الرجاء ملء جميع الحقول");
 
         const timestamp = new Date().toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const fullDate = new Date().getTime();
+        const fullDate = Date.now(); // Use timestamp for comparison
 
-        // Ensure Structure
         if (!database[subject][doctor].sections) database[subject][doctor].sections = [];
         if (!database[subject][doctor].sections.includes("🔔 Notifications")) {
             database[subject][doctor].sections.unshift("🔔 Notifications");
         }
         if (!database[subject][doctor]["🔔 Notifications"]) database[subject][doctor]["🔔 Notifications"] = [];
 
-        // Add Notification Object with Unique ID
         database[subject][doctor]["🔔 Notifications"].unshift({
             id: Date.now().toString(36) + Math.random().toString(36).substr(2),
             name: message,
@@ -933,7 +920,6 @@
             fullDate: fullDate
         });
 
-        // Update Config
         CONFIG.latestNotificationUpdate = fullDate;
         CONFIG.database = database;
         
@@ -960,27 +946,17 @@
         });
     };
 
-    window.loadNotifPreview = function() {
-        // Placeholder if we want to show recent notifs in the tab later
-    };
+    window.loadNotifPreview = function() { };
 
-    // --- General Broadcast (Owner Only) ---
     window.saveBroadcast = function() {
-        // Allow Owner OR Password User
         const user = auth.currentUser;
         const email = user ? user.email : null;
         const isOwner = email === OWNER_EMAIL;
-        
-        // Check if user is not owner, we prompt for password if not already checked in this session? 
-        // For simplicity in this single page flow, we rely on the CheckAdmin gate to open the panel. 
-        // But here we double check. Since the button is visible, let's add a password prompt if not owner.
         let allowed = isOwner;
-        
         if (!allowed) {
             const pass = prompt("هذا الأمر للمالك فقط. أدخل كلمة المرور:");
             if (pass === "1234") allowed = true;
         }
-
         if (!allowed) return alert("❌ ليس لديك صلاحية.");
 
         const title = document.getElementById('broadcast-title').value.trim();
@@ -1016,7 +992,6 @@
     };
 
     window.deleteBroadcast = function() {
-         // Same Access Logic
         const user = auth.currentUser;
         const email = user ? user.email : null;
         const isOwner = email === OWNER_EMAIL;
@@ -1041,7 +1016,6 @@
         .then(res => {
             if (!res.ok) throw new Error("Delete failed");
             alert("✅ تم الحذف.");
-            // Remove from DOM immediately
             const existing = document.getElementById('app-broadcast-msg');
             if(existing) existing.remove();
         })
@@ -1102,7 +1076,6 @@
 
     window.clearChat = function() {
         chatArea.innerHTML = ''; 
-        // We don't clear the broadcast from localStorage, user just clears chat view
         resetStateVariables(); menuDropdown.classList.remove('active');
         setTimeout(() => { botReply("Chat cleared. 🧹<br>Welcome back! Choose a subject 👇", true); }, 100);
     }
@@ -1111,7 +1084,6 @@
         addMessage("🏠 Back to Main Menu", 'user'); botReply("Bot restarted. Please select a subject 👇", true);
     }
 
-    // Enable Notifications
     window.enableNotifications = function() {
         menuDropdown.classList.remove('active');
         if (!('Notification' in window)) {
@@ -1146,9 +1118,13 @@
 
     window.forceReload = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
-        if(confirm("سيتم مسح الذاكرة المؤقتة وإعادة تحميل الصفحة.")) {
+        if(confirm("سيتم تحديث البوت بالكامل لتفعيل أحدث نسخة من نظام الإشعارات. هل تريد المتابعة؟")) {
             if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-            if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function(registrations) { for(let registration of registrations) registration.unregister(); }); }
+            if ('serviceWorker' in navigator) { 
+                navigator.serviceWorker.getRegistrations().then(function(registrations) { 
+                    for(let registration of registrations) registration.unregister(); 
+                });
+            }
             window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime();
         }
     };
@@ -1178,7 +1154,6 @@
             ownerSection.style.display = 'block'; renderAdminList();
         } else { ownerSection.style.display = 'none'; }
 
-        // Broadcast Init
         if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
             document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title;
             document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body;
@@ -1210,10 +1185,6 @@
             document.getElementById('tab-notifications').classList.add('active');
             window.populateNotifSubjects();
         } else if (tabName === 'broadcast') {
-            // Check Owner Access strictly for Tab
-            const user = auth.currentUser;
-            const isOwner = user && user.email === OWNER_EMAIL;
-            // If not owner, check if we just entered via password (simplified: allow entry, but check inside save)
             document.querySelector('button[onclick="window.switchTab(\'broadcast\')"]').classList.add('active');
             document.getElementById('tab-broadcast').classList.add('active');
         } else {
@@ -1270,7 +1241,6 @@
             backDoctor: backsArr[1] || CONFIG.backDoctor,
             backMain: backsArr[2] || CONFIG.backMain,
             admins: CONFIG.admins,
-            // Preserve other data
             generalBroadcast: CONFIG.generalBroadcast,
             latestNotificationUpdate: CONFIG.latestNotificationUpdate,
             lastNotifSubject: CONFIG.lastNotifSubject,
@@ -1280,7 +1250,7 @@
         CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
     }
 
-    // === DATA MANAGEMENT LOGIC (With Edit/Delete for Notifications) ===
+    // === DATA MANAGEMENT LOGIC ===
     function renderAdminDataView() {
         const pathContainer = document.getElementById('admin-data-path');
         const listContainer = document.getElementById('admin-list-items');
@@ -1299,8 +1269,6 @@
 
         let level = adminNavStack.length;
         let dataList = [];
-        
-        // Check if we are in a notifications folder
         let isNotificationsFolder = false;
         if (level === 3 && adminNavStack[2] === "🔔 Notifications") {
             isNotificationsFolder = true;
@@ -1320,8 +1288,6 @@
         } else if (level === 3) {
             const subName = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2];
             if (database[subName] && database[subName][docName] && database[subName][docName][secName]) dataList = database[subName][docName][secName];
-            
-            // Notifications are special (Text only), others are files (Name + Link)
             if (!isNotificationsFolder) {
                 addBoxLinkGroup.style.display = 'block'; 
                 addBoxNameInput.placeholder = "اسم الملف...";
@@ -1337,24 +1303,16 @@
                 const itemName = (typeof item === 'object') ? item.name : item;
                 const div = document.createElement('div'); div.className = 'data-item';
                 const nameSpan = document.createElement('div'); nameSpan.className = 'data-name'; nameSpan.innerText = itemName;
-                
-                // Drill down logic
                 if (level < 3) nameSpan.onclick = () => { adminNavStack.push(itemName); renderAdminDataView(); };
-
                 const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions';
-                
-                // DELETE BUTTON
                 const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; 
                 delBtn.onclick = () => deleteAdminDataItem(index);
                 actionsDiv.appendChild(delBtn);
-
-                // EDIT BUTTON (Only for Notifications)
                 if (isNotificationsFolder && (typeof item === 'object') && item.id) {
                     const editBtn = document.createElement('button'); editBtn.className = 'btn-sm btn-edit'; editBtn.innerText = '✏️';
                     editBtn.onclick = () => editNotification(index);
                     actionsDiv.appendChild(editBtn);
                 }
-
                 div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div);
             });
         }
@@ -1365,20 +1323,16 @@
         renderAdminDataView();
     }
 
-    // --- Editing Notification Logic ---
     window.editNotification = function(index) {
         const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2];
         const list = database[sub][doc][sec];
         const item = list[index];
-
         const newText = prompt("تعديل نص الإشعار:", item.name);
         if (newText !== null && newText.trim() !== "") {
             item.name = newText.trim();
             item.date = new Date().toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute:'2-digit' }) + " (معدل)";
             renderAdminDataView();
-            // Note: Saving happens when main Save button is clicked or we could save here. 
-            // Better to force save to update the DB immediately for users.
-            alert("⚠️ تأكد من الضغط على 'حفظ الإعدادات' في تبويب الإعدادات العامة لتطبيق التغييرات على السيرفر.");
+            alert("⚠️ تأكد من الضغط على 'حفظ الإعدادات' لتطبيق التغييرات.");
         }
     }
 
@@ -1386,10 +1340,6 @@
         const nameInput = document.getElementById('new-item-name'); const linkInput = document.getElementById('new-item-link');
         const name = nameInput.value.trim(); let level = adminNavStack.length;
         if (!name) return alert("الرجاء كتابة الاسم");
-
-        // Check Admin Access for sensitive areas? 
-        // For simplicity, anyone who can open Admin Panel (Pass/Owner) can edit data.
-        
         if (level === 0) { 
             if (database[name]) return alert("المادة موجودة بالفعل!"); 
             database[name] = { doctors: [] }; 
@@ -1399,7 +1349,7 @@
             if (!database[sub]) database[sub] = { doctors: [] };
             if (database[sub].doctors.includes(name)) return alert("الدكتور موجود بالفعل!");
             database[sub].doctors.push(name); 
-            database[sub][name] = { sections: ["📚 Lectures", "🔔 Notifications"] }; // Default add notifs
+            database[sub][name] = { sections: ["📚 Lectures", "🔔 Notifications"] }; 
             database[sub][name]["📚 Lectures"] = [];
             database[sub][name]["🔔 Notifications"] = [];
         } 
@@ -1412,9 +1362,7 @@
         } 
         else if (level === 3) {
             const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2];
-            
             if (sec === "🔔 Notifications") {
-                // Adding a Notification
                 database[sub][doc][sec].unshift({
                     id: Date.now().toString(36) + Math.random().toString(36).substr(2),
                     name: name,
@@ -1422,7 +1370,6 @@
                     type: "notif"
                 });
             } else {
-                // Adding a File
                 const link = linkInput.value.trim() || "#";
                 if (!database[sub][doc][sec]) database[sub][doc][sec] = [];
                 database[sub][doc][sec].push({ name: name, link: link });
@@ -1434,7 +1381,6 @@
     function deleteAdminDataItem(index) {
         let level = adminNavStack.length;
         if(!confirm("هل أنت متأكد من الحذف؟")) return;
-        
         if (level === 0) { 
             const subKeys = Object.keys(database); 
             delete database[subKeys[index]]; 
@@ -1496,7 +1442,6 @@
                 const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div class="file-link-dummy"><span>⚠️</span><span>Link not configured</span></div>`; 
                 addMessage(htmlContent, 'bot', true); 
             } else { 
-                // Check if it's a notification content (special handling)
                 if (fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"))) {
                     const actualMsg = fileObj.type === "notif" ? fileObj.name : fileObj.link.replace("content:", "");
                     const htmlContent = `
@@ -1507,7 +1452,6 @@
                     `;
                     addMessage(htmlContent, 'bot', true);
                 } else {
-                    // Standard file
                     const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><a href="${fileObj.link}" target="_blank" class="file-link-btn"><span>📂</span><span>Download / Open File</span></a>`; 
                     addMessage(htmlContent, 'bot', true); 
                 }
@@ -1526,13 +1470,29 @@
     // --- Initialization ---
     window.onload = () => {
         if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).catch(err => console.error("SW Fail:", err)); }
+        
+        // Register Service Worker with strict update logic
+        if ('serviceWorker' in navigator) { 
+            navigator.serviceWorker.register(swUrl).then(reg => {
+                if (reg.waiting) {
+                    // There is a new SW waiting, tell it to activate immediately
+                    reg.waiting.postMessage({type: 'SKIP_WAITING'});
+                }
+                // Force immediate claim
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            newWorker.postMessage({type: 'SKIP_WAITING'});
+                        }
+                    });
+                });
+            }).catch(err => console.error("SW Fail:", err)); 
+        }
         
         initFirebaseAuth(); fetchConfig(); startSync();
         setTimeout(() => { 
             const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); 
-            // We add welcome slightly delayed to allow Broadcast to appear first if logic requires
-            // But currently Broadcast is added via insertAdjacentHTML, so welcome goes after in flow
             botReply(welcomeMsg, true); 
             renderKeyboard(); 
         }, 500);
