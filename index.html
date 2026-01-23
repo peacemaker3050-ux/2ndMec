@@ -6,8 +6,12 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>University Library Bot (Hybrid Control)</title>
+    <title>University Library Bot (Ready to Use)</title>
     
+    <!-- === Firebase SDKs (Compat version for easy usage in HTML) === -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
     <style>
         /* === Reset & Basic Settings === */
         html, body {
@@ -41,6 +45,7 @@
             --admin-tab-active: #3390ec;
             --admin-tab-inactive: #2b2b2b;
             --danger-color: #ff4444;
+            --owner-color: #ffd700; /* Gold for owner */
         }
 
         * { box-sizing: border-box; outline: none; }
@@ -76,8 +81,13 @@
             background-color: var(--accent-color);
             display: flex; justify-content: center; align-items: center;
             font-size: 22px; flex-shrink: 0;
-            background-size: cover; background-position: center;
-            background-repeat: no-repeat; border: 2px solid transparent; color: #fff;
+            background-size: cover; 
+            background-position: center;
+            background-repeat: no-repeat; 
+            border: 2px solid transparent; 
+            color: #fff;
+            text-align: center;
+            overflow: hidden;
         }
 
         .bot-name h2 { font-size: 16px; margin: 0; font-weight: 600; line-height: 1.2; }
@@ -89,7 +99,7 @@
         /* === Options Menu (Dropdown) === */
         .menu-dropdown {
             position: absolute; top: 60px; right: 10px;
-            width: 220px; background-color: var(--menu-bg);
+            width: 240px; background-color: var(--menu-bg);
             border: 1px solid #000; border-radius: 8px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             display: none; flex-direction: column; z-index: 100;
@@ -102,6 +112,12 @@
         .menu-item.danger { color: #ff6b6b; }
         .menu-item.admin { color: #4dabf7; font-weight: bold; }
         .menu-item.refresh { color: #ffcc00; }
+        
+        /* Specific styles for Login Status */
+        .menu-item.login-status { pointer-events: none; opacity: 0.7; font-size: 12px; background: rgba(0,0,0,0.2); justify-content: center; padding: 5px; }
+        .menu-item.google-auth { color: #fff; }
+        .menu-item.google-auth.is-owner { color: var(--owner-color); font-weight: bold; }
+        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* === Admin Modal === */
@@ -154,6 +170,12 @@
         }
         .btn-save:hover { background-color: #267fd3; }
 
+        .btn-small-remove {
+            background: rgba(255, 68, 68, 0.2); color: #ff4444; border: none;
+            padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 5px;
+        }
+        .btn-small-remove:hover { background: #ff4444; color: #fff; }
+
         /* Data Management Styles */
         .data-path { font-size: 12px; color: #888; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
         .data-path span { cursor: pointer; }
@@ -181,10 +203,19 @@
         #chat-area {
             flex: 1; padding: 15px; overflow-y: auto; display: flex;
             flex-direction: column; gap: 12px;
-            background-color: var(--chat-bg);
-            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 20px 20px; scroll-behavior: smooth;
+            background-color: var(--chat-bg); /* Default color */
+            background-size: 20px 20px; /* Default pattern */
+            scroll-behavior: smooth;
+            transition: background-image 0.3s ease;
+            background-repeat: no-repeat;
+            background-position: center 70px;
+            background-attachment: fixed; 
         }
+        /* When an image is set, these styles override defaults */
+        #chat-area.has-bg {
+            background-size: contain !important; 
+        }
+
         #chat-area::-webkit-scrollbar { width: 5px; }
         #chat-area::-webkit-scrollbar-track { background: transparent; }
         #chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
@@ -258,7 +289,7 @@
         <div class="header-info">
             <div class="bot-avatar" id="header-avatar">🎓</div>
             <div class="bot-name">
-                <h2 id="header-name">University Libirary 2nd Mec</h2>
+                <h2 id="header-name">University Bot</h2>
                 <span class="bot-status" id="header-status">Online</span>
             </div>
         </div>
@@ -266,11 +297,16 @@
         <div class="header-actions" id="menu-btn" title="Menu">⋮</div>
 
         <div class="menu-dropdown" id="menu-dropdown">
-            <div class="menu-item refresh" onclick="window.forceReload()">
-                <span>🔄</span> <span>تحديث قسري (Fix Cache)</span>
+            <!-- NEW: Google Login Button -->
+            <div class="menu-item google-auth" id="google-login-btn" onclick="window.toggleGoogleLogin()">
+                <span>🔑</span> <span id="google-login-text">تسجيل الدخول...</span>
             </div>
+            
             <div class="menu-item admin" onclick="window.checkAdmin()">
                 <span>⚙️</span> <span>لوحة التحكم (Admin)</span>
+            </div>
+            <div class="menu-item refresh" onclick="window.forceReload()">
+                <span>🔄</span> <span>تحديث قسري (Fix Cache)</span>
             </div>
             <div class="menu-item" onclick="window.clearChat()">
                 <span>🗑️</span> <span>مسح الشات</span>
@@ -304,7 +340,20 @@
         <div class="admin-section-title">المظهر والرسائل</div>
         <div class="form-group"><label class="form-label">اسم البوت</label><input type="text" id="admin-bot-name" class="form-input"></div>
         <div class="form-group"><label class="form-label">الحالة</label><input type="text" id="admin-bot-status" class="form-input"></div>
-        <div class="form-group"><label class="form-label">رابط الصورة (URL)</label><input type="text" id="admin-bot-img" class="form-input"></div>
+        
+        <!-- UPDATED: Icon Upload -->
+        <div class="form-group">
+            <label class="form-label">أيقونة البوت (رفع صورة)</label>
+            <input type="file" id="admin-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+            <button class="btn-small-remove" id="admin-icon-remove" onclick="window.removeBotIcon()">إزالة الصورة (العودة للرمز الافتراضي)</button>
+        </div>
+
+        <!-- UPDATED: Chat Background Upload -->
+        <div class="form-group">
+            <label class="form-label">خلفية الشات (رفع صورة)</label>
+            <input type="file" id="admin-bg-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+            <button class="btn-small-remove" id="admin-bg-remove" onclick="window.removeChatBg()">إزالة الصورة الخلفية</button>
+        </div>
 
         <div class="form-group"><label class="form-label">رسالة الترحيب</label><textarea id="admin-msg-welcome" class="form-textarea"></textarea></div>
         <div class="form-group"><label class="form-label">نص اختيار مادة</label><textarea id="admin-msg-subject" class="form-textarea"></textarea></div>
@@ -330,7 +379,6 @@
         <div class="data-path" id="admin-data-path">الرئيسية</div>
         
         <div id="admin-data-view-container">
-            <!-- Dynamic Content Here -->
             <div class="data-list" id="admin-list-items"></div>
             
             <div class="add-box" id="admin-add-box">
@@ -351,12 +399,35 @@
 
 <script>
     // ============================================================
+    // === 0. FIREBASE CONFIGURATION (USER KEYS) ===
+    // ============================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
+      authDomain: "libirary-b2424.firebaseapp.com",
+      projectId: "libirary-b2424",
+      storageBucket: "libirary-b2424.firebasestorage.app",
+      messagingSenderId: "371129360013",
+      appId: "1:371129360013:web:377ef70759204018a60cc4"
+    };
+
+    // Initialize Firebase
+    let auth;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+    } catch (e) {
+        console.error("Firebase Init Error", e);
+    }
+
+    // Owner Settings
+    const OWNER_EMAIL = "peacemaker3050@gmail.com";
+
+    // ============================================================
     // === 1. CONFIGURATION & DEFAULTS ===
     // ============================================================
     const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
     const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-    // Default Database Structure (Edit this in HTML code!)
     const defaultDatabase = {
         "Physics": {
             "doctors": ["Dr. Ahmed", "Dr. Mahmoud"],
@@ -424,14 +495,15 @@
     };
 
     const defaultConfig = {
-        botName: "University Libirary 2nd Mec",
+        botName: "University Library",
         botStatus: "Online",
         botIcon: "🎓", 
         botImage: "", 
+        chatBgImage: "", 
         typingSpeed: 600, 
         admins: ["owner"],
-        welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Select a subject to begin.",
-        subjectPrompt: "<b>{name}</b>\nSelect a Doctor 👇",
+        welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.",
+        subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇",
         doctorPrompt: "<b>{name}</b>\nSelect a section 👇",
         categoryPrompt: "<b>{name}</b> list:",
         backSubject: "Back to <b>{name}</b> doctors:",
@@ -445,7 +517,110 @@
     let refreshInterval = null;
 
     // ============================================================
-    // === 2. SYNC LOGIC (Hybrid Control) ===
+    // === 2. AUTH LOGIC (Google) ===
+    // ============================================================
+    window.toggleGoogleLogin = function() {
+        if (!auth) { alert("Firebase not configured correctly."); return; }
+        
+        const user = auth.currentUser;
+        if (user) {
+            // Logout
+            auth.signOut().then(() => {
+                console.log("User signed out.");
+            }).catch((error) => {
+                console.error("Sign out error", error);
+            });
+        } else {
+            // Login
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then((result) => {
+                // User signed in
+                console.log("User signed in:", result.user);
+            }).catch((error) => {
+                console.error("Login error", error);
+                alert("فشل تسجيل الدخول: " + error.message);
+            });
+        }
+    };
+
+    function initFirebaseAuth() {
+        if (!auth) return;
+        
+        auth.onAuthStateChanged((user) => {
+            const loginBtn = document.getElementById('google-login-btn');
+            const loginText = document.getElementById('google-login-text');
+            const loginIcon = loginBtn.querySelector('span:first-child');
+
+            if (user) {
+                // User is signed in
+                const email = user.email;
+                
+                if (email === OWNER_EMAIL) {
+                    // Owner State
+                    loginText.innerText = "👑 المالك (Owner)";
+                    loginBtn.classList.add('is-owner');
+                    loginIcon.innerText = "👑";
+                    console.log("Owner logged in");
+                } else {
+                    // Normal User State
+                    loginText.innerText = "✅ تم تسجيل الدخول";
+                    loginBtn.classList.remove('is-owner');
+                    loginIcon.innerText = "✅";
+                    console.log("User logged in:", email);
+                }
+            } else {
+                // User is signed out
+                loginText.innerText = "🔑 تسجيل الدخول (Google)";
+                loginBtn.classList.remove('is-owner');
+                loginIcon.innerText = "🔑";
+            }
+        });
+    }
+
+    // ============================================================
+    // === 3. IMAGE COMPRESSOR ===
+    // ============================================================
+    function compressImage(file, callback) {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+                const MAX_SIZE = 800; 
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                callback(dataUrl);
+            };
+            reader.onerror = (err) => {
+                console.log(err);
+                alert("Error processing image");
+            };
+        };
+    }
+
+    // ============================================================
+    // === 4. SYNC LOGIC ===
     // ============================================================
     function startSync() {
         if(refreshInterval) clearInterval(refreshInterval);
@@ -468,15 +643,8 @@
         })
         .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
         .then(data => { 
-            // Apply general settings from Bin
             CONFIG = { ...defaultConfig, ...data }; 
             
-            // HYBRID MERGE LOGIC:
-            // We want HTML (defaultDatabase) to be MASTER for existing items.
-            // We want Admin Panel (Bin) to ADD new items that are not in HTML.
-            // We reverse the spread order for 'database' only.
-            // 1. Start with Bin data (Admin additions).
-            // 2. Overwrite/Extend with HTML data (Your Code).
             if (data.database) {
                 CONFIG.database = { ...data.database, ...defaultDatabase };
             } else {
@@ -501,30 +669,49 @@
         })
         .then(res => { if (!res.ok) throw new Error("Save failed"); 
             alert("✅ تم الحفظ بنجاح!");
-            // Update local database immediately to reflect Admin changes
             database = newConfig.database;
-            // Re-apply HTML logic immediately after saving to keep view consistent
             CONFIG.database = { ...newConfig.database, ...defaultDatabase };
             database = CONFIG.database;
 
             if(btnSave) btnSave.innerText = "حفظ الإعدادات";
             window.closeAdminPanel();
         })
-        .catch(err => { alert("❌ خطأ: " + err.message); if(btnSave) btnSave.innerText = "حفظ الإعدادات"; });
+        .catch(err => { alert("❌ خطأ: " + err.message + "\nقد تكون الصورة كبيرة جداً رغم الضغط."); if(btnSave) btnSave.innerText = "حفظ الإعدادات"; });
     }
 
     function applyConfig(newConfig) {
         CONFIG = newConfig;
         database = CONFIG.database; 
+
         document.getElementById('header-name').innerText = CONFIG.botName;
         document.getElementById('header-status').innerText = CONFIG.botStatus;
+
+        // Avatar Logic
         const avatarEl = document.getElementById('header-avatar');
-        if (CONFIG.botImage && CONFIG.botImage.trim() !== "") {
-            avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.innerText = ""; 
+        if (CONFIG.botImage && CONFIG.botImage.trim().length > 10) {
+            avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; 
+            avatarEl.style.backgroundSize = "cover";
+            avatarEl.style.backgroundPosition = "center";
+            avatarEl.innerText = ""; 
         } else {
-            avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon;
+            avatarEl.style.backgroundImage = "none"; 
+            avatarEl.innerText = CONFIG.botIcon;
         }
-        // Force re-render keyboard to show changes
+
+        // Chat Background Logic
+        const chatArea = document.getElementById('chat-area');
+        if (CONFIG.chatBgImage && CONFIG.chatBgImage.trim().length > 10) {
+            chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`;
+            chatArea.style.backgroundSize = "contain"; 
+            chatArea.style.backgroundColor = "transparent"; 
+            chatArea.classList.add('has-bg');
+        } else {
+            chatArea.style.backgroundImage = "none";
+            chatArea.style.backgroundColor = "var(--chat-bg)";
+            chatArea.style.backgroundSize = "20px 20px"; 
+            chatArea.classList.remove('has-bg');
+        }
+
         renderKeyboard();
     }
 
@@ -536,7 +723,7 @@
     }
 
     // ============================================================
-    // === 3. BOT LOGIC ===
+    // === 5. BOT LOGIC ===
     // ============================================================
     let currentSubject = null, currentDoctor = null, currentCategory = null;
     const chatArea = document.getElementById('chat-area');
@@ -547,7 +734,10 @@
     
     const adminNameInput = document.getElementById('admin-bot-name');
     const adminStatusInput = document.getElementById('admin-bot-status');
-    const adminImgInput = document.getElementById('admin-bot-img');
+    const adminIconUpload = document.getElementById('admin-icon-upload');
+    const adminIconRemove = document.getElementById('admin-icon-remove');
+    const adminBgUpload = document.getElementById('admin-bg-upload');
+    const adminBgRemove = document.getElementById('admin-bg-remove');
     const adminAddInput = document.getElementById('admin-add-input');
     const adminListContainer = document.getElementById('admin-list-container');
     const respWelcome = document.getElementById('admin-msg-welcome');
@@ -592,15 +782,31 @@
         addMessage("🏠 Back to Main Menu", 'user'); botReply("Bot restarted. Please select a subject 👇", true);
     }
 
+    // === UPDATED ADMIN CHECK WITH GOOGLE AUTH ===
     window.checkAdmin = function() {
         menuDropdown.classList.remove('active');
+        
+        // Check if logged in with Google
+        if (auth && auth.currentUser) {
+            if (auth.currentUser.email === OWNER_EMAIL) {
+                // Owner Access Granted
+                openAdminPanel();
+                return;
+            } else {
+                // Logged in but not owner
+                alert("❌ ليس لديك صلاحيات المالك (Owner) للدخول.\nأنت مسجل كـ: " + auth.currentUser.email);
+                return;
+            }
+        }
+
+        // Fallback to password prompt
         const password = prompt("الرجاء إدخال كلمة مرور المسؤول:");
         if (password === "1234") openAdminPanel();
         else if (password !== null) alert("❌ كلمة المرور خاطئة!");
     }
 
     // ============================================================
-    // === 4. FIX: FORCE RELOAD ===
+    // === 6. FIX: FORCE RELOAD ===
     // ============================================================
     window.forceReload = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
@@ -615,20 +821,34 @@
                     for(let registration of registrations) registration.unregister(); 
                 }); 
             }
-            // FIX: Reload with a timestamp to bust browser cache for the HTML file itself
             window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime();
         }
     };
 
     // ============================================================
-    // === 5. ADMIN PANEL LOGIC ===
+    // === 7. ADMIN PANEL LOGIC ===
     // ============================================================
     let adminNavStack = [];
 
     function openAdminPanel() {
         stopSync();
         adminNameInput.value = CONFIG.botName; adminStatusInput.value = CONFIG.botStatus;
-        adminImgInput.value = CONFIG.botImage || ""; respWelcome.value = CONFIG.welcomeMessage;
+        
+        adminIconUpload.value = ""; 
+        if(CONFIG.botImage) {
+            adminIconRemove.style.display = 'inline-block';
+        } else {
+            adminIconRemove.style.display = 'none';
+        }
+
+        adminBgUpload.value = ""; 
+        if(CONFIG.chatBgImage) {
+            adminBgRemove.style.display = 'inline-block';
+        } else {
+            adminBgRemove.style.display = 'none';
+        }
+
+        respWelcome.value = CONFIG.welcomeMessage;
         respSubject.value = CONFIG.subjectPrompt; respDoctor.value = CONFIG.doctorPrompt;
         respCategory.value = CONFIG.categoryPrompt;
         
@@ -643,10 +863,45 @@
     window.closeAdminPanel = function() { 
         document.getElementById('admin-modal').classList.remove('active'); 
         startSync();
-        // Ensure UI updates immediately upon closing
         fetchConfig();
     }
-    
+
+    adminIconUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if(file) {
+            compressImage(file, (base64String) => {
+                CONFIG.botImage = base64String;
+                applyConfig(CONFIG);
+                adminIconRemove.style.display = 'inline-block';
+            });
+        }
+    });
+
+    window.removeBotIcon = function() {
+        CONFIG.botImage = "";
+        applyConfig(CONFIG);
+        adminIconUpload.value = "";
+        adminIconRemove.style.display = 'none';
+    };
+
+    adminBgUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if(file) {
+            compressImage(file, (base64String) => {
+                CONFIG.chatBgImage = base64String;
+                applyConfig(CONFIG);
+                adminBgRemove.style.display = 'inline-block';
+            });
+        }
+    });
+
+    window.removeChatBg = function() {
+        CONFIG.chatBgImage = "";
+        applyConfig(CONFIG);
+        adminBgUpload.value = "";
+        adminBgRemove.style.display = 'none';
+    };
+
     window.switchTab = function(tabName) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -687,7 +942,8 @@
         const newConfig = {
             botName: adminNameInput.value.trim() || defaultConfig.botName,
             botStatus: adminStatusInput.value.trim() || defaultConfig.botStatus,
-            botImage: adminImgInput.value.trim(),
+            botImage: CONFIG.botImage,
+            chatBgImage: CONFIG.chatBgImage,
             welcomeMessage: respWelcome.value, subjectPrompt: respSubject.value,
             doctorPrompt: respDoctor.value, categoryPrompt: respCategory.value,
             backSubject: backsArr[0] || CONFIG.backSubject,
@@ -713,7 +969,6 @@
         addBoxLinkInput.value = '';
         addBoxNameInput.placeholder = "الاسم...";
 
-        // Breadcrumb
         let pathHTML = `<span onclick="window.adminNavTo(-1)">الرئيسية</span>`;
         if (adminNavStack.length > 0) pathHTML += ` > <span onclick="window.adminNavTo(0)">${adminNavStack[0]}</span>`;
         if (adminNavStack.length > 1) pathHTML += ` > <span onclick="window.adminNavTo(1)">${adminNavStack[1]}</span>`;
@@ -753,7 +1008,6 @@
             addBoxNameInput.placeholder = "اسم الملف...";
         }
 
-        // Render Items
         if (dataList.length === 0) {
             listContainer.innerHTML = '<div style="text-align:center; color:#666; padding:20px;">لا توجد عناصر</div>';
         } else {
@@ -872,7 +1126,7 @@
     }
 
     // ============================================================
-    // === 6. KEYBOARD RENDERER ===
+    // === 8. KEYBOARD RENDERER ===
     // ============================================================
     function resetStateVariables() { currentSubject = null; currentDoctor = null; currentCategory = null; renderKeyboard(); }
 
@@ -925,6 +1179,10 @@
     window.onload = () => {
         if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
         if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function(registrations) { for(let registration of registrations) registration.unregister(); }); }
+        
+        // Initialize Auth
+        initFirebaseAuth();
+        
         fetchConfig();
         startSync();
         setTimeout(() => { const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); }, 500);
