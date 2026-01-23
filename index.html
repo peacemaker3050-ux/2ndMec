@@ -507,7 +507,7 @@
     // === 0. SERVICE WORKER CODE (Background Notifications) ===
     // ============================================================
     const swCode = `
-        const CACHE_VERSION = 'v2';
+        const CACHE_VERSION = 'v3';
         const BIN_ID = "696e77bfae596e708fe71e9d";
         const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
@@ -524,7 +524,12 @@
         });
 
         function checkNotifications() {
-            fetch('https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest', {
+            // FIX: Added 'cache: no-store' and timestamp to URL to ensure fresh data
+            const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
+            
+            fetch(url, {
+                cache: 'no-store',
+                method: 'GET',
                 headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }
             })
             .then(res => res.json())
@@ -536,7 +541,8 @@
                         self.registration.showNotification('📢 رسالة جديدة من الدكتور', {
                             body: 'اضغط لقراءة التفاصيل',
                             icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                            requireInteraction: false
+                            requireInteraction: false,
+                            tag: 'doctor-notification'
                         });
                     }
                 }
@@ -548,7 +554,8 @@
                         self.registration.showNotification('📣 رسالة من مندوب الدفعة', {
                             body: data.generalBroadcast.title + ': ' + data.generalBroadcast.body,
                             icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png',
-                            requireInteraction: true
+                            requireInteraction: true,
+                            tag: 'broadcast-notification'
                         });
                     }
                 }
@@ -573,8 +580,10 @@
         });
 
         self.addEventListener('activate', () => {
-            fetchInterval = setInterval(checkNotifications, 60000); // Check every minute
+            // Check immediately
             checkNotifications();
+            // Then poll every 30 seconds (more frequent for better responsiveness)
+            fetchInterval = setInterval(checkNotifications, 30000); 
         });
     `;
 
