@@ -505,13 +505,14 @@
     // === 0. SERVICE WORKER CODE (Background Notifications) ===
     // ============================================================
     const swCode = `
-        const CACHE_VERSION = 'v5'; // Updated version
+        const CACHE_VERSION = 'v6'; 
         const BIN_ID = "696e77bfae596e708fe71e9d";
         const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
         let lastNotifTime = 0;
         let lastBroadcastTime = 0;
         let fetchInterval;
+        let firstCheck = true; // New flag to handle sync
 
         self.addEventListener('install', event => {
             self.skipWaiting();
@@ -522,16 +523,31 @@
         });
 
         function checkNotifications() {
-            // Unique URL + cache: 'reload' to force fresh network request strictly
             const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now() + '&rand=' + Math.random();
             
             fetch(url, {
-                cache: 'reload', // Forces network request
+                cache: 'no-store',
                 method: 'GET',
                 headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }
             })
             .then(res => res.json())
             .then(data => {
+                // --- SYNC PHASE (First Check Only) ---
+                if (firstCheck) {
+                    firstCheck = false;
+                    // Set internal clocks to match server without firing alerts
+                    if (data.latestNotificationUpdate) {
+                        lastNotifTime = data.latestNotificationUpdate;
+                    }
+                    if (data.generalBroadcast && data.generalBroadcast.timestamp) {
+                        lastBroadcastTime = data.generalBroadcast.timestamp;
+                    }
+                    console.log("SW Synced. Notif Time:", lastNotifTime, "Broadcast Time:", lastBroadcastTime);
+                    return; // Exit, do not alert
+                }
+
+                // --- NORMAL PHASE (Subsequent Checks) ---
+                
                 // 1. Check Doctor Notifications
                 if (data && data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
                     lastNotifTime = data.latestNotificationUpdate;
@@ -543,7 +559,7 @@
                             requireInteraction: false,
                             tag: 'doctor-notification',
                             silent: false,
-                            vibrate: [200, 100, 200] // Add vibration pattern
+                            vibrate: [200, 100, 200]
                         });
                     }
                 }
@@ -584,7 +600,6 @@
 
         self.addEventListener('activate', () => {
             checkNotifications();
-            // Reduced polling time to 15s to be more aggressive
             fetchInterval = setInterval(checkNotifications, 15000); 
         });
     `;
@@ -1052,8 +1067,8 @@
         });
     };
 
-    // Add listener in SW to handle test message
-    // (We'll inject a listener into the swCode string above if possible, or just rely on the main thread fallback for now to keep it simple)
+    // Add listener in SW to handle test message    
+    // (We'll inject a listener into swCode string above if possible, or just rely on the main thread fallback for now to keep it simple)
 
 
     // ============================================================
