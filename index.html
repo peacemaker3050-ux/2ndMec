@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="ltr"> <!-- LTR for Layout, but handled in CSS -->
+<html lang="ar" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -8,28 +8,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>University Bot Pro</title>
     
-    <!-- === PWA MANIFEST (Embedded) === -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="UniBot">
     <meta name="theme-color" content="#0f172a">
     <link rel="manifest" href='data:application/manifest+json;base64,eyJuYW1lIjoiVW5pQm90Iiwic2hvcnRfbmFtZSI6IlVuaUJvdCIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMGYxNzJhIiwidGhlbWVfY29sb3IiOiIjMGYxNzJhIiwib3JpZW50YXRpb24iOiJhbnkiLCJpY29ucyI6W3sic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnMtcG5nLmZsYXRpY29uLmNvbS81MTIvMjk5MS8yOTkxMTQ4LnBuZyIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9wbmcifSx7InNyYyI6Imh0dHBzOi8vY2RuLWljb25zLXBuZy5mbGF0aWNvbi5jb20vNTEyLzI5OTEvMjk5MTE0OC5wbmciLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ=='>
 
-    <!-- === Google Fonts (Cairo) === -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- === Firebase SDKs === -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
     <style>
         /* === RESET & VARIABLES === */
         :root {
-            /* Palette */
             --bg-dark: #0f172a;
-            --bg-glass: rgba(30, 41, 59, 0.7);
+            /* Updated variables for general use, but inline styles override specifically where needed */
+            --bg-glass: rgba(15, 23, 42, 0.85);
             --bg-glass-heavy: rgba(15, 23, 42, 0.95);
             --accent-primary: #3b82f6;
             --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -39,12 +36,10 @@
             --text-secondary: #94a3b8;
             --border-color: rgba(255, 255, 255, 0.1);
             
-            /* Effects */
             --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.3);
-            --glass-blur: blur(12px);
+            --glass-blur: blur(16px);
             
-            /* Radius */
             --radius-md: 12px;
             --radius-lg: 20px;
             --radius-full: 999px;
@@ -59,6 +54,7 @@
             padding: 0;
             overflow: hidden; 
             background-color: var(--bg-dark);
+            /* Animated Background */
             background-image: 
                 radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
                 radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
@@ -68,7 +64,6 @@
             color: var(--text-primary);
         }
 
-        /* === MAIN CONTAINER === */
         .app-container {
             width: 100%;
             max-width: 500px; 
@@ -78,6 +73,7 @@
             flex-direction: column;
             position: relative;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            z-index: 10;
         }
 
         /* === HEADER === */
@@ -86,9 +82,10 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: var(--bg-glass);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
+            /* IMPORTANT: Using inline hex values to force transparency update immediately */
+            background: rgba(15, 23, 42, 0.65); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-color);
             z-index: 20; 
             flex-shrink: 0; 
@@ -194,7 +191,10 @@
 
         /* === KEYBOARD AREA === */
         #keyboard-area {
-            background: var(--bg-glass); backdrop-filter: var(--glass-blur);
+            /* Using inline hex for transparency */
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
             border-top: 1px solid var(--border-color); min-height: 0; max-height: 45vh;
             overflow-y: auto; flex-shrink: 0;
@@ -244,14 +244,21 @@
         /* === ADMIN MODAL (UPDATED DESIGN) === */
         .admin-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0f172a; z-index: 200; display: none; flex-direction: column;
+            /* IMPORTANT: Direct RGBA value to force transparency */
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 200; display: none; flex-direction: column;
             border-radius: 0; max-width: 100%; padding: 0; overflow: hidden;
         }
         .admin-modal.active { display: flex; }
 
         /* Sticky Navigation Bar */
         .admin-nav-bar {
-            background: #1e293b; border-bottom: 1px solid var(--border-color);
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
             padding: 10px 15px; display: flex; gap: 8px; overflow-x: auto; 
             flex-shrink: 0; scrollbar-width: none; z-index: 10;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
@@ -264,9 +271,10 @@
             border-radius: var(--radius-md); cursor: pointer; transition: all 0.3s;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             gap: 4px;
+            background: rgba(255,255,255,0.03);
         }
         .nav-item span { font-size: 18px; }
-        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
         .nav-item.active { background: var(--accent-primary); color: #fff; box-shadow: 0 2px 10px rgba(59,130,246,0.4); }
 
         /* Content Slider Container */
@@ -280,7 +288,7 @@
             overflow-y: auto; padding: 20px;
             opacity: 0; pointer-events: none; transform: scale(0.98);
             transition: opacity 0.3s ease, transform 0.3s ease;
-            display: none; /* Important to hide from tab flow */
+            display: none;
         }
         
         .tab-content.active {
@@ -353,8 +361,12 @@
         /* Admin Header in Modal */
         .admin-header-top {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 20px; background: rgba(15, 23, 42, 0.95);
+            /* Direct RGBA value to ensure it shows background */
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-color); z-index: 20;
+            padding: 15px 20px;
         }
         .modal-title { font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; }
         .close-modal { font-size: 32px; color: #64748b; cursor: pointer; line-height: 1; transition: color 0.2s; }
@@ -810,13 +822,32 @@
         if (CONFIG.chatBgImage && CONFIG.chatBgImage.trim().length > 10) { chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`; chatArea.style.backgroundSize = "cover"; } else { chatArea.style.backgroundImage = "none"; }
         window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
     }
+    
+    // UPDATED BROADCAST FUNCTION
     function checkAndShowBroadcast() {
-        const existingBroadcast = document.getElementById('app-broadcast-msg'); if (existingBroadcast) existingBroadcast.remove();
+        // Always remove the existing broadcast element first to ensure clean redraw
+        const existingBroadcast = document.getElementById('app-broadcast-msg');
+        if (existingBroadcast) existingBroadcast.remove();
+
+        // Check if a broadcast is active
         if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
-            const broadcastHTML = `<div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()"><div class="broadcast-header"><span>📣</span> <span>Message from Batch Rep</span></div><div><b>${CONFIG.generalBroadcast.title}</b></div><div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div><span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span></div>`;
-            if (!existingBroadcast) { const chatArea = document.getElementById('chat-area'); chatArea.insertAdjacentHTML('afterbegin', broadcastHTML); }
+            const broadcastHTML = `
+                <div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()">
+                    <div class="broadcast-header">
+                        <span>📣</span> <span>Message from Batch Rep</span>
+                    </div>
+                    <div><b>${CONFIG.generalBroadcast.title}</b></div>
+                    <div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div>
+                    <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
+                </div>
+            `;
+            
+            // Insert the broadcast at the very top of the chat area
+            const chatArea = document.getElementById('chat-area');
+            chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
         }
     }
+
     window.markBroadcastRead = function() { };
     function replacePlaceholders(text, name) { let res = text || ""; if (name) res = res.replace(/{name}/g, name); res = res.replace(/{botName}/g, CONFIG.botName); return res; }
 
