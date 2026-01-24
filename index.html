@@ -25,22 +25,12 @@
         /* === RESET & VARIABLES === */
         :root {
             --bg-dark: #0f172a;
-            
-            /* CRITICAL: Highly Transparent Container Background */
-            --container-bg: transparent !important;
-            
-            /* Header Background (Still needs to be visible) */
-            --bg-glass: rgba(15, 23, 42, 0.4) !important;
-            
+            /* Updated variables for general use, but inline styles override specifically where needed */
+            --bg-glass: rgba(15, 23, 42, 0.85);
+            --bg-glass-heavy: rgba(15, 23, 42, 0.95);
             --accent-primary: #3b82f6;
             --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            
-            /* Bot Message Opacity */
-            --msg-bot-bg: rgba(255, 255, 255, 0.18);
-            
-            /* UI Buttons/Inputs: VERY HIGH TRANSPARENCY (0.05) to reveal background */
-            --ui-glass-bg: rgba(255, 255, 255, 0.05);
-            
+            --msg-bot-bg: rgba(255, 255, 255, 0.08);
             --msg-user-bg: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
@@ -48,7 +38,7 @@
             
             --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.3);
-            --glass-blur: blur(20px); 
+            --glass-blur: blur(16px);
             
             --radius-md: 12px;
             --radius-lg: 20px;
@@ -92,9 +82,10 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: var(--bg-glass) !important;
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
+            /* IMPORTANT: Using inline hex values to force transparency update immediately */
+            background: rgba(15, 23, 42, 0.65); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-color);
             z-index: 20; 
             flex-shrink: 0; 
@@ -174,15 +165,15 @@
         .timestamp { font-size: 10px; color: rgba(255,255,255,0.5); text-align: left; align-self: flex-end; margin-top: 6px; user-select: none; }
 
         .broadcast-msg {
-            background: linear-gradient(145deg, rgba(234, 179, 8, 0.25), rgba(234, 179, 8, 0.12));
-            border: 1px solid rgba(234, 179, 8, 0.5); border-right: 3px solid #eab308;
+            background: linear-gradient(145deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05));
+            border: 1px solid rgba(234, 179, 8, 0.4); border-right: 3px solid #eab308;
             border-radius: var(--radius-md); padding: 12px; margin-bottom: 5px;
-            box-shadow: 0 4px 20px rgba(234, 179, 8, 0.15); width: 100%; box-sizing: border-box;
+            box-shadow: 0 4px 20px rgba(234, 179, 8, 0.1); width: 100%; box-sizing: border-box;
         }
         .broadcast-header { display: flex; align-items: center; gap: 8px; color: #fde047; font-weight: 700; margin-bottom: 8px; font-size: 14px; }
 
         .notif-display {
-            background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.4);
+            background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3);
             border-right: 3px solid #f97316; padding: 12px; border-radius: var(--radius-md); margin-top: 5px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box;
         }
@@ -200,43 +191,27 @@
 
         /* === KEYBOARD AREA === */
         #keyboard-area {
-            /* UPDATED: Transparent background to reveal animated background */
-            background: var(--container-bg) !important;
-            backdrop-filter: none; 
-            -webkit-backdrop-filter: none;
+            /* Using inline hex for transparency */
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-            border-top: 1px solid rgba(255,255,255,0.1); min-height: 0; max-height: 45vh;
+            border-top: 1px solid var(--border-color); min-height: 0; max-height: 45vh;
             overflow-y: auto; flex-shrink: 0;
             padding-bottom: max(20px, env(safe-area-inset-bottom));
         }
 
-        /* UPDATE: Glassy Keyboard Buttons (High Transparency) */
         .keyboard-btn {
-            /* High transparency variable (0.05) */
-            background: var(--ui-glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.25); /* Strong border for visibility */
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
             color: var(--text-primary); padding: 14px 10px; border-radius: var(--radius-md); cursor: pointer; 
             transition: all 0.2s; font-size: 14px; font-weight: 600; text-align: center;
             display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
+            position: relative; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
             direction: rtl; text-align: center;
-            /* Add subtle inner shadow for depth */
-            box-shadow: inset 0 1px 2px rgba(255,255,255,0.05);
         }
-        .keyboard-btn:hover { 
-            background: rgba(255, 255, 255, 0.15); 
-            border-color: rgba(255,255,255, 0.5); 
-            transform: translateY(-2px); 
-        }
-        .keyboard-btn:active { transform: scale(0.95); background: rgba(255,255,255, 0.1); }
-        .keyboard-btn.back-btn { 
-            grid-column: span 2; 
-            background: rgba(0,0,0, 0.15); 
-            border: 1px dashed rgba(255,255,255,0.2); 
-            color: var(--text-secondary); 
-        }
+        .keyboard-btn:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
+        .keyboard-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.05); }
+        .keyboard-btn.back-btn { grid-column: span 2; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px dashed rgba(255,255,255,0.2); }
 
         /* === MODALS === */
         .modal-overlay {
@@ -269,10 +244,10 @@
         /* === ADMIN MODAL (UPDATED DESIGN) === */
         .admin-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            /* UPDATED: Transparent background to reveal animated background */
-            background: var(--container-bg) !important;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
+            /* IMPORTANT: Direct RGBA value to force transparency */
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             z-index: 200; display: none; flex-direction: column;
             border-radius: 0; max-width: 100%; padding: 0; overflow: hidden;
         }
@@ -280,7 +255,7 @@
 
         /* Sticky Navigation Bar */
         .admin-nav-bar {
-            background: var(--bg-glass) !important;
+            background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-color);
@@ -320,21 +295,16 @@
             opacity: 1; pointer-events: auto; transform: scale(1); display: block;
         }
 
-        /* Form Elements - UPDATE: Glassy Inputs (High Transparency) */
+        /* Form Elements */
         .form-group { margin-bottom: 20px; }
         .form-label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 13px; font-weight: 600; }
         .form-input, .form-textarea, .form-select {
-            width: 100%; padding: 12px 14px; 
-            /* High transparency variable */
-            background: var(--ui-glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
+            width: 100%; padding: 12px 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color);
             border-radius: var(--radius-md); color: #fff; font-family: inherit; font-size: 14px;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .form-input:focus, .form-textarea:focus, .form-select:focus { 
-            border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); background: rgba(255,255,255, 0.2);
+            border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); background: rgba(0,0,0,0.3);
         }
         .form-textarea { height: 90px; resize: vertical; }
 
@@ -355,16 +325,10 @@
         .btn-delete { width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-md); font-weight: 700; cursor: pointer; margin-top: 10px; }
         .btn-delete:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
 
-        /* Data List - UPDATE: Glassy Data Items (High Transparency) */
         .data-list { display: flex; flex-direction: column; gap: 10px; max-height: 40vh; overflow-y: auto; }
         .data-item {
-            /* High transparency variable */
-            background: var(--ui-glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.25);
-            padding: 12px; border-radius: var(--radius-md);
-            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.03); padding: 12px; border-radius: var(--radius-md);
+            border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
         }
         .data-name { cursor: pointer; font-weight: 500; flex: 1; }
         .btn-sm { padding: 6px 10px; border-radius: 6px; border: none; font-size: 11px; cursor: pointer; font-weight: bold; margin-left: 5px; }
@@ -397,7 +361,8 @@
         /* Admin Header in Modal */
         .admin-header-top {
             display: flex; justify-content: space-between; align-items: center;
-            background: var(--bg-glass) !important;
+            /* Direct RGBA value to ensure it shows background */
+            background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-color); z-index: 20;
@@ -579,7 +544,7 @@
             <div class="admin-section-title" style="color: #eab308;">Broadcast (Batch Rep)</div>
             <div style="background: rgba(234, 179, 8, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.2); margin-bottom: 20px;">
                 <p style="font-size:13px; color:#e2e8f0;">
-                    This message will appear pinned at top of chat. <b>No system notification sent.</b>
+                    This message will appear pinned at the top of the chat. <b>No system notification sent.</b>
                 </p>
             </div>
 
@@ -729,7 +694,7 @@
     const swUrl = URL.createObjectURL(swBlob);
 
     // ============================================================
-    // ===1. FIREBASE CONFIGURATION ===
+    // === 1. FIREBASE CONFIGURATION ===
     // ============================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
@@ -860,9 +825,11 @@
     
     // UPDATED BROADCAST FUNCTION
     function checkAndShowBroadcast() {
+        // Always remove the existing broadcast element first to ensure clean redraw
         const existingBroadcast = document.getElementById('app-broadcast-msg');
         if (existingBroadcast) existingBroadcast.remove();
 
+        // Check if a broadcast is active
         if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
             const broadcastHTML = `
                 <div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()">
@@ -874,6 +841,8 @@
                     <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
                 </div>
             `;
+            
+            // Insert the broadcast at the very top of the chat area
             const chatArea = document.getElementById('chat-area');
             chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
         }
@@ -961,7 +930,7 @@
                     navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
                     showToast("Test notification sent...", "success");
                 } else {
-                    new Notification("🧪 Test Successful", { body: 'Notifications are working.', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', vibrate: [200, 100, 200] });
+                    new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', vibrate: [200, 100, 200] });
                     showToast("Test notification sent...", "success");
                 }
             } else { showToast("Permission denied.", "error"); }
@@ -1011,7 +980,7 @@
     // === 9. ADMIN PANEL & TAB LOGIC (UPDATED) ===
     // ============================================================
     let adminNavStack = [];
-    let currentAdminTab = 0; 
+    let currentAdminTab = 0; // 0: Settings, 1: Notif, 2: Broadcast, 3: Data
 
     function openAdminPanel() {
         stopSync(); adminNameInput.value = CONFIG.botName; adminStatusInput.value = CONFIG.botStatus;
@@ -1023,7 +992,7 @@
         if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; }
         window.populateNotifSubjects(); renderAdminDataView();
         document.getElementById('admin-modal').classList.add('active');
-        window.switchAdminTab(0); 
+        window.switchAdminTab(0); // Reset to first tab
     }
 
     window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
@@ -1033,7 +1002,7 @@
         if (index === currentAdminTab) return;
         if(index < 0 || index > 3) return;
 
-        const direction = index > currentAdminTab ? 'left' : 'right'; 
+        const direction = index > currentAdminTab ? 'left' : 'right'; // 'left' means content moves left (new from right), 'right' means content moves right (new from left)
         
         const currentTabId = `tab-${['settings','notifications','broadcast','data'][currentAdminTab]}`;
         const nextTabId = `tab-${['settings','notifications','broadcast','data'][index]}`;
@@ -1041,33 +1010,42 @@
         const currentEl = document.getElementById(currentTabId);
         const nextEl = document.getElementById(nextTabId);
 
+        // Update Nav Buttons
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`nav-${index}`).classList.add('active');
 
-        nextEl.classList.remove('active'); 
+        // 1. Setup Next Element (Off-screen)
+        nextEl.classList.remove('active'); // Remove active class to reset
         nextEl.style.display = 'block';
         nextEl.style.opacity = '0';
         nextEl.style.transition = 'none';
         nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
 
+        // Force Reflow
         void nextEl.offsetWidth;
 
-        const duration = 300; 
+        // 2. Animate
+        const duration = 300; // ms
 
         currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
         nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
 
+        // Current goes away
         currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
         currentEl.style.opacity = '0';
 
+        // Next comes in
         nextEl.style.transform = 'translateX(0)';
         nextEl.style.opacity = '1';
 
+        // 3. Cleanup
         setTimeout(() => {
             currentEl.style.display = 'none';
-            currentEl.classList.remove('active'); 
+            currentEl.classList.remove('active'); // Ensure clean state
             
             nextEl.classList.add('active');
+            // Reset transforms for hidden state logic (optional but good practice)
+            // currentEl.style.transform = ''; // Not strictly needed since we set it on entry
             
             currentAdminTab = index;
         }, duration);
@@ -1134,7 +1112,7 @@
             if(!confirmed) return;
             if (level === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } 
             else if (level === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; }
-            else if (level === 2) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
+            else if (level === 2) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
             else if (level === 3) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; database[sub][doc][sec].splice(index, 1); }
             renderAdminDataView();
         });
