@@ -13,7 +13,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="UniBot">
     <meta name="theme-color" content="#0f172a">
-    <!-- Embedded Manifest JSON -->
     <link rel="manifest" href='data:application/manifest+json;base64,eyJuYW1lIjoiVW5pQm90Iiwic2hvcnRfbmFtZSI6IlVuaUJvdCIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMGYxNzJhIiwidGhlbWVfY29sb3IiOiIjMGYxNzJhIiwib3JpZW50YXRpb24iOiJhbnkiLCJpY29ucyI6W3sic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnMtcG5nLmZsYXRpY29uLmNvbS81MTIvMjk5MS8yOTkxMTQ4LnBuZyIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9wbmcifSx7InNyYyI6Imh0dHBzOi8vY2RuLWljb25zLXBuZy5mbGF0aWNvbi5jb20vNTEyLzI5OTEvMjk5MTE0OC5wbmciLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ=='>
 
     <!-- === Google Fonts (Cairo) === -->
@@ -60,7 +59,6 @@
             padding: 0;
             overflow: hidden; 
             background-color: var(--bg-dark);
-            /* Subtle Animated Background */
             background-image: 
                 radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
                 radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
@@ -98,7 +96,6 @@
             position: sticky; top: 0;
         }
 
-        /* Header is naturally LTR now: Avatar (Left) -> Name (Right) */
         .header-info { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; }
         
         .bot-avatar {
@@ -114,17 +111,10 @@
 
         .bot-name h2 { font-size: 17px; margin: 0; font-weight: 700; color: #fff; letter-spacing: 0.3px; line-height: 1.2; }
         
-        /* === IMPROVED VISIBILITY STATUS === */
         .bot-status { 
-            font-size: 12px; 
-            color: #e2e8f0; /* Brighter Slate-200 for high contrast */
-            margin-top: 4px; 
-            display: block; 
-            direction: ltr; /* Status is English */
-            font-weight: 600; /* Bolder weight */
-            letter-spacing: 0.2px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8); /* Stronger drop shadow */
-            opacity: 1; 
+            font-size: 12px; color: #e2e8f0; margin-top: 4px; display: block; direction: ltr;
+            font-weight: 600; letter-spacing: 0.2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8); opacity: 1; 
         } 
 
         .header-actions { color: var(--text-secondary); font-size: 26px; cursor: pointer; padding: 5px; transition: color 0.2s; }
@@ -132,29 +122,20 @@
 
         /* === MENU DROPDOWN === */
         .menu-dropdown {
-            position: absolute; top: 70px; 
-            width: 260px; background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color); 
-            border-radius: var(--radius-lg);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: absolute; top: 70px; width: 260px; background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px); border: 1px solid var(--border-color); 
+            border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             display: none; flex-direction: column; z-index: 100;
             overflow: hidden; animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            padding: 8px 0;
-            /* Align to right side of screen in LTR layout (button is on right) */
-            left: auto;
-            right: 10px;
+            padding: 8px 0; left: auto; right: 10px;
         }
-
         .menu-dropdown.active { display: flex; }
         
         .menu-item { 
             padding: 14px 20px; cursor: pointer; color: #cbd5e1; font-size: 14px; font-weight: 500;
-            display: flex; align-items: center; gap: 12px; transition: all 0.2s; 
-            /* LTR direction for menu items (Icon Left, Text Right) */
-            direction: ltr; 
+            display: flex; align-items: center; gap: 12px; transition: all 0.2s; direction: ltr; 
         }
-        .menu-item:hover { background: rgba(255,255,255,0.05); color: #fff; padding-left: 25px; } /* Shift right on hover */
+        .menu-item:hover { background: rgba(255,255,255,0.05); color: #fff; padding-left: 25px; } 
         
         .menu-item.danger { color: #f87171; }
         .menu-item.notif-toggle { color: #fbbf24; }
@@ -164,95 +145,40 @@
         /* === CHAT AREA === */
         #chat-area {
             flex: 1; padding: 20px 15px; overflow-y: auto; display: flex;
-            flex-direction: column; gap: 12px; 
-            scroll-behavior: smooth;
-            background-color: transparent;
-            /* LTR Layout for Chat Area (Bubbles flow normally) */
-            direction: ltr; 
+            flex-direction: column; gap: 12px; scroll-behavior: smooth;
+            background-color: transparent; direction: ltr; 
         }
 
-        /* === MESSAGES (BUBBLES) - SMART ALIGNMENT === */
         .message {
             width: fit-content; max-width: 85%; padding: 10px 16px;
             border-radius: var(--radius-lg); position: relative; font-size: 15px;
             line-height: 1.5; word-wrap: break-word;
             box-shadow: var(--shadow-soft);
             animation: messagePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            /* DEFAULT: Ensure Arabic text is RTL inside LTR container */
-            direction: rtl; 
-            text-align: right;
+            display: flex; flex-direction: column; align-items: flex-start;
+            direction: rtl; text-align: right;
         }
-
-        /* OVERRIDE: English text needs to be LTR inside bubbles */
-        .message[lang="en"] {
-            direction: ltr;
-            text-align: left;
-        }
+        .message[lang="en"] { direction: ltr; text-align: left; }
 
         @keyframes messagePop { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-        /* Bot Messages: Left side in LTR Chat */
-        .msg-bot { 
-            align-self: flex-start; 
-            background: var(--msg-bot-bg); 
-            color: var(--text-primary); 
-            border-bottom-left-radius: 4px; /* Pointing right */
-            border-top-left-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.05);
-        } 
+        .msg-bot { align-self: flex-start; background: var(--msg-bot-bg); color: var(--text-primary); border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.05); } 
+        .msg-user { align-self: flex-end; background: var(--msg-user-bg); color: #fff; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); } 
 
-        /* User Messages: Right side in LTR Chat */
-        .msg-user { 
-            align-self: flex-end; 
-            background: var(--msg-user-bg); 
-            color: #fff; 
-            border-bottom-right-radius: 4px; /* Pointing left */
-            border-top-right-radius: 4px;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        } 
-
-        .msg-bot p, .msg-bot div {
-            margin: 0;
-            padding: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .timestamp { 
-            font-size: 10px; 
-            color: rgba(255,255,255,0.5); 
-            text-align: left; /* Left side of bubble */
-            align-self: flex-end; 
-            margin-top: 6px; 
-            margin-bottom: 0px; 
-            user-select: none; 
-            padding-left: 2px;
-            padding-right: 0;
-        }
+        .timestamp { font-size: 10px; color: rgba(255,255,255,0.5); text-align: left; align-self: flex-end; margin-top: 6px; user-select: none; }
 
         .broadcast-msg {
             background: linear-gradient(145deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05));
-            border: 1px solid rgba(234, 179, 8, 0.4);
-            border-right: 3px solid #eab308;
-            border-radius: var(--radius-md);
-            padding: 12px;
-            margin-bottom: 5px;
-            box-shadow: 0 4px 20px rgba(234, 179, 8, 0.1);
-            width: 100%;
-            box-sizing: border-box;
+            border: 1px solid rgba(234, 179, 8, 0.4); border-right: 3px solid #eab308;
+            border-radius: var(--radius-md); padding: 12px; margin-bottom: 5px;
+            box-shadow: 0 4px 20px rgba(234, 179, 8, 0.1); width: 100%; box-sizing: border-box;
         }
         .broadcast-header { display: flex; align-items: center; gap: 8px; color: #fde047; font-weight: 700; margin-bottom: 8px; font-size: 14px; }
 
         .notif-display {
-            background: rgba(249, 115, 22, 0.1);
-            border: 1px solid rgba(249, 115, 22, 0.3);
-            border-right: 3px solid #f97316;
-            padding: 12px; border-radius: var(--radius-md); margin-top: 5px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%; box-sizing: border-box;
+            background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3);
+            border-right: 3px solid #f97316; padding: 12px; border-radius: var(--radius-md); margin-top: 5px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box;
         }
         .notif-header { display: flex; justify-content: space-between; font-size: 11px; color: #f97316; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
 
@@ -262,52 +188,32 @@
             border-radius: var(--radius-md); text-decoration: none; color: #fff;
             margin-top: 5px; border: 1px solid rgba(255,255,255,0.1);
             font-size: 14px; cursor: pointer; transition: all 0.2s;
-            box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);
-            width: 100%; box-sizing: border-box;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.05); width: 100%; box-sizing: border-box;
         }
         .file-link-btn:hover { background: rgba(255,255,255, 0.15); transform: translateY(-2px); }
 
         /* === KEYBOARD AREA === */
         #keyboard-area {
-            background: var(--bg-glass);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            padding: 12px;
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-            border-top: 1px solid var(--border-color); 
-            min-height: 0; max-height: 45vh;
+            background: var(--bg-glass); backdrop-filter: var(--glass-blur);
+            padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            border-top: 1px solid var(--border-color); min-height: 0; max-height: 45vh;
             overflow-y: auto; flex-shrink: 0;
             padding-bottom: max(20px, env(safe-area-inset-bottom));
         }
 
         .keyboard-btn {
-            background: rgba(255, 255, 255, 0.05); 
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: var(--text-primary); padding: 14px 10px; 
-            border-radius: var(--radius-md); cursor: pointer; 
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-            font-size: 14px; font-weight: 600; text-align: center;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-primary); padding: 14px 10px; border-radius: var(--radius-md); cursor: pointer; 
+            transition: all 0.2s; font-size: 14px; font-weight: 600; text-align: center;
             display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-            /* Arabic text in buttons: RTL */
-            direction: rtl; 
-            text-align: center;
+            position: relative; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+            direction: rtl; text-align: center;
         }
-
         .keyboard-btn:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
         .keyboard-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.05); }
-        
-        .keyboard-btn.back-btn {
-            grid-column: span 2; background: rgba(0,0,0,0.2);
-            border-color: rgba(255,255,255,0.05); color: var(--text-secondary);
-            border: 1px dashed rgba(255,255,255,0.2);
-        }
+        .keyboard-btn.back-btn { grid-column: span 2; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px dashed rgba(255,255,255,0.2); }
 
-        @media (max-width: 480px) { .keyboard-btn { font-size: 13px; padding: 12px 8px; } }
-        @media (max-width: 350px) { #keyboard-area { grid-template-columns: 1fr; } .keyboard-btn.back-btn { grid-column: span 1; } }
-
-        /* === MODALS & ALERTS === */
+        /* === MODALS === */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
@@ -315,18 +221,14 @@
         }
         .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
 
-        .visual-alert-card, .ui-modal-box, .admin-modal {
+        .visual-alert-card, .ui-modal-box {
             background: #1e293b; border: 1px solid var(--border-color);
             border-radius: var(--radius-lg); padding: 24px;
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             max-width: 90%; width: 400px;
         }
-
-        .visual-alert-card {
-            background: linear-gradient(145deg, #1e293b, #0f172a);
-            border: 1px solid #3b82f6; text-align: center;
-        }
+        .visual-alert-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #3b82f6; text-align: center; }
         
         .alert-icon { font-size: 50px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(59,130,246,0.5)); }
         .alert-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; }
@@ -339,36 +241,53 @@
         }
         .alert-btn:active, .ui-btn:active { transform: scale(0.96); }
 
-        /* === ADMIN MODAL === */
+        /* === ADMIN MODAL (UPDATED DESIGN) === */
         .admin-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(20px);
-            z-index: 200; display: none; flex-direction: column;
+            background: #0f172a; z-index: 200; display: none; flex-direction: column;
             border-radius: 0; max-width: 100%; padding: 0; overflow: hidden;
         }
         .admin-modal.active { display: flex; }
 
-        .admin-header-bg {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            padding: 20px; border-bottom: 1px solid var(--border-color);
-            display: flex; justify-content: space-between; align-items: center;
+        /* Sticky Navigation Bar */
+        .admin-nav-bar {
+            background: #1e293b; border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px; display: flex; gap: 8px; overflow-x: auto; 
+            flex-shrink: 0; scrollbar-width: none; z-index: 10;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
-        .modal-title { font-size: 20px; font-weight: 700; color: #fff; }
-        .close-modal { font-size: 32px; color: #64748b; cursor: pointer; line-height: 1; transition: color 0.2s; }
-        .close-modal:hover { color: #fff; }
+        .admin-nav-bar::-webkit-scrollbar { display: none; }
 
-        .admin-scroll-area { flex: 1; overflow-y: auto; padding: 20px; }
-
-        .admin-tabs { display: flex; gap: 8px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
-        .admin-tabs::-webkit-scrollbar { display: none; }
-        .tab-btn {
-            padding: 10px 18px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
-            color: #94a3b8; border-radius: var(--radius-full); cursor: pointer; 
-            font-weight: 600; font-size: 12px; white-space: nowrap; transition: all 0.2s;
+        .nav-item {
+            flex: 1; min-width: 80px; padding: 10px 5px; text-align: center;
+            color: var(--text-secondary); font-size: 13px; font-weight: 600;
+            border-radius: var(--radius-md); cursor: pointer; transition: all 0.3s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 4px;
         }
-        .tab-btn:hover { background: rgba(255,255,255,0.1); }
-        .tab-btn.active { background: var(--accent-gradient); color: #fff; border-color: transparent; box-shadow: 0 2px 10px rgba(59,130,246,0.3); }
+        .nav-item span { font-size: 18px; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: var(--accent-primary); color: #fff; box-shadow: 0 2px 10px rgba(59,130,246,0.4); }
 
+        /* Content Slider Container */
+        .admin-content-wrapper {
+            position: relative; flex: 1; overflow: hidden; width: 100%;
+        }
+
+        /* Slides */
+        .tab-content {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            overflow-y: auto; padding: 20px;
+            opacity: 0; pointer-events: none; transform: scale(0.98);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            display: none; /* Important to hide from tab flow */
+        }
+        
+        .tab-content.active {
+            opacity: 1; pointer-events: auto; transform: scale(1); display: block;
+        }
+
+        /* Form Elements */
         .form-group { margin-bottom: 20px; }
         .form-label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 13px; font-weight: 600; }
         .form-input, .form-textarea, .form-select {
@@ -413,7 +332,6 @@
             display: flex; flex-direction: column; gap: 10px; z-index: 9998;
             width: 90%; max-width: 350px; pointer-events: none;
         }
-
         .toast {
             background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px);
             color: #fff; padding: 14px 20px; border-radius: var(--radius-md);
@@ -429,13 +347,18 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUpFade { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        .typing-indicator { 
-            font-size: 12px; color: var(--text-secondary); margin-left: 15px; margin-bottom: 10px; 
-            display: none; font-style: italic; opacity: 0.7; font-weight: 600; 
-            direction: rtl; /* Syncing text is English/Arabic mix? Better be RTL/Center */
-            text-align: right;
-        } 
+        .typing-indicator { font-size: 12px; color: var(--text-secondary); margin-left: 15px; margin-bottom: 10px; display: none; font-style: italic; opacity: 0.7; font-weight: 600; direction: rtl; text-align: right; } 
         .typing-indicator.active { display: block; }
+
+        /* Admin Header in Modal */
+        .admin-header-top {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid var(--border-color); z-index: 20;
+        }
+        .modal-title { font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .close-modal { font-size: 32px; color: #64748b; cursor: pointer; line-height: 1; transition: color 0.2s; }
+        .close-modal:hover { color: #fff; }
 
     </style>
 </head>
@@ -454,8 +377,6 @@
         <div class="header-actions" id="menu-btn" title="Menu">⋮</div>
 
         <div class="menu-dropdown" id="menu-dropdown">
-            <!-- MENU ITEMS NOW IN ENGLISH WITH PROFESSIONAL EMOJIS -->
-            
             <div class="menu-item notif-toggle" onclick="window.enableNotifications()">
                 <span>🔔</span> <span>Enable Notifications</span>
             </div>
@@ -464,7 +385,6 @@
                 <span>🧪</span> <span>Test Notification</span>
             </div>
 
-            <!-- SINGLE LOGIN BUTTON -->
             <div class="menu-item google-auth" id="google-login-btn" onclick="window.handleMenuAuthClick()">
                 <span id="auth-icon">🌐</span> <span id="auth-text">Sign In</span>
             </div>
@@ -496,7 +416,7 @@
     </div>
 </div>
 
-<!-- CUSTOM UI MODAL (Replaces Alert/Prompt) -->
+<!-- CUSTOM UI MODAL -->
 <div id="ui-modal-overlay" class="modal-overlay">
     <div class="ui-modal-box">
         <div class="ui-modal-title" id="ui-modal-title" style="font-size:18px; font-weight:700; color:#fff; margin-bottom:10px;">Title</div>
@@ -512,27 +432,39 @@
 <!-- TOAST CONTAINER -->
 <div id="toast-container"></div>
 
-<!-- Admin Modal -->
+<!-- Admin Modal (Redesigned) -->
 <div class="admin-modal" id="admin-modal">
-    <div class="admin-header-bg">
+    <!-- Header -->
+    <div class="admin-header-top">
         <div class="modal-title">⚙️ Bot Settings</div>
         <div class="close-modal" onclick="window.closeAdminPanel()">×</div>
     </div>
 
-    <div class="admin-scroll-area">
-        <!-- Sign Out Link inside Admin Panel -->
-        <div style="text-align: left; margin-bottom: 20px;">
-            <span onclick="window.logoutUser()" style="cursor: pointer; color: #f87171; font-size: 13px; font-weight: 600;">Sign Out 🚪</span>
+    <!-- Navigation Bar (Horizontal) -->
+    <div class="admin-nav-bar">
+        <div class="nav-item active" id="nav-0" onclick="window.switchAdminTab(0)">
+            <span>⚙️</span> Settings
         </div>
-
-        <div class="admin-tabs">
-            <button class="tab-btn active" onclick="window.switchTab('settings')">Settings</button>
-            <button class="tab-btn" onclick="window.switchTab('notifications')">📢 Notif</button>
-            <button class="tab-btn" onclick="window.switchTab('broadcast')">📣 Broadcast</button>
-            <button class="tab-btn" onclick="window.switchTab('data')">Data</button>
+        <div class="nav-item" id="nav-1" onclick="window.switchAdminTab(1)">
+            <span>📢</span> Notif
         </div>
+        <div class="nav-item" id="nav-2" onclick="window.switchAdminTab(2)">
+            <span>📣</span> Broadcast
+        </div>
+        <div class="nav-item" id="nav-3" onclick="window.switchAdminTab(3)">
+            <span>📂</span> Data
+        </div>
+    </div>
 
+    <!-- Content Wrapper -->
+    <div class="admin-content-wrapper">
+        
+        <!-- TAB 1: SETTINGS -->
         <div id="tab-settings" class="tab-content active">
+            <div style="text-align: left; margin-bottom: 20px;">
+                <span onclick="window.logoutUser()" style="cursor: pointer; color: #f87171; font-size: 13px; font-weight: 600;">Sign Out 🚪</span>
+            </div>
+
             <div class="admin-section-title">Appearance & Messages</div>
             <div class="form-group"><label class="form-label">Bot Name</label><input type="text" id="admin-bot-name" class="form-input"></div>
             <div class="form-group"><label class="form-label">Status</label><input type="text" id="admin-bot-status" class="form-input"></div>
@@ -570,6 +502,7 @@
             <button class="btn-save" onclick="window.saveAdminSettings()">Save Settings</button>
         </div>
 
+        <!-- TAB 2: NOTIFICATIONS -->
         <div id="tab-notifications" class="tab-content">
             <div class="admin-section-title" style="color: #f97316;">Send Doctor Notification</div>
             <p style="font-size:13px; color:#94a3b8; margin-bottom:20px;">
@@ -594,6 +527,7 @@
             <button class="btn-send" onclick="window.sendDoctorNotification()">Send Notification</button>
         </div>
 
+        <!-- TAB 3: BROADCAST -->
         <div id="tab-broadcast" class="tab-content">
             <div class="admin-section-title" style="color: #eab308;">Broadcast (Batch Rep)</div>
             <div style="background: rgba(234, 179, 8, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.2); margin-bottom: 20px;">
@@ -618,6 +552,7 @@
             <div id="broadcast-preview" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;"></div>
         </div>
 
+        <!-- TAB 4: DATA -->
         <div id="tab-data" class="tab-content">
             <div class="data-path" id="admin-data-path" style="font-size:13px; color:#94a3b8; margin-bottom:15px;">Home</div>
             
@@ -636,27 +571,23 @@
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
 <script>
     // ============================================================
-    // === UI UTILITIES (No Native Alerts) ===
+    // === UI UTILITIES ===
     // ============================================================
-    
     function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        
         let icon = 'ℹ️';
         if(type === 'success') icon = '✅';
         if(type === 'error') icon = '❌';
-
         toast.innerHTML = `<span>${icon} ${message}</span>`;
-        
         container.appendChild(toast);
-
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(20px) scale(0.9)';
@@ -665,44 +596,30 @@
     }
 
     let currentModalCallback = null;
-
     function showInputModal(title, placeholder, callback) {
         const overlay = document.getElementById('ui-modal-overlay');
-        const titleEl = document.getElementById('ui-modal-title');
-        const bodyEl = document.getElementById('ui-modal-body');
+        document.getElementById('ui-modal-title').innerText = title;
+        document.getElementById('ui-modal-body').style.display = 'none';
         const inputContainer = document.getElementById('ui-modal-input-container');
-        const confirmBtn = document.getElementById('ui-modal-confirm-btn');
-
-        titleEl.innerText = title;
-        bodyEl.style.display = 'none';
         inputContainer.style.display = 'block';
         inputContainer.innerHTML = `<input type="text" class="ui-input-field" id="ui-modal-input" placeholder="${placeholder}" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); border:1px solid #475569; color:#fff; border-radius:8px;">`;
-
         currentModalCallback = callback;
         overlay.classList.add('active');
         setTimeout(() => document.getElementById('ui-modal-input').focus(), 100);
     }
-
     function showConfirmModal(title, message, callback) {
         const overlay = document.getElementById('ui-modal-overlay');
-        const titleEl = document.getElementById('ui-modal-title');
-        const bodyEl = document.getElementById('ui-modal-body');
-        const inputContainer = document.getElementById('ui-modal-input-container');
-
-        titleEl.innerText = title;
-        bodyEl.innerText = message;
-        bodyEl.style.display = 'block';
-        inputContainer.style.display = 'none';
-
+        document.getElementById('ui-modal-title').innerText = title;
+        document.getElementById('ui-modal-body').innerText = message;
+        document.getElementById('ui-modal-body').style.display = 'block';
+        document.getElementById('ui-modal-input-container').style.display = 'none';
         currentModalCallback = callback;
         overlay.classList.add('active');
     }
-
     function closeUiModal() {
         document.getElementById('ui-modal-overlay').classList.remove('active');
         currentModalCallback = null;
     }
-
     document.getElementById('ui-modal-confirm-btn').addEventListener('click', () => {
         if (currentModalCallback) {
             const inputEl = document.getElementById('ui-modal-input');
@@ -711,105 +628,56 @@
         }
         closeUiModal();
     });
-
     document.getElementById('ui-modal-overlay').addEventListener('click', (e) => {
         if(e.target.id === 'ui-modal-overlay') closeUiModal();
     });
 
     // ============================================================
-    // === 0. SERVICE WORKER CODE (Background Notifications) ===
+    // === 0. SERVICE WORKER CODE ===
     // ============================================================
     const swCode = `
         const CACHE_VERSION = 'v14'; 
         const BIN_ID = "696e77bfae596e708fe71e9d";
         const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-
         let lastNotifTime = 0;
         let fetchInterval;
-
-        self.addEventListener('install', event => {
-            self.skipWaiting();
-        });
-
-        self.addEventListener('activate', event => {
-            event.waitUntil(self.clients.claim());
-        });
-
+        self.addEventListener('install', event => { self.skipWaiting(); });
+        self.addEventListener('activate', event => { event.waitUntil(self.clients.claim()); });
         self.addEventListener('message', event => {
             const data = event.data;
-            
             if (data.type === 'SYNCED_NOTIF_DOCTOR') {
                 if (Notification.permission === 'granted') {
-                    self.registration.showNotification('📢 Messages from Doctors', {
-                        body: data.body, 
-                        icon: data.icon,
-                        requireInteraction: false,
-                        tag: 'doctor-notification',
-                        silent: false,
-                        vibrate: [200, 100, 200]
-                    });
+                    self.registration.showNotification('📢 Messages from Doctors', { body: data.body, icon: data.icon, requireInteraction: false, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
                 }
             }
             if (data.type === 'TEST_NOTIF') {
                 if (Notification.permission === 'granted') {
-                    self.registration.showNotification('🧪 Test Successful', {
-                        body: 'Notifications are working on your device.',
-                        icon: data.icon,
-                        vibrate: [200, 100, 200]
-                    });
+                    self.registration.showNotification('🧪 Test Successful', { body: 'Notifications are working.', icon: data.icon, vibrate: [200, 100, 200] });
                 }
             }
         });
-
         function checkNotifications() {
             const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
-            
-            fetch(url, {
-                cache: 'no-store',
-                method: 'GET',
-                headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }
-            })
+            fetch(url, { cache: 'no-store', method: 'GET', headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' } })
             .then(res => res.json())
             .then(data => {
                 if (data && data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
                     lastNotifTime = data.latestNotificationUpdate;
                     if (Notification.permission === 'granted') {
-                        self.registration.showNotification('📢 Messages from Doctors', {
-                            body: 'Tap to open app and read details.',
-                            icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                            requireInteraction: false,
-                            tag: 'doctor-notification',
-                            silent: false,
-                            vibrate: [200, 100, 200]
-                        });
+                        self.registration.showNotification('📢 Messages from Doctors', { body: 'Tap to open app and read details.', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', requireInteraction: false, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
                     }
                 }
-            })
-            .catch(err => console.error('SW Fetch Error:', err));
+            }).catch(err => console.error('SW Fetch Error:', err));
         }
-
         self.addEventListener('notificationclick', event => {
             event.notification.close();
-            event.waitUntil(
-                clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-                    for (const client of clientList) {
-                        if (client.url === self.location.href && 'focus' in client) {
-                            return client.focus();
-                        }
-                    }
-                    if (clients.openWindow) {
-                        return clients.openWindow(self.location.href);
-                    }
-                })
-            );
+            event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+                for (const client of clientList) { if (client.url === self.location.href && 'focus' in client) return client.focus(); }
+                if (clients.openWindow) return clients.openWindow(self.location.href);
+            }));
         });
-
-        self.addEventListener('activate', () => {
-            checkNotifications();
-            fetchInterval = setInterval(checkNotifications, 20000); 
-        });
+        self.addEventListener('activate', () => { checkNotifications(); fetchInterval = setInterval(checkNotifications, 20000); });
     `;
-
     const swBlob = new Blob([swCode], {type: 'application/javascript'});
     const swUrl = URL.createObjectURL(swBlob);
 
@@ -824,15 +692,8 @@
       messagingSenderId: "371129360013",
       appId: "1:371129360013:web:377ef70759204018a60cc4"
     };
-
     let auth;
-    try {
-        firebase.initializeApp(firebaseConfig);
-        auth = firebase.auth();
-    } catch (e) {
-        console.error("Firebase Init Error", e);
-    }
-
+    try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch (e) { console.error("Firebase Init Error", e); }
     const OWNER_EMAIL = "peacemaker3050@gmail.com";
 
     // ============================================================
@@ -840,542 +701,208 @@
     // ============================================================
     const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
     const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-
     const defaultDatabase = {
-        "Physics": {
-            "doctors": ["Dr. Ahmed", "Dr. Mahmoud"],
-            "Dr. Ahmed": {
-                "sections": ["📚 Lectures", "🔔 Notifications"],
-                "📚 Lectures": [
-                    { name: "Chapter 1: Mechanics Basics.pdf", link: "https://drive.google.com/file/d/1_iodAsHFokkB3rTyGls5hSGET9XuvtWM/view?usp=drivesdk" },
-                    { name: "Chapter 2: Motion in One Dimension.pdf", link: "javascript:void(0)" }
-                ],
-                "🔔 Notifications": []
-            },
-            "Dr. Mahmoud": {
-                "sections": ["📚 Lectures", "🔔 Notifications"],
-                "📚 Lectures": [ { name: "Lecture 1: Thermodynamics Intro.pdf", link: "javascript:void(0)" } ],
-                "🔔 Notifications": []
-            }
-        },
-        "Chemistry": {
-            "doctors": ["Dr. Saeed", "Dr. Mona"],
-            "Dr. Saeed": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] },
-            "Dr. Mona": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] }
-        },
-        "Mathematics": {
-            "doctors": ["Dr. Kamel", "Dr. Samy"],
-            "Dr. Kamel": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] },
-            "Dr. Samy": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] }
-        }
+        "Physics": { "doctors": ["Dr. Ahmed", "Dr. Mahmoud"], "Dr. Ahmed": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [{ name: "Chapter 1.pdf", link: "#" }], "🔔 Notifications": [] }, "Dr. Mahmoud": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] } },
+        "Chemistry": { "doctors": ["Dr. Saeed", "Dr. Mona"], "Dr. Saeed": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] }, "Dr. Mona": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] } },
+        "Mathematics": { "doctors": ["Dr. Kamel", "Dr. Samy"], "Dr. Kamel": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] }, "Dr. Samy": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] } }
     };
-
     const defaultConfig = {
-        botName: "University Library",
-        botStatus: "Online",
-        botIcon: "🎓", 
-        botImage: "", 
-        chatBgImage: "", 
-        typingSpeed: 600, 
-        admins: [], 
-        latestNotificationUpdate: 0,
-        recentUpdates: [], 
+        botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", chatBgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], 
         generalBroadcast: { active: false, title: "", body: "", timestamp: 0 },
         welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.",
-        subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇",
-        doctorPrompt: "<b>{name}</b>\nSelect a section 👇",
-        categoryPrompt: "<b>{name}</b> list:",
-        backSubject: "Back to <b>{name}</b> doctors:",
-        backDoctor: "Back to <b>{name}</b> sections:",
-        backMain: "Back to Main Menu.",
-        database: defaultDatabase
+        subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇",
+        categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:",
+        backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", database: defaultDatabase
     };
-
     let CONFIG = { ...defaultConfig };
     let database = CONFIG.database; 
     let refreshInterval = null;
 
     // ============================================================
-    // === 3. AUTH LOGIC (MERGED) ===
+    // === 3. AUTH LOGIC ===
     // ============================================================
     window.handleMenuAuthClick = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
-        
         if (!auth) { showToast("Firebase not configured correctly.", "error"); return; }
-        
         const user = auth.currentUser;
-        
         if (user) {
             const email = user.email;
-            if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) {
-                openAdminPanel();
-            } else {
-                showToast("Signed in as: " + email, "info");
-            }
+            if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { openAdminPanel(); }
+            else { showToast("Signed in as: " + email, "info"); }
         } else {
             const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).then((result) => {
-                console.log("User signed in:", result.user);
-                window.updateAuthUI();
-                showToast("Login Successful", "success");
-            }).catch((error) => {
-                console.error("Login error", error);
-                showToast("Login Failed: " + error.message, "error");
-            });
+            auth.signInWithPopup(provider).then((result) => { console.log("User signed in:", result.user); window.updateAuthUI(); showToast("Login Successful", "success"); }).catch((error) => { showToast("Login Failed: " + error.message, "error"); });
         }
     };
-
     window.logoutUser = function() {
-        if (auth) {
-            auth.signOut().then(() => {
-                console.log("User signed out.");
-                window.location.reload();
-            }).catch((error) => console.error("Sign out error", error));
-        }
+        if (auth) { auth.signOut().then(() => { console.log("User signed out."); window.location.reload(); }).catch((error) => console.error("Sign out error", error)); }
     };
-
-    function initFirebaseAuth() {
-        if (!auth) return;
-        auth.onAuthStateChanged((user) => {
-            window.updateAuthUI();
-        });
-    }
-
+    function initFirebaseAuth() { if (!auth) return; auth.onAuthStateChanged((user) => { window.updateAuthUI(); }); }
     window.updateAuthUI = function() {
-        const loginBtn = document.getElementById('google-login-btn');
-        const loginText = document.getElementById('auth-text');
-        const loginIcon = document.getElementById('auth-icon');
+        const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon');
         const user = auth ? auth.currentUser : null;
-
         if (user) {
             const email = user.email;
-            if (email === OWNER_EMAIL) {
-                loginText.innerText = "Admin Panel";
-                loginIcon.innerText = "⚙️";
-                loginBtn.classList.add('is-owner');
-            } else if (CONFIG.admins && CONFIG.admins.includes(email)) {
-                loginText.innerText = "Admin Panel";
-                loginIcon.innerText = "⚙️";
-                loginBtn.classList.add('is-admin');
-            } else {
-                loginText.innerText = "Signed In";
-                loginIcon.innerText = "✅";
-                loginBtn.classList.remove('is-owner', 'is-admin');
-            }
-        } else {
-            loginText.innerText = "Sign In";
-            loginIcon.innerText = "🌐";
-            loginBtn.classList.remove('is-owner', 'is-admin');
-        }
+            if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-owner'); }
+            else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-admin'); }
+            else { loginText.innerText = "Signed In"; loginIcon.innerText = "✅"; loginBtn.classList.remove('is-owner', 'is-admin'); }
+        } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; loginBtn.classList.remove('is-owner', 'is-admin'); }
     }
 
     // ============================================================
     // === 4. IMAGE COMPRESSOR ===
     // ============================================================
     function compressImage(file, callback) {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
+        const reader = new FileReader(); reader.readAsDataURL(file);
         reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
+            const img = new Image(); img.src = event.target.result;
             img.onload = () => {
-                let width = img.width; let height = img.height;
-                const MAX_SIZE = 800; 
-                if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
-                else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
-                const canvas = document.createElement('canvas');
-                canvas.width = width; canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                callback(dataUrl);
+                let width = img.width; let height = img.height; const MAX_SIZE = 800; 
+                if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+                const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7); callback(dataUrl);
             };
-            reader.onerror = (err) => { console.log(err); showToast("Error processing image", "error"); };
+            reader.onerror = (err) => { showToast("Error processing image", "error"); };
         };
     }
 
     // ============================================================
     // === 5. SYNC LOGIC ===
     // ============================================================
-    function startSync() {
-        if(refreshInterval) clearInterval(refreshInterval);
-        refreshInterval = setInterval(fetchConfig, 15000);
-    }
-
-    function stopSync() {
-        if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
-    }
-
-    function updateHeaderDirection() {
-        // Not strictly needed in this fixed LTR layout
-    }
-
+    function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
+    function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
     function fetchConfig() {
-        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-            headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' }
-        })
+        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } })
         .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
         .then(data => { 
             CONFIG = { ...defaultConfig, ...data }; 
-            if (data.database) CONFIG.database = { ...data.database, ...defaultDatabase };
-            else CONFIG.database = defaultDatabase;
+            if (data.database) CONFIG.database = { ...data.database, ...defaultDatabase }; else CONFIG.database = defaultDatabase;
             applyConfig(CONFIG); 
-            
             if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
                 const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
                 const newUpdates = CONFIG.recentUpdates.filter(u => !seenIds.includes(u.id));
-                
                 if (newUpdates.length > 0) {
                     const notifBody = newUpdates.map(u => `${u.doctor} (${u.subject})`).join('\n');
-                    
                     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({
-                            type: 'SYNCED_NOTIF_DOCTOR',
-                            body: notifBody,
-                            icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                            timestamp: Date.now()
-                        });
+                        navigator.serviceWorker.controller.postMessage({ type: 'SYNCED_NOTIF_DOCTOR', body: notifBody, icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
                     }
-                    
                     showVisualAlertWithBody(notifBody);
-                    
                     const updatedSeenIds = [...seenIds, ...newUpdates.map(u => u.id)];
                     localStorage.setItem('seenNotifIds', JSON.stringify(updatedSeenIds));
                 }
             }
-
-            if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
-                checkAndShowBroadcast();
-            }
-
-        })
-        .catch(err => { console.error("Sync Error:", err); });
+            if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { checkAndShowBroadcast(); }
+        }).catch(err => { console.error("Sync Error:", err); });
     }
-
     function saveConfigToBin(newConfig) {
-        const btnSave = document.querySelector('.btn-save');
-        const originalText = btnSave.innerText;
+        const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving...";
         if(btnSave) btnSave.innerText = "Saving...";
-        
-        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
-            body: JSON.stringify(newConfig)
-        })
-        .then(res => { if (!res.ok) throw new Error("Save failed"); 
-            showToast("✅ Saved Successfully", "success");
-            database = newConfig.database;
-            CONFIG.database = { ...newConfig.database, ...defaultDatabase };
-            database = CONFIG.database;
-            if(btnSave) btnSave.innerText = originalText;
-        })
+        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
+        .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = { ...newConfig.database, ...defaultDatabase }; database = CONFIG.database; if(btnSave) btnSave.innerText = originalText; })
         .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
     }
-
     function applyConfig(newConfig) {
-        CONFIG = newConfig;
-        database = CONFIG.database; 
-        document.getElementById('header-name').innerText = CONFIG.botName;
-        document.getElementById('header-status').innerText = CONFIG.botStatus;
-
+        CONFIG = newConfig; database = CONFIG.database; document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerText = CONFIG.botStatus;
         const avatarEl = document.getElementById('header-avatar');
-        if (CONFIG.botImage && CONFIG.botImage.trim().length > 10) {
-            avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.style.backgroundPosition = "center"; avatarEl.innerText = ""; 
-        } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
-
+        if (CONFIG.botImage && CONFIG.botImage.trim().length > 10) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
         const chatArea = document.getElementById('chat-area');
-        if (CONFIG.chatBgImage && CONFIG.chatBgImage.trim().length > 10) {
-            chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`; chatArea.style.backgroundSize = "cover"; chatArea.style.backgroundColor = "transparent"; chatArea.classList.add('has-bg');
-            chatArea.style.backgroundAttachment = "fixed";
-        } else { chatArea.style.backgroundImage = "none"; chatArea.style.backgroundColor = "transparent"; chatArea.classList.remove('has-bg'); }
-
-        window.updateAuthUI();
-        renderKeyboard();
-        checkAndShowBroadcast();
+        if (CONFIG.chatBgImage && CONFIG.chatBgImage.trim().length > 10) { chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`; chatArea.style.backgroundSize = "cover"; } else { chatArea.style.backgroundImage = "none"; }
+        window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
     }
-
     function checkAndShowBroadcast() {
-        const existingBroadcast = document.getElementById('app-broadcast-msg');
-        if (existingBroadcast) existingBroadcast.remove();
-
+        const existingBroadcast = document.getElementById('app-broadcast-msg'); if (existingBroadcast) existingBroadcast.remove();
         if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
-            const broadcastHTML = `
-                <div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()">
-                    <div class="broadcast-header">
-                        <span>📣</span> <span>Message from Batch Rep</span>
-                    </div>
-                    <div><b>${CONFIG.generalBroadcast.title}</b></div>
-                    <div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div>
-                    <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
-                </div>
-            `;
-            
-            if (!existingBroadcast) {
-                const chatArea = document.getElementById('chat-area');
-                chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
-            }
+            const broadcastHTML = `<div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()"><div class="broadcast-header"><span>📣</span> <span>Message from Batch Rep</span></div><div><b>${CONFIG.generalBroadcast.title}</b></div><div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div><span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span></div>`;
+            if (!existingBroadcast) { const chatArea = document.getElementById('chat-area'); chatArea.insertAdjacentHTML('afterbegin', broadcastHTML); }
         }
     }
-    
     window.markBroadcastRead = function() { };
-
-    function replacePlaceholders(text, name) {
-        let res = text || "";
-        if (name) res = res.replace(/{name}/g, name);
-        res = res.replace(/{botName}/g, CONFIG.botName);
-        return res;
-    }
+    function replacePlaceholders(text, name) { let res = text || ""; if (name) res = res.replace(/{name}/g, name); res = res.replace(/{botName}/g, CONFIG.botName); return res; }
 
     // ============================================================
     // === 6. VISUAL ALERT SYSTEM ===
     // ============================================================
     function showVisualAlertWithBody(bodyText) {
-        const overlay = document.getElementById('visual-alert-overlay');
-        if (overlay.classList.contains('active')) return; 
-
-        document.getElementById('visual-alert-body').innerText = bodyText;
-        overlay.classList.add('active');
-
+        const overlay = document.getElementById('visual-alert-overlay'); if (overlay.classList.contains('active')) return;
+        document.getElementById('visual-alert-body').innerText = bodyText; overlay.classList.add('active');
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-        
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (AudioContext) {
-                const ctx = new AudioContext();
-                const osc = ctx.createOscillator();
-                const gainNode = ctx.createGain();
-                osc.connect(gainNode); gainNode.connect(ctx.destination);
-                osc.type = 'sine'; osc.frequency.setValueAtTime(440, ctx.currentTime);
-                gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc.start(); gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5); osc.stop(ctx.currentTime + 0.5);
-            }
-        } catch (e) { console.log("Audio play failed", e); }
     }
-
-    window.closeVisualAlert = function() {
-        document.getElementById('visual-alert-overlay').classList.remove('active');
-    };
+    window.closeVisualAlert = function() { document.getElementById('visual-alert-overlay').classList.remove('active'); };
 
     // ============================================================
-    // === 7. NOTIFICATION SYSTEM (ADMIN SIDE) ===
+    // === 7. NOTIFICATION SYSTEM ===
     // ============================================================
-    
-    function hasAdminAccess() {
-        const user = auth.currentUser;
-        if (!user) return false;
-        const email = user.email;
-        return email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email));
-    }
-
+    function hasAdminAccess() { const user = auth.currentUser; if (!user) return false; const email = user.email; return email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email)); }
     window.populateNotifSubjects = function() {
-        const select = document.getElementById('notif-subject-select');
-        select.innerHTML = '<option value="">-- Select Subject --</option>';
-        const subjects = Object.keys(database);
-        subjects.forEach(sub => {
-            const opt = document.createElement('option'); opt.value = sub; opt.innerText = sub; select.appendChild(opt);
-        });
+        const select = document.getElementById('notif-subject-select'); select.innerHTML = '<option value="">-- Select Subject --</option>';
+        const subjects = Object.keys(database); subjects.forEach(sub => { const opt = document.createElement('option'); opt.value = sub; opt.innerText = sub; select.appendChild(opt); });
     };
-
     window.populateNotifDoctors = function() {
-        const subject = document.getElementById('notif-subject-select').value;
-        const docSelect = document.getElementById('notif-doctor-select');
-        docSelect.innerHTML = '<option value="">-- Select Doctor --</option>';
-        
+        const subject = document.getElementById('notif-subject-select').value; const docSelect = document.getElementById('notif-doctor-select'); docSelect.innerHTML = '<option value="">-- Select Doctor --</option>';
         if(subject && database[subject] && database[subject].doctors) {
-            database[subject].doctors.forEach(doc => {
-                const opt = document.createElement('option'); opt.value = doc; opt.innerText = doc; docSelect.appendChild(opt);
-            });
-        }
-        window.loadNotifPreview();
+            database[subject].doctors.forEach(doc => { const opt = document.createElement('option'); opt.value = doc; opt.innerText = doc; docSelect.appendChild(opt); });
+        } window.loadNotifPreview();
     };
-
     window.sendDoctorNotification = function() {
         if (!hasAdminAccess()) return showToast("❌ Unauthorized Access.", "error");
-        
-        const subject = document.getElementById('notif-subject-select').value;
-        const doctor = document.getElementById('notif-doctor-select').value;
-        const message = document.getElementById('notif-message-text').value.trim();
-
+        const subject = document.getElementById('notif-subject-select').value; const doctor = document.getElementById('notif-doctor-select').value; const message = document.getElementById('notif-message-text').value.trim();
         if(!subject || !doctor || !message) return showToast("Please fill all fields", "error");
-
         const timestamp = new Date().toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const fullDate = Date.now();
-        const updateId = fullDate.toString() + "_" + Math.random().toString(36).substr(2,5);
-
+        const fullDate = Date.now(); const updateId = fullDate.toString() + "_" + Math.random().toString(36).substr(2,5);
         if (!database[subject][doctor].sections) database[subject][doctor].sections = [];
-        if (!database[subject][doctor].sections.includes("🔔 Notifications")) {
-            database[subject][doctor].sections.unshift("🔔 Notifications");
-        }
+        if (!database[subject][doctor].sections.includes("🔔 Notifications")) database[subject][doctor].sections.unshift("🔔 Notifications");
         if (!database[subject][doctor]["🔔 Notifications"]) database[subject][doctor]["🔔 Notifications"] = [];
-
-        database[subject][doctor]["🔔 Notifications"].unshift({
-            id: updateId,
-            name: message,
-            date: timestamp,
-            type: "notif",
-            fullDate: fullDate
-        });
-
+        database[subject][doctor]["🔔 Notifications"].unshift({ id: updateId, name: message, date: timestamp, type: "notif", fullDate: fullDate });
         if (!CONFIG.recentUpdates) CONFIG.recentUpdates = [];
-        
-        CONFIG.recentUpdates.unshift({
-            id: updateId,
-            doctor: doctor,
-            subject: subject,
-            timestamp: fullDate
-        });
-
-        if (CONFIG.recentUpdates.length > 5) {
-            CONFIG.recentUpdates = CONFIG.recentUpdates.slice(0, 5);
-        }
-
-        CONFIG.latestNotificationUpdate = fullDate;
-        CONFIG.database = database;
-        
-        const saveBtn = document.querySelector('#tab-notifications .btn-send');
-        saveBtn.innerText = "Sending...";
-        saveBtn.disabled = true;
-
-        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
-            body: JSON.stringify(CONFIG)
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Send failed");
-            showToast("✅ Notification Sent", "success");
-            document.getElementById('notif-message-text').value = "";
-            saveBtn.innerText = "Send Notification";
-            saveBtn.disabled = false;
-            fetchConfig(); 
-        })
-        .catch(err => {
-            showToast("❌ Error: " + err.message, "error");
-            saveBtn.innerText = "Send Notification";
-            saveBtn.disabled = false;
-        });
+        CONFIG.recentUpdates.unshift({ id: updateId, doctor: doctor, subject: subject, timestamp: fullDate });
+        if (CONFIG.recentUpdates.length > 5) CONFIG.recentUpdates = CONFIG.recentUpdates.slice(0, 5);
+        CONFIG.latestNotificationUpdate = fullDate; CONFIG.database = database;
+        const saveBtn = document.querySelector('#tab-notifications .btn-send'); saveBtn.innerText = "Sending..."; saveBtn.disabled = true;
+        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
+        .then(res => { if (!res.ok) throw new Error("Send failed"); showToast("✅ Notification Sent", "success"); document.getElementById('notif-message-text').value = ""; saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; fetchConfig(); })
+        .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; });
     };
-
     window.loadNotifPreview = function() { };
-
     window.saveBroadcast = function() {
-        const user = auth.currentUser;
-        const email = user ? user.email : null;
-        const isOwner = email === OWNER_EMAIL;
-        let allowed = isOwner;
-        if (!allowed) {
-            showInputModal("Verify Identity", "Password (Owner)", (pass) => {
-                if (pass === "1234") {
-                    proceedBroadcastSave();
-                } else {
-                    showToast("Wrong Password", "error");
-                }
-            });
-            return;
-        }
-        proceedBroadcastSave();
+        const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner;
+        if (!allowed) { showInputModal("Verify Identity", "Password (Owner)", (pass) => { if (pass === "1234") proceedBroadcastSave(); else showToast("Wrong Password", "error"); }); return; } proceedBroadcastSave();
     };
-
     function proceedBroadcastSave() {
-        const title = document.getElementById('broadcast-title').value.trim();
-        const body = document.getElementById('broadcast-body').value.trim();
-
+        const title = document.getElementById('broadcast-title').value.trim(); const body = document.getElementById('broadcast-body').value.trim();
         if(!title || !body) return showToast("Please enter title and body", "error");
-
-        CONFIG.generalBroadcast = {
-            active: true,
-            title: title,
-            body: body,
-            timestamp: Date.now()
-        };
-
-        const saveBtn = document.querySelector('#tab-broadcast .btn-save');
-        saveBtn.innerText = "Posting...";
-
-        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
-            body: JSON.stringify(CONFIG)
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Save failed");
-            showToast("✅ Broadcast Posted", "success");
-            saveBtn.innerText = "Post Broadcast";
-            checkAndShowBroadcast();
-            fetchConfig();
-        })
-        .catch(err => {
-            showToast("❌ Error: " + err.message, "error");
-            saveBtn.innerText = "Post Broadcast";
-        });
+        CONFIG.generalBroadcast = { active: true, title: title, body: body, timestamp: Date.now() };
+        const saveBtn = document.querySelector('#tab-broadcast .btn-save'); saveBtn.innerText = "Posting...";
+        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
+        .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Broadcast Posted", "success"); saveBtn.innerText = "Post Broadcast"; checkAndShowBroadcast(); fetchConfig(); })
+        .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Post Broadcast"; });
     }
-
     window.deleteBroadcast = function() {
-        const user = auth.currentUser;
-        const email = user ? user.email : null;
-        const isOwner = email === OWNER_EMAIL;
-        let allowed = isOwner;
-        if (!allowed) {
-             showInputModal("Verify Identity", "Password (Owner)", (pass) => {
-                if (pass === "1234") {
-                    proceedBroadcastDelete();
-                } else {
-                    showToast("Wrong Password", "error");
-                }
-            });
-            return;
-        }
-        proceedBroadcastDelete();
+        const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner;
+        if (!allowed) { showInputModal("Verify Identity", "Password (Owner)", (pass) => { if (pass === "1234") proceedBroadcastDelete(); else showToast("Wrong Password", "error"); }); return; } proceedBroadcastDelete();
     };
-
     function proceedBroadcastDelete() {
         showConfirmModal("Confirm Delete", "Are you sure you want to delete this broadcast?", (confirmed) => {
-            if (!confirmed) return;
-
-            CONFIG.generalBroadcast = { active: false, title: "", body: "", timestamp: 0 };
-            document.getElementById('broadcast-title').value = "";
-            document.getElementById('broadcast-body').value = "";
-            
-            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
-                body: JSON.stringify(CONFIG)
-            })
-            .then(res => {
-                if (!res.ok) throw new Error("Delete failed");
-                showToast("✅ Deleted Successfully", "success");
-                const existing = document.getElementById('app-broadcast-msg');
-                if(existing) existing.remove();
-            })
+            if (!confirmed) return; CONFIG.generalBroadcast = { active: false, title: "", body: "", timestamp: 0 };
+            document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = "";
+            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
+            .then(res => { if (!res.ok) throw new Error("Delete failed"); showToast("✅ Deleted Successfully", "success"); const existing = document.getElementById('app-broadcast-msg'); if(existing) existing.remove(); })
             .catch(err => showToast("❌ Error: " + err.message, "error"));
         });
-    };
-
+    }
     window.testNotification = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
-        if (!('Notification' in window)) {
-            showToast("Browser doesn't support notifications.", "error");
-            return;
-        }
+        if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; }
         Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
                 if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'TEST_NOTIF',
-                        icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png'
-                    });
+                    navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
                     showToast("Test notification sent...", "success");
                 } else {
-                    new Notification("🧪 Test Successful", {
-                        body: "If you see this, notifications are working on your device.",
-                        icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                        vibrate: [200, 100, 200]
-                    });
+                    new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', vibrate: [200, 100, 200] });
                     showToast("Test notification sent...", "success");
                 }
-            } else {
-                showToast("Permission denied. Please allow notifications.", "error");
-            }
+            } else { showToast("Permission denied.", "error"); }
         });
     };
 
@@ -1383,398 +910,179 @@
     // === 8. BOT LOGIC ===
     // ============================================================
     let currentSubject = null, currentDoctor = null, currentCategory = null;
-    const chatArea = document.getElementById('chat-area');
-    const keyboardArea = document.getElementById('keyboard-area');
-    const typingIndicator = document.getElementById('typing');
-    const menuBtn = document.getElementById('menu-btn');
-    const menuDropdown = document.getElementById('menu-dropdown');
+    const chatArea = document.getElementById('chat-area'); const keyboardArea = document.getElementById('keyboard-area');
+    const typingIndicator = document.getElementById('typing'); const menuBtn = document.getElementById('menu-btn'); const menuDropdown = document.getElementById('menu-dropdown');
     
-    const adminNameInput = document.getElementById('admin-bot-name');
-    const adminStatusInput = document.getElementById('admin-bot-status');
-    const adminIconUpload = document.getElementById('admin-icon-upload');
-    const adminIconRemove = document.getElementById('admin-icon-remove');
-    const adminBgUpload = document.getElementById('admin-bg-upload');
-    const adminBgRemove = document.getElementById('admin-bg-remove');
-    const adminAddInput = document.getElementById('admin-add-input');
-    const adminListContainer = document.getElementById('admin-list-container');
-    const respWelcome = document.getElementById('admin-msg-welcome');
-    const respSubject = document.getElementById('admin-msg-subject');
-    const respDoctor = document.getElementById('admin-msg-doctor');
-    const respCategory = document.getElementById('admin-msg-category');
-    const respBacks = document.getElementById('admin-msg-backs');
+    const adminNameInput = document.getElementById('admin-bot-name'); const adminStatusInput = document.getElementById('admin-bot-status');
+    const adminIconUpload = document.getElementById('admin-icon-upload'); const adminIconRemove = document.getElementById('admin-icon-remove');
+    const adminBgUpload = document.getElementById('admin-bg-upload'); const adminBgRemove = document.getElementById('admin-bg-remove');
+    const adminAddInput = document.getElementById('admin-add-input'); const adminListContainer = document.getElementById('admin-list-container');
+    const respWelcome = document.getElementById('admin-msg-welcome'); const respSubject = document.getElementById('admin-msg-subject');
+    const respDoctor = document.getElementById('admin-msg-doctor'); const respCategory = document.getElementById('admin-msg-category'); const respBacks = document.getElementById('admin-msg-backs');
 
     function addMessage(content, sender, isHtml = false) {
-        const msgDiv = document.createElement('div');
-        msgDiv.classList.add('message', sender === 'bot' ? 'msg-bot' : 'msg-user');
+        const msgDiv = document.createElement('div'); msgDiv.classList.add('message', sender === 'bot' ? 'msg-bot' : 'msg-user');
         if (isHtml) msgDiv.innerHTML = content; else msgDiv.innerText = content;
-        
-        // Handle English/Arabic text alignment inside bubbles
         const textContent = msgDiv.innerText || "";
-        if (sender === 'bot') {
-           // Bot usually sends Arabic in this context, so default to RTL
-           // But let's be smart: If it contains mostly English chars, force LTR
-           const isEnglishText = /^[a-zA-Z0-9\s.,!?:]/.test(textContent);
-           if (isEnglishText) {
-               msgDiv.setAttribute('lang', 'en');
-           } else {
-               msgDiv.removeAttribute('lang'); // Inherits RTL
-           }
-        } else {
-            // User inputs buttons (Arabic) or Text (Arabic). Default RTL.
-            // If user types English (unlikely but possible), it's fine as RTL usually handles English ok.
-           msgDiv.removeAttribute('lang');
-        }
-
-        if (isHtml) {
-           const contentContainer = document.createElement('div');
-           contentContainer.innerHTML = content;
-           Array.from(contentContainer.children).forEach(child => child.style.margin = "0");
-           msgDiv.innerHTML = '';
-           msgDiv.appendChild(contentContainer);
-        }
-
-        const timeSpan = document.createElement('span');
-        timeSpan.classList.add('timestamp');
-        timeSpan.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        msgDiv.appendChild(timeSpan);
-        chatArea.appendChild(msgDiv);
-        scrollToBottom();
+        if (sender === 'bot') { const isEnglishText = /^[a-zA-Z0-9\s.,!?:]/.test(textContent); if (isEnglishText) msgDiv.setAttribute('lang', 'en'); else msgDiv.removeAttribute('lang'); }
+        else { msgDiv.removeAttribute('lang'); }
+        if (isHtml) { const contentContainer = document.createElement('div'); contentContainer.innerHTML = content; Array.from(contentContainer.children).forEach(child => child.style.margin = "0"); msgDiv.innerHTML = ''; msgDiv.appendChild(contentContainer); }
+        const timeSpan = document.createElement('span'); timeSpan.classList.add('timestamp'); timeSpan.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); msgDiv.appendChild(timeSpan); chatArea.appendChild(msgDiv); scrollToBottom();
     }
-
     function scrollToBottom() { setTimeout(() => { chatArea.scrollTop = chatArea.scrollHeight; }, 0); }
-    function botReply(text, isHtml = false) {
-        typingIndicator.classList.add('active'); scrollToBottom();
-        setTimeout(() => { typingIndicator.classList.remove('active'); addMessage(text, 'bot', isHtml); }, CONFIG.typingSpeed);
-    }
-
-    function createButton(text, onClick, isBack = false) {
-        const btn = document.createElement('div');
-        btn.classList.add('keyboard-btn'); if(isBack) btn.classList.add('back-btn');
-        btn.innerText = text; btn.onclick = onClick; return btn;
-    }
-
+    function botReply(text, isHtml = false) { typingIndicator.classList.add('active'); scrollToBottom(); setTimeout(() => { typingIndicator.classList.remove('active'); addMessage(text, 'bot', isHtml); }, CONFIG.typingSpeed); }
+    function createButton(text, onClick, isBack = false) { const btn = document.createElement('div'); btn.classList.add('keyboard-btn'); if(isBack) btn.classList.add('back-btn'); btn.innerText = text; btn.onclick = onClick; return btn; }
     menuBtn.addEventListener('click', (e) => { e.stopPropagation(); menuDropdown.classList.toggle('active'); });
     document.addEventListener('click', (e) => { if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active'); });
-
-    window.clearChat = function() {
-        chatArea.innerHTML = ''; 
-        resetStateVariables(); menuDropdown.classList.remove('active');
-        setTimeout(() => { botReply("Chat cleared. 🗑️<br>Welcome back! Choose a subject 👇", true); }, 100);
-    }
-    window.resetBot = function() {
-        resetStateVariables(); menuDropdown.classList.remove('active');
-        addMessage("🏠 Reset Bot", 'user'); botReply("Bot restarted. Please select a subject 👇", true);
-    }
-
+    window.clearChat = function() { chatArea.innerHTML = ''; resetStateVariables(); menuDropdown.classList.remove('active'); setTimeout(() => { botReply("Chat cleared. 🗑️<br>Welcome back! Choose a subject 👇", true); }, 100); }
+    window.resetBot = function() { resetStateVariables(); menuDropdown.classList.remove('active'); addMessage("🏠 Reset Bot", 'user'); botReply("Bot restarted. Please select a subject 👇", true); }
     window.enableNotifications = function() {
-        menuDropdown.classList.remove('active');
-        if (!('Notification' in window)) {
-            showToast("Browser doesn't support notifications.", "error");
-            return;
-        }
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                showToast("✅ Notifications Enabled", "success");
-                new Notification("Enabled", { body: "You will now receive updates from doctors." });
-            } else {
-                showToast("❌ Permission Denied", "error");
-            }
-        });
+        menuDropdown.classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; }
+        Notification.requestPermission().then(permission => { if (permission === 'granted') { showToast("✅ Notifications Enabled", "success"); new Notification("Enabled", { body: "You will now receive updates." }); } else { showToast("❌ Permission Denied", "error"); } });
     };
-
     window.forceReload = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
-        showConfirmModal("Force Reload", "This will update bot entirely to apply latest notification system. Continue?", (confirm) => {
-            if(confirm) {
-                if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-                if ('serviceWorker' in navigator) { 
-                    navigator.serviceWorker.getRegistrations().then(function(registrations) { 
-                        for(let registration of registrations) registration.unregister(); 
-                    });
-                }
-                window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime();
-            }
-        });
+        showConfirmModal("Force Reload", "Update bot entirely?", (confirm) => { if(confirm) { if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); } if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function(registrations) { for(let registration of registrations) registration.unregister(); }); } window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime(); } });
     };
 
     // ============================================================
-    // === 9. ADMIN PANEL LOGIC ===
+    // === 9. ADMIN PANEL & TAB LOGIC (UPDATED) ===
     // ============================================================
     let adminNavStack = [];
+    let currentAdminTab = 0; // 0: Settings, 1: Notif, 2: Broadcast, 3: Data
 
     function openAdminPanel() {
-        stopSync();
-        adminNameInput.value = CONFIG.botName; adminStatusInput.value = CONFIG.botStatus;
-        
-        adminIconUpload.value = ""; 
-        if(CONFIG.botImage) adminIconRemove.style.display = 'inline-block'; else adminIconRemove.style.display = 'none';
-
-        adminBgUpload.value = ""; 
-        if(CONFIG.chatBgImage) adminBgRemove.style.display = 'inline-block'; else adminBgRemove.style.display = 'none';
-
-        respWelcome.value = CONFIG.welcomeMessage; respSubject.value = CONFIG.subjectPrompt; 
-        respDoctor.value = CONFIG.doctorPrompt; respCategory.value = CONFIG.categoryPrompt;
-        const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain];
-        respBacks.value = backs.join(' | ');
-
-        const ownerSection = document.getElementById('owner-admin-section');
-        if (auth && auth.currentUser && auth.currentUser.email === OWNER_EMAIL) {
-            ownerSection.style.display = 'block'; renderAdminList();
-        } else { ownerSection.style.display = 'none'; }
-
-        if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
-            document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title;
-            document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body;
-        } else {
-            document.getElementById('broadcast-title').value = "";
-            document.getElementById('broadcast-body').value = "";
-        }
-
-        window.populateNotifSubjects(); 
-        
-        renderAdminDataView(); 
+        stopSync(); adminNameInput.value = CONFIG.botName; adminStatusInput.value = CONFIG.botStatus;
+        adminIconUpload.value = ""; if(CONFIG.botImage) adminIconRemove.style.display = 'inline-block'; else adminIconRemove.style.display = 'none';
+        adminBgUpload.value = ""; if(CONFIG.chatBgImage) adminBgRemove.style.display = 'inline-block'; else adminBgRemove.style.display = 'none';
+        respWelcome.value = CONFIG.welcomeMessage; respSubject.value = CONFIG.subjectPrompt; respDoctor.value = CONFIG.doctorPrompt; respCategory.value = CONFIG.categoryPrompt;
+        const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; respBacks.value = backs.join(' | ');
+        const ownerSection = document.getElementById('owner-admin-section'); if (auth && auth.currentUser && auth.currentUser.email === OWNER_EMAIL) { ownerSection.style.display = 'block'; renderAdminList(); } else { ownerSection.style.display = 'none'; }
+        if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; }
+        window.populateNotifSubjects(); renderAdminDataView();
         document.getElementById('admin-modal').classList.add('active');
+        window.switchAdminTab(0); // Reset to first tab
     }
 
-    window.closeAdminPanel = function() { 
-        document.getElementById('admin-modal').classList.remove('active'); 
-        startSync(); fetchConfig();
-    }
+    window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
 
-    window.switchTab = function(tabName) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    // --- NEW SLIDING TAB LOGIC ---
+    window.switchAdminTab = function(index) {
+        if (index === currentAdminTab) return;
+        if(index < 0 || index > 3) return;
+
+        const direction = index > currentAdminTab ? 'left' : 'right'; // 'left' means content moves left (new from right), 'right' means content moves right (new from left)
         
-        if(tabName === 'settings') {
-            document.querySelector('button[onclick="window.switchTab(\'settings\')"]').classList.add('active');
-            document.getElementById('tab-settings').classList.add('active');
-        } else if (tabName === 'notifications') {
-            document.querySelector('button[onclick="window.switchTab(\'notifications\')"]').classList.add('active');
-            document.getElementById('tab-notifications').classList.add('active');
-            window.populateNotifSubjects();
-        } else if (tabName === 'broadcast') {
-            document.querySelector('button[onclick="window.switchTab(\'broadcast\')"]').classList.add('active');
-            document.getElementById('tab-broadcast').classList.add('active');
-        } else {
-            document.querySelector('button[onclick="window.switchTab(\'data\')"]').classList.add('active');
-            document.getElementById('tab-data').classList.add('active');
-            renderAdminDataView();
-        }
-    }
+        const currentTabId = `tab-${['settings','notifications','broadcast','data'][currentAdminTab]}`;
+        const nextTabId = `tab-${['settings','notifications','broadcast','data'][index]}`;
+        
+        const currentEl = document.getElementById(currentTabId);
+        const nextEl = document.getElementById(nextTabId);
 
-    adminIconUpload.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(file) { compressImage(file, (base64String) => { CONFIG.botImage = base64String; applyConfig(CONFIG); adminIconRemove.style.display = 'inline-block'; }); }
-    });
+        // Update Nav Buttons
+        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`nav-${index}`).classList.add('active');
+
+        // 1. Setup Next Element (Off-screen)
+        nextEl.classList.remove('active'); // Remove active class to reset
+        nextEl.style.display = 'block';
+        nextEl.style.opacity = '0';
+        nextEl.style.transition = 'none';
+        nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
+
+        // Force Reflow
+        void nextEl.offsetWidth;
+
+        // 2. Animate
+        const duration = 300; // ms
+
+        currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
+        nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
+
+        // Current goes away
+        currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
+        currentEl.style.opacity = '0';
+
+        // Next comes in
+        nextEl.style.transform = 'translateX(0)';
+        nextEl.style.opacity = '1';
+
+        // 3. Cleanup
+        setTimeout(() => {
+            currentEl.style.display = 'none';
+            currentEl.classList.remove('active'); // Ensure clean state
+            
+            nextEl.classList.add('active');
+            // Reset transforms for hidden state logic (optional but good practice)
+            // currentEl.style.transform = ''; // Not strictly needed since we set it on entry
+            
+            currentAdminTab = index;
+        }, duration);
+    };
+
+    adminIconUpload.addEventListener('change', function(e) { const file = e.target.files[0]; if(file) { compressImage(file, (base64String) => { CONFIG.botImage = base64String; applyConfig(CONFIG); adminIconRemove.style.display = 'inline-block'; }); } });
     window.removeBotIcon = function() { CONFIG.botImage = ""; applyConfig(CONFIG); adminIconUpload.value = ""; adminIconRemove.style.display = 'none'; };
-
-    adminBgUpload.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(file) { compressImage(file, (base64String) => { CONFIG.chatBgImage = base64String; applyConfig(CONFIG); adminBgRemove.style.display = 'inline-block'; }); }
-    });
+    adminBgUpload.addEventListener('change', function(e) { const file = e.target.files[0]; if(file) { compressImage(file, (base64String) => { CONFIG.chatBgImage = base64String; applyConfig(CONFIG); adminBgRemove.style.display = 'inline-block'; }); } });
     window.removeChatBg = function() { CONFIG.chatBgImage = ""; applyConfig(CONFIG); adminBgUpload.value = ""; adminBgRemove.style.display = 'none'; };
-
     function renderAdminList() {
-        adminListContainer.innerHTML = '';
-        if (!CONFIG.admins || CONFIG.admins.length === 0) { adminListContainer.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; }
+        adminListContainer.innerHTML = ''; if (!CONFIG.admins || CONFIG.admins.length === 0) { adminListContainer.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; }
         CONFIG.admins.forEach((adminEmail, index) => {
-            const div = document.createElement('div'); div.className = 'data-item';
-            const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail;
-            const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index);
-            div.appendChild(nameSpan); div.appendChild(removeBtn); adminListContainer.appendChild(div);
+            const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); adminListContainer.appendChild(div);
         });
     }
-    window.addAdmin = function() {
-        const email = adminAddInput.value.trim();
-        if (email && (!CONFIG.admins.includes(email))) { 
-            if (!email.includes('@')) return showToast("Please enter a valid email", "error");
-            CONFIG.admins.push(email); adminAddInput.value = ''; renderAdminList(); 
-        } else if (email) showToast("Email already added", "error");
-    }
-    window.removeAdmin = function(index) { 
-        if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ Only Owner can remove admins.", "error"); return; }
-        showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => {
-            if(confirmed) {
-                CONFIG.admins.splice(index, 1); renderAdminList();
-            }
-        });
-    }
-
+    window.addAdmin = function() { const email = adminAddInput.value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); adminAddInput.value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
+    window.removeAdmin = function(index) { if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ Only Owner can remove admins.", "error"); return; } showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index, 1); renderAdminList(); } }); }
     window.saveAdminSettings = function() {
         const backsArr = respBacks.value.split('|').map(s => s.trim());
         const newConfig = {
-            botName: adminNameInput.value.trim() || defaultConfig.botName,
-            botText: adminStatusInput.value.trim() || defaultConfig.botStatus,
-            botImage: CONFIG.botImage,
-            chatBgImage: CONFIG.chatBgImage,
-            welcomeMessage: respWelcome.value, subjectPrompt: respSubject.value,
-            doctorPrompt: respDoctor.value, categoryPrompt: respCategory.value,
-            backSubject: backsArr[0] || CONFIG.backSubject,
-            backDoctor: backsArr[1] || CONFIG.backDoctor,
-            backMain: backsArr[2] || CONFIG.backMain,
-            admins: CONFIG.admins,
-            generalBroadcast: CONFIG.generalBroadcast,
-            latestNotificationUpdate: CONFIG.latestNotificationUpdate,
-            recentUpdates: CONFIG.recentUpdates,
-            database: database 
+            botName: adminNameInput.value.trim() || defaultConfig.botName, botText: adminStatusInput.value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, chatBgImage: CONFIG.chatBgImage, welcomeMessage: respWelcome.value, subjectPrompt: respSubject.value, doctorPrompt: respDoctor.value, categoryPrompt: respCategory.value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database 
         };
         CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
     }
 
-    // === DATA MANAGEMENT LOGIC ===
+    // === DATA MANAGEMENT ===
     function renderAdminDataView() {
-        const pathContainer = document.getElementById('admin-data-path');
-        const listContainer = document.getElementById('admin-list-items');
-        const addBoxNameInput = document.getElementById('new-item-name');
-        const addBoxLinkGroup = document.getElementById('file-link-input-group');
-        const addBoxLinkInput = document.getElementById('new-item-link');
-
-        listContainer.innerHTML = ''; addBoxNameInput.value = ''; addBoxLinkInput.value = '';
-        addBoxNameInput.placeholder = "Name...";
-
+        const pathContainer = document.getElementById('admin-data-path'); const listContainer = document.getElementById('admin-list-items'); const addBoxNameInput = document.getElementById('new-item-name'); const addBoxLinkGroup = document.getElementById('file-link-input-group'); const addBoxLinkInput = document.getElementById('new-item-link');
+        listContainer.innerHTML = ''; addBoxNameInput.value = ''; addBoxLinkInput.value = ''; addBoxNameInput.placeholder = "Name...";
         let pathHTML = `<span onclick="window.adminNavTo(-1)">Home</span>`;
         if (adminNavStack.length > 0) pathHTML += ` > <span onclick="window.adminNavTo(0)">${adminNavStack[0]}</span>`;
         if (adminNavStack.length > 1) pathHTML += ` > <span onclick="window.adminNavTo(1)">${adminNavStack[1]}</span>`;
-        if (adminNavStack.length > 2) pathHTML += ` > <span>${adminNavStack[2]}</span>`;
-        pathContainer.innerHTML = pathHTML;
-
-        let level = adminNavStack.length;
-        let dataList = [];
-        let isNotificationsFolder = false;
-        if (level === 3 && adminNavStack[2] === "🔔 Notifications") {
-            isNotificationsFolder = true;
-        }
-
-        if (level === 0) {
-            dataList = Object.keys(database);
-            addBoxLinkGroup.style.display = 'none';
-        } else if (level === 1) {
-            const subName = adminNavStack[0];
-            if (database[subName] && database[subName].doctors) dataList = database[subName].doctors;
-            addBoxLinkGroup.style.display = 'none';
-        } else if (level === 2) {
-            const subName = adminNavStack[0]; const docName = adminNavStack[1];
-            if (database[subName] && database[subName][docName] && database[subName][docName].sections) dataList = database[subName][docName].sections;
-            addBoxLinkGroup.style.display = 'none';
-        } else if (level === 3) {
-            const subName = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2];
-            if (database[subName] && database[subName][docName] && database[subName][docName][secName]) dataList = database[subName][docName][secName];
-            if (!isNotificationsFolder) {
-                addBoxLinkGroup.style.display = 'block'; 
-                addBoxNameInput.placeholder = "File Name...";
-            } else {
-                addBoxLinkGroup.style.display = 'none';
-                addBoxNameInput.placeholder = "Notification Text...";
-            }
-        }
-
+        if (adminNavStack.length > 2) pathHTML += ` > <span>${adminNavStack[2]}</span>`; pathContainer.innerHTML = pathHTML;
+        let level = adminNavStack.length; let dataList = []; let isNotificationsFolder = false;
+        if (level === 3 && adminNavStack[2] === "🔔 Notifications") isNotificationsFolder = true;
+        if (level === 0) { dataList = Object.keys(database); addBoxLinkGroup.style.display = 'none'; } 
+        else if (level === 1) { const subName = adminNavStack[0]; if (database[subName] && database[subName].doctors) dataList = database[subName].doctors; addBoxLinkGroup.style.display = 'none'; } 
+        else if (level === 2) { const subName = adminNavStack[0]; const docName = adminNavStack[1]; if (database[subName] && database[subName][docName] && database[subName][docName].sections) dataList = database[subName][docName].sections; addBoxLinkGroup.style.display = 'none'; } 
+        else if (level === 3) { const subName = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2]; if (database[subName] && database[subName][docName] && database[subName][docName][secName]) dataList = database[subName][docName][secName]; if (!isNotificationsFolder) { addBoxLinkGroup.style.display = 'block'; addBoxNameInput.placeholder = "File Name..."; } else { addBoxLinkGroup.style.display = 'none'; addBoxNameInput.placeholder = "Notification Text..."; } }
         if (dataList.length === 0) { listContainer.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No items found</div>'; }
         else {
             dataList.forEach((item, index) => {
-                const itemName = (typeof item === 'object') ? item.name : item;
-                const div = document.createElement('div'); div.className = 'data-item';
-                const nameSpan = document.createElement('div'); nameSpan.className = 'data-name'; nameSpan.innerText = itemName;
-                if (level < 3) nameSpan.onclick = () => { adminNavStack.push(itemName); renderAdminDataView(); };
-                const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions';
-                const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; 
-                delBtn.onclick = () => deleteAdminDataItem(index);
-                actionsDiv.appendChild(delBtn);
-                if (isNotificationsFolder && (typeof item === 'object') && item.id) {
-                    const editBtn = document.createElement('button'); editBtn.className = 'btn-sm btn-edit'; editBtn.innerText = '✏️';
-                    editBtn.onclick = () => editNotification(index);
-                    actionsDiv.appendChild(editBtn);
-                }
-                div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div);
+                const itemName = (typeof item === 'object') ? item.name : item; const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('div'); nameSpan.className = 'data-name'; nameSpan.innerText = itemName; if (level < 3) nameSpan.onclick = () => { adminNavStack.push(itemName); renderAdminDataView(); }; const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions'; const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; delBtn.onclick = () => deleteAdminDataItem(index); actionsDiv.appendChild(delBtn); if (isNotificationsFolder && (typeof item === 'object') && item.id) { const editBtn = document.createElement('button'); editBtn.className = 'btn-sm btn-edit'; editBtn.innerText = '✏️'; editBtn.onclick = () => editNotification(index); actionsDiv.appendChild(editBtn); } div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div);
             });
         }
     }
-
-    window.adminNavTo = function(index) {
-        if (index === -1) adminNavStack = []; else adminNavStack = adminNavStack.slice(0, index + 1);
-        renderAdminDataView();
-    }
-
+    window.adminNavTo = function(index) { if (index === -1) adminNavStack = []; else adminNavStack = adminNavStack.slice(0, index + 1); renderAdminDataView(); }
     window.editNotification = function(index) {
-        const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2];
-        const list = database[sub][doc][sec];
-        const item = list[index];
-        
-        showInputModal("Edit Notification", "New Text:", (newText) => {
-            if (newText !== null && newText.trim() !== "") {
-                item.name = newText.trim();
-                item.date = new Date().toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute:'2-digit' }) + " (Edited)";
-                renderAdminDataView();
-                showToast("Edited. Please Save.", "info");
-            }
-        });
+        const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; const list = database[sub][doc][sec]; const item = list[index];
+        showInputModal("Edit Notification", "New Text:", (newText) => { if (newText !== null && newText.trim() !== "") { item.name = newText.trim(); item.date = new Date().toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute:'2-digit' }) + " (Edited)"; renderAdminDataView(); showToast("Edited. Save to apply.", "info"); } });
     }
-
     window.addAdminDataItem = function() {
-        const nameInput = document.getElementById('new-item-name'); const linkInput = document.getElementById('new-item-link');
-        const name = nameInput.value.trim(); let level = adminNavStack.length;
+        const nameInput = document.getElementById('new-item-name'); const linkInput = document.getElementById('new-item-link'); const name = nameInput.value.trim(); let level = adminNavStack.length;
         if (!name) return showToast("Please enter a name", "error");
-        if (level === 0) { 
-            if (database[name]) return showToast("Subject already exists", "error"); 
-            database[name] = { doctors: [] }; 
-        } 
-        else if (level === 1) {
-            const sub = adminNavStack[0]; 
-            if (!database[sub]) database[sub] = { doctors: [] };
-            if (database[sub].doctors.includes(name)) return showToast("Doctor already exists", "error");
-            database[sub].doctors.push(name); 
-            database[sub][name] = { sections: ["📚 Lectures", "🔔 Notifications"] }; 
-            database[sub][name]["📚 Lectures"] = [];
-            database[sub][name]["🔔 Notifications"] = [];
-        } 
-        else if (level === 2) {
-            const sub = adminNavStack[0]; const doc = adminNavStack[1];
-            if (!database[sub][doc]) database[sub][doc] = { sections: [] };
-            if (database[sub][doc].sections.includes(name)) return showToast("Section already exists", "error");
-            database[sub][doc].sections.push(name); 
-            database[sub][doc][name] = []; 
-        } 
-        else if (level === 3) {
-            const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2];
-            if (sec === "🔔 Notifications") {
-                database[sub][doc][sec].unshift({
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2),
-                    name: name,
-                    date: new Date().toLocaleString(),
-                    type: "notif"
-                });
-            } else {
-                const link = linkInput.value.trim() || "#";
-                if (!database[sub][doc][sec]) database[sub][doc][sec] = [];
-                database[sub][doc][sec].push({ name: name, link: link });
-            }
-        }
+        if (level === 0) { if (database[name]) return showToast("Subject exists", "error"); database[name] = { doctors: [] }; } 
+        else if (level === 1) { const sub = adminNavStack[0]; if (!database[sub]) database[sub] = { doctors: [] }; if (database[sub].doctors.includes(name)) return showToast("Doctor exists", "error"); database[sub].doctors.push(name); database[sub][name] = { sections: ["📚 Lectures", "🔔 Notifications"] }; database[sub][name]["📚 Lectures"] = []; database[sub][name]["🔔 Notifications"] = []; } 
+        else if (level === 2) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; if (!database[sub][doc]) database[sub][doc] = { sections: [] }; if (database[sub][doc].sections.includes(name)) return showToast("Section exists", "error"); database[sub][doc].sections.push(name); database[sub][doc][name] = []; } 
+        else if (level === 3) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; if (sec === "🔔 Notifications") { database[sub][doc][sec].unshift({ id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: name, date: new Date().toLocaleString(), type: "notif" }); } else { const link = linkInput.value.trim() || "#"; if (!database[sub][doc][sec]) database[sub][doc][sec] = []; database[sub][doc][sec].push({ name: name, link: link }); } }
         renderAdminDataView();
     }
-
     function deleteAdminDataItem(index) {
         let level = adminNavStack.length;
-        showConfirmModal("Confirm Delete", "Are you sure you want to delete this?", (confirmed) => {
+        showConfirmModal("Confirm Delete", "Are you sure?", (confirmed) => {
             if(!confirmed) return;
-            if (level === 0) { 
-                const subKeys = Object.keys(database); 
-                delete database[subKeys[index]]; 
-            } 
-            else if (level === 1) { 
-                const sub = adminNavStack[0]; 
-                const docName = database[sub].doctors[index];
-                database[sub].doctors.splice(index, 1); 
-                delete database[sub][docName]; 
-            }
-            else if (level === 2) { 
-                const sub = adminNavStack[0]; const doc = adminNavStack[1]; 
-                const secName = database[sub][doc].sections[index];
-                database[sub][doc].sections.splice(index, 1); 
-                delete database[sub][doc][secName]; 
-            }
-            else if (level === 3) { 
-                const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; 
-                database[sub][doc][sec].splice(index, 1); 
-            }
+            if (level === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } 
+            else if (level === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; }
+            else if (level === 2) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
+            else if (level === 3) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; database[sub][doc][sec].splice(index, 1); }
             renderAdminDataView();
         });
     }
@@ -1783,95 +1091,45 @@
     // === 10. KEYBOARD RENDERER ===
     // ============================================================
     function resetStateVariables() { currentSubject = null; currentDoctor = null; currentCategory = null; renderKeyboard(); }
-
     function renderKeyboard() {
-        keyboardArea.innerHTML = '';
-        const subjects = Object.keys(database);
-        if (!currentSubject) { 
-            subjects.forEach(sub => { keyboardArea.appendChild(createButton(sub, () => handleSubjectClick(sub))); }); 
-            return; 
-        }
+        keyboardArea.innerHTML = ''; const subjects = Object.keys(database);
+        if (!currentSubject) { subjects.forEach(sub => { keyboardArea.appendChild(createButton(sub, () => handleSubjectClick(sub))); }); return; }
         keyboardArea.appendChild(createButton("🔙 Back", goBack, true));
-        if (currentSubject && !currentDoctor) {
-            const subjectDoctors = database[currentSubject].doctors;
-            subjectDoctors.forEach(doc => { keyboardArea.appendChild(createButton(doc, () => handleDoctorClick(doc))); });
-        } else if (currentSubject && currentDoctor && !currentCategory) {
-            const doctorSections = database[currentSubject][currentDoctor].sections;
-            doctorSections.forEach(cat => { keyboardArea.appendChild(createButton(cat, () => handleCategoryClick(cat))); });
-        } else if (currentSubject && currentDoctor && currentCategory) {
-            const fileList = database[currentSubject][currentDoctor][currentCategory] || [];
-            if (fileList.length > 0) { fileList.forEach(file => { keyboardArea.appendChild(createButton(file.name, () => handleFileClick(file))); }); } else {
-                const emptyBtn = createButton("❌ No files available", () => {}); emptyBtn.style.opacity = "0.5"; emptyBtn.style.cursor = "default"; keyboardArea.appendChild(emptyBtn);
-            }
-        }
+        if (currentSubject && !currentDoctor) { const subjectDoctors = database[currentSubject].doctors; subjectDoctors.forEach(doc => { keyboardArea.appendChild(createButton(doc, () => handleDoctorClick(doc))); }); } 
+        else if (currentSubject && currentDoctor && !currentCategory) { const doctorSections = database[currentSubject][currentDoctor].sections; doctorSections.forEach(cat => { keyboardArea.appendChild(createButton(cat, () => handleCategoryClick(cat))); }); } 
+        else if (currentSubject && currentDoctor && currentCategory) { const fileList = database[currentSubject][currentDoctor][currentCategory] || []; if (fileList.length > 0) { fileList.forEach(file => { keyboardArea.appendChild(createButton(file.name, () => handleFileClick(file))); }); } else { const emptyBtn = createButton("❌ No files available", () => {}); emptyBtn.style.opacity = "0.5"; emptyBtn.style.cursor = "default"; keyboardArea.appendChild(emptyBtn); } }
     }
-
     function handleSubjectClick(subjectName) { addMessage(subjectName, 'user'); currentSubject = subjectName; currentDoctor = null; currentCategory = null; const msg = replacePlaceholders(CONFIG.subjectPrompt, subjectName); botReply(msg, true); renderKeyboard(); }
     function handleDoctorClick(doctorName) { addMessage(doctorName, 'user'); currentDoctor = doctorName; currentCategory = null; const msg = replacePlaceholders(CONFIG.doctorPrompt, doctorName); botReply(msg, true); renderKeyboard(); }
     function handleCategoryClick(categoryName) { addMessage(categoryName, 'user'); currentCategory = categoryName; const msg = replacePlaceholders(CONFIG.categoryPrompt, categoryName); botReply(msg, true); renderKeyboard(); }
-
     function handleFileClick(fileObj) {
         const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"));
-
         if (isNotification) {
             const actualMsg = fileObj.type === "notif" ? fileObj.name : fileObj.link.replace("content:", "");
-            const htmlContent = `
-                <div class="notif-display">
-                    <div class="notif-header">📢 Message from Doctor • ${currentDoctor} (${currentSubject})</div>
-                    <div>${actualMsg}</div>
-                </div>
-            `;
+            const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${currentDoctor} (${currentSubject})</div><div>${actualMsg}</div></div>`;
             addMessage(htmlContent, 'bot', true);
         } else {
             addMessage(`Open: ${fileObj.name}`, 'user');
             setTimeout(() => {
-                if (!fileObj.link || fileObj.link.startsWith("javascript:") || fileObj.link === "#") { 
-                    const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
-                    addMessage(htmlContent, 'bot', true); 
-                } else { 
-                    const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><a href="${fileObj.link}" target="_blank" class="file-link-btn"><span>📂</span><span>Download / Open File</span></a>`; 
-                    addMessage(htmlContent, 'bot', true); 
-                }
+                if (!fileObj.link || fileObj.link.startsWith("javascript:") || fileObj.link === "#") { const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; addMessage(htmlContent, 'bot', true); } 
+                else { const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><a href="${fileObj.link}" target="_blank" class="file-link-btn"><span>📂</span><span>Download / Open File</span></a>`; addMessage(htmlContent, 'bot', true); }
             }, 800);
         }
     }
-    
     function goBack() {
         addMessage("🔙 Back", 'user');
         if (currentCategory) { currentCategory = null; const msg = replacePlaceholders(CONFIG.backDoctor, currentDoctor); botReply(msg, true); } 
         else if (currentDoctor) { currentDoctor = null; const msg = replacePlaceholders(CONFIG.backSubject, currentSubject); botReply(msg, true); } 
-        else if (currentSubject) { currentSubject = null; botReply(CONFIG.backMain, true); }
-        renderKeyboard();
+        else if (currentSubject) { currentSubject = null; botReply(CONFIG.backMain, true); } renderKeyboard();
     }
 
     // --- Initialization ---
     window.onload = () => {
         if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-        
-        if ('serviceWorker' in navigator) { 
-            navigator.serviceWorker.register(swUrl).then(reg => {
-                if (reg.waiting) {
-                    reg.waiting.postMessage({type: 'SKIP_WAITING'});
-                }
-                reg.addEventListener('updatefound', () => {
-                    const newWorker = reg.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            newWorker.postMessage({type: 'SKIP_WAITING'});
-                        }
-                    });
-                });
-            }).catch(err => console.error("SW Fail:", err)); 
-        }
-        
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).then(reg => { if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'}); reg.addEventListener('updatefound', () => { const newWorker = reg.installing; newWorker.addEventListener('statechange', () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) newWorker.postMessage({type: 'SKIP_WAITING'}); }); }); }).catch(err => console.error("SW Fail:", err)); }
         initFirebaseAuth(); fetchConfig(); startSync();
-        setTimeout(() => { 
-            const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); 
-            botReply(welcomeMsg, true); 
-            renderKeyboard(); 
-        }, 500);
+        setTimeout(() => { const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); }, 500);
     };
-
 </script>
 </body>
 </html>
