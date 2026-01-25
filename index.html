@@ -468,7 +468,7 @@
             <div class="install-text">
                 <h4>iPhone (Safari)</h4>
                 <p>Tap <b>Share</b> button (square with arrow) → Scroll down → Tap <b>"Add to Home Screen"</b>.</p>
-                <p style="color:#f87171; font-size:12px; margin-top:5px;">⚠️ <b>Note:</b> iOS is strict. Notifications might only appear when you open the app or wake up the screen.</p>
+                <p style="color:#f87171; font-size:12px; margin-top:5px;">⚠️ <b>Note:</b> iOS is strict. Notifications might only appear when you open app or wake up the screen.</p>
             </div>
         </div>
 
@@ -726,87 +726,6 @@
     });
 
     // ============================================================
-    // === 0. SERVICE WORKER CODE (IMPROVED) ===
-    // ============================================================
-    const swCode = `
-        const CACHE_VERSION = 'v16'; 
-        const BIN_ID = "696e77bfae596e708fe71e9d";
-        const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-        let lastNotifTime = 0;
-        
-        self.addEventListener('install', event => { self.skipWaiting(); });
-        self.addEventListener('activate', event => { event.waitUntil(self.clients.claim()); });
-        
-        self.addEventListener('message', event => {
-            const data = event.data;
-            if (data.type === 'SYNCED_NOTIF_DOCTOR') {
-                if (Notification.permission === 'granted') {
-                    self.registration.showNotification('📢 Messages from Doctors', { body: data.body, icon: data.icon, requireInteraction: true, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
-                }
-            }
-            if (data.type === 'TEST_NOTIF') {
-                if (Notification.permission === 'granted') {
-                    self.registration.showNotification('🧪 Test Successful', { body: 'Notifications are working.', icon: data.icon, vibrate: [200, 100, 200] });
-                }
-            }
-            if (data.type === 'SET_LAST_NOTIF_TIME') {
-                lastNotifTime = data.time;
-            }
-        });
-
-        function checkNotifications() {
-            const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
-            fetch(url, { cache: 'no-store', method: 'GET', headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' } })
-            .then(res => {
-                if (!res.ok) throw new Error("Network response was not ok");
-                return res.json();
-            })
-            .then(data => {
-                console.log("[SW] Fetched Data. Server Time:", data.latestNotificationUpdate, "Local Time:", lastNotifTime);
-                
-                if (data && data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
-                    console.log("[SW] New Notification Detected!");
-                    lastNotifTime = data.latestNotificationUpdate;
-                    if (Notification.permission === 'granted') {
-                        self.registration.showNotification('📢 Messages from Doctors', { 
-                            body: 'Tap to open app and read details.', 
-                            icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', 
-                            requireInteraction: true, 
-                            tag: 'doctor-notification', 
-                            silent: false, 
-                            vibrate: [200, 100, 200] 
-                        });
-                    }
-                }
-            })
-            .catch(err => {
-                console.error("[SW] Fetch Error:", err);
-                // Don't stop the loop on error
-            })
-            .finally(() => {
-                // Recursive timeout to ensure continuous polling regardless of errors
-                setTimeout(checkNotifications, 15000); 
-            });
-        }
-        
-        self.addEventListener('notificationclick', event => {
-            event.notification.close();
-            event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-                for (const client of clientList) { if (client.url === self.location.href && 'focus' in client) return client.focus(); }
-                if (clients.openWindow) return clients.openWindow(self.location.href);
-            }));
-        });
-        
-        // Start Loop
-        self.addEventListener('activate', () => { 
-            console.log("[SW] Activated. Starting sync loop."); 
-            checkNotifications(); 
-        });
-    `;
-    const swBlob = new Blob([swCode], {type: 'application/javascript'});
-    const swUrl = URL.createObjectURL(swBlob);
-
-    // ============================================================
     // === 1. FIREBASE CONFIGURATION ===
     // ============================================================
     const firebaseConfig = {
@@ -827,7 +746,7 @@
     const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
     const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
     const defaultDatabase = {
-        "Physics": { "doctors": ["Dr. Ahmed", "Dr. Mahmoud"], "Dr. Ahmed": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [{ name: "Chapter 1.pdf", link: "#" }], "🔔 Notifications": [] }, "Dr. Mahmoud": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] } },
+        "Physics": { "doctors": ["Dr. Ahmed", "Dr. Mahmoud"], "Dr. Ahmed": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [{ name: "Chapter1.pdf", link: "#" }], "🔔 Notifications": [] }, "Dr. Mahmoud": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] } },
         "Chemistry": { "doctors": ["Dr. Saeed", "Dr. Mona"], "Dr. Saeed": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] }, "Dr. Mona": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] } },
         "Mathematics": { "doctors": ["Dr. Kamel", "Dr. Samy"], "Dr. Kamel": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] }, "Dr. Samy": { "sections": ["📚 Lectures", "🔔 Notifications"], "📚 Lectures": [], "🔔 Notifications": [] } }
     };
@@ -912,11 +831,6 @@
             if (data.database) CONFIG.database = { ...data.database, ...defaultDatabase }; else CONFIG.database = defaultDatabase;
             applyConfig(CONFIG); 
             
-            // Notify SW of current time to prevent duplicate notifications after reload
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({ type: 'SET_LAST_NOTIF_TIME', time: CONFIG.latestNotificationUpdate || 0 });
-            }
-
             if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
                 const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
                 const newUpdates = CONFIG.recentUpdates.filter(u => !seenIds.includes(u.id));
@@ -941,7 +855,7 @@
         .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
     }
     function applyConfig(newConfig) {
-        CONFIG = newConfig; database = CONFIG.database; document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerText = "Online"; // Keep Status generic
+        CONFIG = newConfig; database = CONFIG.database; document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerText = "Online"; 
         const avatarEl = document.getElementById('header-avatar');
         if (CONFIG.botImage && CONFIG.botImage.trim().length > 10) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
         const chatArea = document.getElementById('chat-area');
@@ -1171,7 +1085,7 @@
         });
     }
     window.addAdmin = function() { const email = adminAddInput.value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); adminAddInput.value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
-    window.removeAdmin = function(index) { if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ Only Owner can remove admins.", "error"); return; } showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index, 1); renderAdminList(); } }); }
+    window.removeAdmin = function(index) { if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ Only Owner can remove admins.", "error"); return; } showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index,1); renderAdminList(); } }); }
     window.saveAdminSettings = function() {
         const backsArr = respBacks.value.split('|').map(s => s.trim());
         const newConfig = {
@@ -1266,10 +1180,23 @@
     // --- Initialization ---
     window.onload = () => {
         if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).then(reg => { 
-            if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'}); 
-            reg.addEventListener('updatefound', () => { const newWorker = reg.installing; newWorker.addEventListener('statechange', () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) newWorker.postMessage({type: 'SKIP_WAITING'}); }); }); 
-        }).catch(err => console.error("SW Fail:", err)); }
+        
+        // Register EXTERNAL Service Worker (sw.js)
+        if ('serviceWorker' in navigator) { 
+            navigator.serviceWorker.register('./sw.js')
+            .then(reg => { 
+                console.log("SW Registered: ", reg);
+                if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'}); 
+                reg.addEventListener('updatefound', () => { 
+                    const newWorker = reg.installing; 
+                    newWorker.addEventListener('statechange', () => { 
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) 
+                            newWorker.postMessage({type: 'SKIP_WAITING'}); 
+                    }); 
+                }); 
+            }).catch(err => console.error("SW Fail:", err)); 
+        }
+
         initFirebaseAuth(); fetchConfig(); startSync();
         setTimeout(() => { const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); }, 500);
     };
