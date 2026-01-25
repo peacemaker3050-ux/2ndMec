@@ -763,7 +763,7 @@
     let refreshInterval = null;
 
     // ============================================================
-    // === 3. AUTH LOGIC (UPDATED) ===
+    // === 3. AUTH LOGIC (UPDATED FOR PERSISTENCE) ===
     // ============================================================
     window.handleMenuAuthClick = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
@@ -784,7 +784,26 @@
     window.logoutUser = function() {
         if (auth) { auth.signOut().then(() => { console.log("User signed out."); window.location.reload(); }).catch((error) => console.error("Sign out error", error)); }
     };
-    function initFirebaseAuth() { if (!auth) return; auth.onAuthStateChanged((user) => { window.updateAuthUI(); }); }
+    
+    // --- MODIFIED FUNCTION FOR SESSION PERSISTENCE ---
+    function initFirebaseAuth() { 
+        if (!auth) return; 
+        // Set persistence to LOCAL so login survives app restarts in WebView/APK
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .then(() => {
+                auth.onAuthStateChanged((user) => {
+                    if (user) console.log("Auth Persistence Active:", user.email);
+                    else console.log("User logged out or session cleared.");
+                    window.updateAuthUI(); 
+                }); 
+            })
+            .catch((error) => {
+                console.error("Auth Persistence Error:", error);
+                // Fallback: If local storage fails (rare), check auth anyway
+                auth.onAuthStateChanged((user) => { window.updateAuthUI(); });
+            });
+    }
+    
     window.updateAuthUI = function() {
         const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon');
         const user = auth ? auth.currentUser : null;
@@ -819,7 +838,7 @@
     }
 
     // ============================================================
-    // === 5. SYNC LOGIC (UPDATED FOR UI SYNC) ===
+    // === 5. SYNC LOGIC ===
     // ============================================================
     function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
     function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
@@ -1011,10 +1030,10 @@
     };
 
     // ============================================================
-    // === 9. ADMIN PANEL & TAB LOGIC (UPDATED) ===
+    // === 9. ADMIN PANEL & TAB LOGIC ===
     // ============================================================
     let adminNavStack = [];
-    let currentAdminTab = 0; // 0: Settings, 1: Notif, 2: Broadcast, 3: Data
+    let currentAdminTab = 0; 
 
     function openAdminPanel() {
         stopSync(); adminNameInput.value = CONFIG.botName; adminStatusInput.value = CONFIG.botStatus;
@@ -1026,12 +1045,11 @@
         if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; }
         window.populateNotifSubjects(); renderAdminDataView();
         document.getElementById('admin-modal').classList.add('active');
-        window.switchAdminTab(0); // Reset to first tab
+        window.switchAdminTab(0); 
     }
 
     window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
 
-    // --- NEW SLIDING TAB LOGIC ---
     window.switchAdminTab = function(index) {
         if (index === currentAdminTab) return;
         if(index < 0 || index > 3) return;
@@ -1094,7 +1112,6 @@
         CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
     }
 
-    // === DATA MANAGEMENT ===
     function renderAdminDataView() {
         const pathContainer = document.getElementById('admin-data-path'); const listContainer = document.getElementById('admin-list-items'); const addBoxNameInput = document.getElementById('new-item-name'); const addBoxLinkGroup = document.getElementById('file-link-input-group'); const addBoxLinkInput = document.getElementById('new-item-link');
         listContainer.innerHTML = ''; addBoxNameInput.value = ''; addBoxLinkInput.value = ''; addBoxNameInput.placeholder = "Name...";
@@ -1181,7 +1198,6 @@
     window.onload = () => {
         if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
         
-        // Register EXTERNAL Service Worker (sw.js)
         if ('serviceWorker' in navigator) { 
             navigator.serviceWorker.register('./sw.js')
             .then(reg => { 
@@ -1197,7 +1213,11 @@
             }).catch(err => console.error("SW Fail:", err)); 
         }
 
-        initFirebaseAuth(); fetchConfig(); startSync();
+        // 1. Initialize Auth first with persistence setting
+        initFirebaseAuth(); 
+        fetchConfig(); 
+        startSync();
+        
         setTimeout(() => { 
             const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); 
             botReply(welcomeMsg, true); 
