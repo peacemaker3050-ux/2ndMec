@@ -12,7 +12,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="UniBot">
     <meta name="theme-color" content="#0f172a">
-    <link rel="manifest" href='data:application/manifest+json;base64,eyJuYW1lIjoiVW5pQm90Iiwic2hvcnRfbmFtZSI6IlVuaUJvdCIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMGYxNzJhIiwidGhlbWVfY29sb3IiOiIjMGYxNzJhIiwib3JpZW50YXRpb24iOiJhbnkiLCJpY29ucyI6W3sic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnMtcG5nLmZsYXRpY29uLmNvbS81MTIvMjk5MS8yOTkxMTQ4LnBuZyIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9wbmcifSx7InNyYyI6Imh0dHBzOi8vY2RuLWljb25zLXBuZy5mbGF0aWNvbi5jb20vNTEyLzI5OTEvMjk5MTE0OC5wbmciLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ=='>
+    <!-- Manifest for PWA Installation -->
+    <link rel="manifest" href='data:application/manifest+json;base64,eyJuYW1lIjoiVW5pdmVyc2l0eSBCb3QiLCJzaG9ydF9uYW1lIjoiVW5pQm90Iiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiMwZjE3MmEiLCJvcmllbnRhdGlvbiI6ImFueSIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi8yOTkxLzI5OTExNDgucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9LHsic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnMtcG5nLmZsYXRpY29uLmNvbS81MTIvMjk5MS8yOTkxMTQ4LnBuZyIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9wbmcifV19'>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,24 +26,18 @@
         /* === RESET & VARIABLES === */
         :root {
             --bg-dark: #0f172a;
-            /* Updated variables for general use, but inline styles override specifically where needed */
             --bg-glass: rgba(15, 23, 42, 0.85);
             --bg-glass-heavy: rgba(15, 23, 42, 0.95);
             --accent-primary: #3b82f6;
             --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            
-            /* تم تعديل هذه القيمة لزيادة الوضوح (تقليل الشفافية) من 0.08 إلى 0.20 */
             --msg-bot-bg: rgba(255, 255, 255, 0.20); 
-            
             --msg-user-bg: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --border-color: rgba(255, 255, 255, 0.1);
-            
             --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.3);
             --glass-blur: blur(16px);
-            
             --radius-md: 12px;
             --radius-lg: 20px;
             --radius-full: 999px;
@@ -57,7 +52,6 @@
             padding: 0;
             overflow: hidden; 
             background-color: var(--bg-dark);
-            /* Animated Background */
             background-image: 
                 radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
                 radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
@@ -85,7 +79,6 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            /* IMPORTANT: Using inline hex values to force transparency update immediately */
             background: rgba(15, 23, 42, 0.65); 
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -122,7 +115,7 @@
 
         /* === MENU DROPDOWN === */
         .menu-dropdown {
-            position: absolute; top: 70px; width: 260px; background: rgba(15, 23, 42, 0.95);
+            position: absolute; top: 70px; width: 280px; background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(16px); border: 1px solid var(--border-color); 
             border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             display: none; flex-direction: column; z-index: 100;
@@ -139,6 +132,7 @@
         
         .menu-item.danger { color: #f87171; }
         .menu-item.notif-toggle { color: #fbbf24; }
+        .menu-item.install-btn { color: #4ade80; background: rgba(74, 222, 128, 0.1); }
         
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
@@ -194,7 +188,6 @@
 
         /* === KEYBOARD AREA === */
         #keyboard-area {
-            /* Using inline hex for transparency */
             background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -224,7 +217,7 @@
         }
         .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
 
-        .visual-alert-card, .ui-modal-box {
+        .visual-alert-card, .ui-modal-box, .install-guide-box {
             background: #1e293b; border: 1px solid var(--border-color);
             border-radius: var(--radius-lg); padding: 24px;
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
@@ -235,7 +228,7 @@
         
         .alert-icon { font-size: 50px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(59,130,246,0.5)); }
         .alert-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; }
-        .alert-body { font-size: 16px; color: #cbd5e1; margin-bottom: 25px; line-height: 1.6; }
+        .alert-body { font-size: 16px; color: #cbd5e1; margin-bottom: 25px; line-height: 1.6; text-align: left;}
         
         .alert-btn, .ui-btn {
             background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px;
@@ -244,10 +237,15 @@
         }
         .alert-btn:active, .ui-btn:active { transform: scale(0.96); }
 
+        /* Install Guide Styles */
+        .install-step { margin-bottom: 15px; display: flex; align-items: flex-start; gap: 10px; }
+        .install-icon { font-size: 24px; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 50%; }
+        .install-text h4 { margin: 0 0 5px 0; color: #fff; font-size: 15px; }
+        .install-text p { margin: 0; color: #94a3b8; font-size: 13px; line-height: 1.4; }
+
         /* === ADMIN MODAL (UPDATED DESIGN) === */
         .admin-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            /* IMPORTANT: Direct RGBA value to force transparency */
             background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
@@ -364,7 +362,6 @@
         /* Admin Header in Modal */
         .admin-header-top {
             display: flex; justify-content: space-between; align-items: center;
-            /* Direct RGBA value to ensure it shows background */
             background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -392,6 +389,14 @@
         <div class="header-actions" id="menu-btn" title="Menu">⋮</div>
 
         <div class="menu-dropdown" id="menu-dropdown">
+            <!-- NEW INSTALL BUTTON -->
+            <div class="menu-item install-btn" id="pwa-install-btn" style="display:none;" onclick="window.installApp()">
+                <span>📲</span> <span>Install App</span>
+            </div>
+            <div class="menu-item" onclick="window.showInstallGuide()">
+                <span>📱</span> <span>How to Install (iOS/Android)</span>
+            </div>
+
             <div class="menu-item notif-toggle" onclick="window.enableNotifications()">
                 <span>🔔</span> <span>Enable Notifications</span>
             </div>
@@ -428,6 +433,32 @@
         <div class="alert-title">New Messages</div>
         <div class="alert-body" id="visual-alert-body">You have new messages...</div>
         <button class="alert-btn" onclick="window.closeVisualAlert()">Open App</button>
+    </div>
+</div>
+
+<!-- INSTALL GUIDE OVERLAY -->
+<div id="install-guide-overlay" class="modal-overlay">
+    <div class="install-guide-box">
+        <div class="alert-title" style="text-align:center;">Install App 📲</div>
+        <p style="color:#cbd5e1; font-size:13px; text-align:center; margin-bottom:15px;">To receive notifications when the app is closed, you must install it on your phone.</p>
+        
+        <div id="guide-android" class="install-step">
+            <div class="install-icon">🤖</div>
+            <div class="install-text">
+                <h4>Android (Chrome)</h4>
+                <p>Tap the <b>"Install App"</b> button in the menu above, or look for "Add to Home Screen" in the browser menu (⋮).</p>
+            </div>
+        </div>
+        
+        <div id="guide-ios" class="install-step">
+            <div class="install-icon">🍎</div>
+            <div class="install-text">
+                <h4>iPhone (Safari)</h4>
+                <p>Tap the <b>Share</b> button (square with arrow) → Scroll down → Tap <b>"Add to Home Screen"</b>.</p>
+            </div>
+        </div>
+
+        <button class="alert-btn" onclick="document.getElementById('install-guide-overlay').classList.remove('active')" style="width:100%;">Close</button>
     </div>
 </div>
 
@@ -592,6 +623,40 @@
 
 <script>
     // ============================================================
+    // === PWA INSTALL LOGIC ===
+    // ============================================================
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show install button in menu
+        const btn = document.getElementById('pwa-install-btn');
+        if(btn) btn.style.display = 'flex';
+    });
+
+    window.installApp = function() {
+        document.getElementById('menu-dropdown').classList.remove('active');
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    showToast('App installed successfully!', 'success');
+                    document.getElementById('pwa-install-btn').style.display = 'none';
+                }
+                deferredPrompt = null;
+            });
+        } else {
+            showToast('Installation not available or already installed.', 'info');
+        }
+    };
+
+    window.showInstallGuide = function() {
+        document.getElementById('menu-dropdown').classList.remove('active');
+        document.getElementById('install-guide-overlay').classList.add('active');
+    }
+
+    // ============================================================
     // === UI UTILITIES ===
     // ============================================================
     function showToast(message, type = 'info') {
@@ -651,7 +716,7 @@
     // === 0. SERVICE WORKER CODE ===
     // ============================================================
     const swCode = `
-        const CACHE_VERSION = 'v14'; 
+        const CACHE_VERSION = 'v15'; 
         const BIN_ID = "696e77bfae596e708fe71e9d";
         const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
         let lastNotifTime = 0;
@@ -662,7 +727,7 @@
             const data = event.data;
             if (data.type === 'SYNCED_NOTIF_DOCTOR') {
                 if (Notification.permission === 'granted') {
-                    self.registration.showNotification('📢 Messages from Doctors', { body: data.body, icon: data.icon, requireInteraction: false, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
+                    self.registration.showNotification('📢 Messages from Doctors', { body: data.body, icon: data.icon, requireInteraction: true, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
                 }
             }
             if (data.type === 'TEST_NOTIF') {
@@ -679,7 +744,7 @@
                 if (data && data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
                     lastNotifTime = data.latestNotificationUpdate;
                     if (Notification.permission === 'granted') {
-                        self.registration.showNotification('📢 Messages from Doctors', { body: 'Tap to open app and read details.', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', requireInteraction: false, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
+                        self.registration.showNotification('📢 Messages from Doctors', { body: 'Tap to open app and read details.', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', requireInteraction: true, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
                     }
                 }
             }).catch(err => console.error('SW Fetch Error:', err));
@@ -839,11 +904,8 @@
     
     // UPDATED BROADCAST FUNCTION
     function checkAndShowBroadcast() {
-        // Always remove the existing broadcast element first to ensure clean redraw
         const existingBroadcast = document.getElementById('app-broadcast-msg');
         if (existingBroadcast) existingBroadcast.remove();
-
-        // Check if a broadcast is active
         if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
             const broadcastHTML = `
                 <div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()">
@@ -855,8 +917,6 @@
                     <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
                 </div>
             `;
-            
-            // Insert the broadcast at the very top of the chat area
             const chatArea = document.getElementById('chat-area');
             chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
         }
@@ -1016,51 +1076,40 @@
         if (index === currentAdminTab) return;
         if(index < 0 || index > 3) return;
 
-        const direction = index > currentAdminTab ? 'left' : 'right'; // 'left' means content moves left (new from right), 'right' means content moves right (new from left)
-        
+        const direction = index > currentAdminTab ? 'left' : 'right'; 
         const currentTabId = `tab-${['settings','notifications','broadcast','data'][currentAdminTab]}`;
         const nextTabId = `tab-${['settings','notifications','broadcast','data'][index]}`;
         
         const currentEl = document.getElementById(currentTabId);
         const nextEl = document.getElementById(nextTabId);
 
-        // Update Nav Buttons
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`nav-${index}`).classList.add('active');
 
-        // 1. Setup Next Element (Off-screen)
-        nextEl.classList.remove('active'); // Remove active class to reset
+        nextEl.classList.remove('active'); 
         nextEl.style.display = 'block';
         nextEl.style.opacity = '0';
         nextEl.style.transition = 'none';
         nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
 
-        // Force Reflow
         void nextEl.offsetWidth;
 
-        // 2. Animate
-        const duration = 300; // ms
+        const duration = 300; 
 
         currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
         nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
 
-        // Current goes away
         currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
         currentEl.style.opacity = '0';
 
-        // Next comes in
         nextEl.style.transform = 'translateX(0)';
         nextEl.style.opacity = '1';
 
-        // 3. Cleanup
         setTimeout(() => {
             currentEl.style.display = 'none';
-            currentEl.classList.remove('active'); // Ensure clean state
+            currentEl.classList.remove('active'); 
             
             nextEl.classList.add('active');
-            // Reset transforms for hidden state logic (optional but good practice)
-            // currentEl.style.transform = ''; // Not strictly needed since we set it on entry
-            
             currentAdminTab = index;
         }, duration);
     };
