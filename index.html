@@ -12,7 +12,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="UniBot">
     <meta name="theme-color" content="#0f172a">
-    <!-- Manifest for PWA Installation -->
     <link rel="manifest" href='data:application/manifest+json;base64,eyJuYW1lIjoiVW5pdmVyc2l0eSBCb3QiLCJzaG9ydF9uYW1lIjoiVW5pQm90Iiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiMwZjE3MmEiLCJvcmllbnRhdGlvbiI6ImFueSIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi8yOTkxLzI5OTExNDgucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9LHsic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnMtcG5nLmZsYXRpY29uLmNvbS81MTIvMjk5MS8yOTkxMTQ4LnBuZyIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9wbmcifV19'>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -107,8 +106,20 @@
         .bot-status { 
             font-size: 12px; color: #e2e8f0; margin-top: 4px; display: block; direction: ltr;
             font-weight: 600; letter-spacing: 0.2px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8); opacity: 1; 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8); opacity: 1; display: flex; align-items: center; gap: 6px;
         } 
+
+        /* Sync Pulse Animation */
+        .sync-dot {
+            width: 8px; height: 8px; background-color: #4ade80; border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
 
         .header-actions { color: var(--text-secondary); font-size: 26px; cursor: pointer; padding: 5px; transition: color 0.2s; }
         .header-actions:hover { color: #fff; }
@@ -382,7 +393,8 @@
             <div class="bot-avatar" id="header-avatar">🎓</div>
             <div class="bot-name">
                 <h2 id="header-name">University Bot</h2>
-                <span class="bot-status" id="header-status">Online</span>
+                <!-- Added Sync Indicator -->
+                <span class="bot-status" id="header-status"><div class="sync-dot"></div> Online</span>
             </div>
         </div>
 
@@ -440,13 +452,14 @@
 <div id="install-guide-overlay" class="modal-overlay">
     <div class="install-guide-box">
         <div class="alert-title" style="text-align:center;">Install App 📲</div>
-        <p style="color:#cbd5e1; font-size:13px; text-align:center; margin-bottom:15px;">To receive notifications when the app is closed, you must install it on your phone.</p>
+        <p style="color:#cbd5e1; font-size:13px; text-align:center; margin-bottom:15px;">To receive notifications when app is closed, you must install it on your phone.</p>
         
         <div id="guide-android" class="install-step">
             <div class="install-icon">🤖</div>
             <div class="install-text">
                 <h4>Android (Chrome)</h4>
-                <p>Tap the <b>"Install App"</b> button in the menu above, or look for "Add to Home Screen" in the browser menu (⋮).</p>
+                <p>Tap <b>"Install App"</b> button in menu above, or look for "Add to Home Screen" in browser menu (⋮).</p>
+                <p style="color:#f87171; font-size:12px; margin-top:5px;">⚠️ <b>Important:</b> Disable Battery Optimization for Chrome in Settings to ensure notifications work in background!</p>
             </div>
         </div>
         
@@ -454,7 +467,8 @@
             <div class="install-icon">🍎</div>
             <div class="install-text">
                 <h4>iPhone (Safari)</h4>
-                <p>Tap the <b>Share</b> button (square with arrow) → Scroll down → Tap <b>"Add to Home Screen"</b>.</p>
+                <p>Tap <b>Share</b> button (square with arrow) → Scroll down → Tap <b>"Add to Home Screen"</b>.</p>
+                <p style="color:#f87171; font-size:12px; margin-top:5px;">⚠️ <b>Note:</b> iOS is strict. Notifications might only appear when you open the app or wake up the screen.</p>
             </div>
         </div>
 
@@ -578,7 +592,7 @@
             <div class="admin-section-title" style="color: #eab308;">Broadcast (Batch Rep)</div>
             <div style="background: rgba(234, 179, 8, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.2); margin-bottom: 20px;">
                 <p style="font-size:13px; color:#e2e8f0;">
-                    This message will appear pinned at the top of the chat. <b>No system notification sent.</b>
+                    This message will appear pinned at top of chat. <b>No system notification sent.</b>
                 </p>
             </div>
 
@@ -630,7 +644,6 @@
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        // Show install button in menu
         const btn = document.getElementById('pwa-install-btn');
         if(btn) btn.style.display = 'flex';
     });
@@ -713,16 +726,17 @@
     });
 
     // ============================================================
-    // === 0. SERVICE WORKER CODE ===
+    // === 0. SERVICE WORKER CODE (IMPROVED) ===
     // ============================================================
     const swCode = `
-        const CACHE_VERSION = 'v15'; 
+        const CACHE_VERSION = 'v16'; 
         const BIN_ID = "696e77bfae596e708fe71e9d";
         const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
         let lastNotifTime = 0;
-        let fetchInterval;
+        
         self.addEventListener('install', event => { self.skipWaiting(); });
         self.addEventListener('activate', event => { event.waitUntil(self.clients.claim()); });
+        
         self.addEventListener('message', event => {
             const data = event.data;
             if (data.type === 'SYNCED_NOTIF_DOCTOR') {
@@ -735,20 +749,46 @@
                     self.registration.showNotification('🧪 Test Successful', { body: 'Notifications are working.', icon: data.icon, vibrate: [200, 100, 200] });
                 }
             }
+            if (data.type === 'SET_LAST_NOTIF_TIME') {
+                lastNotifTime = data.time;
+            }
         });
+
         function checkNotifications() {
             const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
             fetch(url, { cache: 'no-store', method: 'GET', headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' } })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error("Network response was not ok");
+                return res.json();
+            })
             .then(data => {
+                console.log("[SW] Fetched Data. Server Time:", data.latestNotificationUpdate, "Local Time:", lastNotifTime);
+                
                 if (data && data.latestNotificationUpdate && data.latestNotificationUpdate > lastNotifTime) {
+                    console.log("[SW] New Notification Detected!");
                     lastNotifTime = data.latestNotificationUpdate;
                     if (Notification.permission === 'granted') {
-                        self.registration.showNotification('📢 Messages from Doctors', { body: 'Tap to open app and read details.', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', requireInteraction: true, tag: 'doctor-notification', silent: false, vibrate: [200, 100, 200] });
+                        self.registration.showNotification('📢 Messages from Doctors', { 
+                            body: 'Tap to open app and read details.', 
+                            icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', 
+                            requireInteraction: true, 
+                            tag: 'doctor-notification', 
+                            silent: false, 
+                            vibrate: [200, 100, 200] 
+                        });
                     }
                 }
-            }).catch(err => console.error('SW Fetch Error:', err));
+            })
+            .catch(err => {
+                console.error("[SW] Fetch Error:", err);
+                // Don't stop the loop on error
+            })
+            .finally(() => {
+                // Recursive timeout to ensure continuous polling regardless of errors
+                setTimeout(checkNotifications, 15000); 
+            });
         }
+        
         self.addEventListener('notificationclick', event => {
             event.notification.close();
             event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
@@ -756,7 +796,12 @@
                 if (clients.openWindow) return clients.openWindow(self.location.href);
             }));
         });
-        self.addEventListener('activate', () => { checkNotifications(); fetchInterval = setInterval(checkNotifications, 20000); });
+        
+        // Start Loop
+        self.addEventListener('activate', () => { 
+            console.log("[SW] Activated. Starting sync loop."); 
+            checkNotifications(); 
+        });
     `;
     const swBlob = new Blob([swCode], {type: 'application/javascript'});
     const swUrl = URL.createObjectURL(swBlob);
@@ -807,15 +852,12 @@
         const user = auth.currentUser;
         if (user) {
             const email = user.email;
-            // Admin or Owner Logic
             if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { 
                 openAdminPanel(); 
             } else {
-                // Regular User Logic -> Logout
                 window.logoutUser();
             }
         } else {
-            // No user logged in -> Sign In
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider).then((result) => { console.log("User signed in:", result.user); window.updateAuthUI(); showToast("Login Successful", "success"); }).catch((error) => { showToast("Login Failed: " + error.message, "error"); });
         }
@@ -832,7 +874,6 @@
             if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-owner'); }
             else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-admin'); }
             else { 
-                // Regular user: Show "Sign Out" text and door icon
                 loginText.innerText = "Sign Out"; 
                 loginIcon.innerText = "🚪"; 
                 loginBtn.classList.remove('is-owner', 'is-admin'); 
@@ -859,7 +900,7 @@
     }
 
     // ============================================================
-    // === 5. SYNC LOGIC ===
+    // === 5. SYNC LOGIC (UPDATED FOR UI SYNC) ===
     // ============================================================
     function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
     function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
@@ -870,6 +911,12 @@
             CONFIG = { ...defaultConfig, ...data }; 
             if (data.database) CONFIG.database = { ...data.database, ...defaultDatabase }; else CONFIG.database = defaultDatabase;
             applyConfig(CONFIG); 
+            
+            // Notify SW of current time to prevent duplicate notifications after reload
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'SET_LAST_NOTIF_TIME', time: CONFIG.latestNotificationUpdate || 0 });
+            }
+
             if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
                 const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
                 const newUpdates = CONFIG.recentUpdates.filter(u => !seenIds.includes(u.id));
@@ -894,7 +941,7 @@
         .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
     }
     function applyConfig(newConfig) {
-        CONFIG = newConfig; database = CONFIG.database; document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerText = CONFIG.botStatus;
+        CONFIG = newConfig; database = CONFIG.database; document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerText = "Online"; // Keep Status generic
         const avatarEl = document.getElementById('header-avatar');
         if (CONFIG.botImage && CONFIG.botImage.trim().length > 10) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
         const chatArea = document.getElementById('chat-area');
@@ -902,7 +949,6 @@
         window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
     }
     
-    // UPDATED BROADCAST FUNCTION
     function checkAndShowBroadcast() {
         const existingBroadcast = document.getElementById('app-broadcast-msg');
         if (existingBroadcast) existingBroadcast.remove();
@@ -1220,7 +1266,10 @@
     // --- Initialization ---
     window.onload = () => {
         if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).then(reg => { if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'}); reg.addEventListener('updatefound', () => { const newWorker = reg.installing; newWorker.addEventListener('statechange', () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) newWorker.postMessage({type: 'SKIP_WAITING'}); }); }); }).catch(err => console.error("SW Fail:", err)); }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).then(reg => { 
+            if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'}); 
+            reg.addEventListener('updatefound', () => { const newWorker = reg.installing; newWorker.addEventListener('statechange', () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) newWorker.postMessage({type: 'SKIP_WAITING'}); }); }); 
+        }).catch(err => console.error("SW Fail:", err)); }
         initFirebaseAuth(); fetchConfig(); startSync();
         setTimeout(() => { const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); }, 500);
     };
