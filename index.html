@@ -734,7 +734,7 @@
     let refreshInterval = null;
 
     // ============================================================
-    // === 3. AUTH LOGIC ===
+    // === 3. AUTH LOGIC (UPDATED) ===
     // ============================================================
     window.handleMenuAuthClick = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
@@ -742,9 +742,15 @@
         const user = auth.currentUser;
         if (user) {
             const email = user.email;
-            if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { openAdminPanel(); }
-            else { showToast("Signed in as: " + email, "info"); }
+            // Admin or Owner Logic
+            if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { 
+                openAdminPanel(); 
+            } else {
+                // Regular User Logic -> Logout
+                window.logoutUser();
+            }
         } else {
+            // No user logged in -> Sign In
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider).then((result) => { console.log("User signed in:", result.user); window.updateAuthUI(); showToast("Login Successful", "success"); }).catch((error) => { showToast("Login Failed: " + error.message, "error"); });
         }
@@ -760,7 +766,12 @@
             const email = user.email;
             if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-owner'); }
             else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-admin'); }
-            else { loginText.innerText = "Signed In"; loginIcon.innerText = "✅"; loginBtn.classList.remove('is-owner', 'is-admin'); }
+            else { 
+                // Regular user: Show "Sign Out" text and door icon
+                loginText.innerText = "Sign Out"; 
+                loginIcon.innerText = "🚪"; 
+                loginBtn.classList.remove('is-owner', 'is-admin'); 
+            }
         } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; loginBtn.classList.remove('is-owner', 'is-admin'); }
     }
 
