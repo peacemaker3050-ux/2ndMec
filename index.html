@@ -112,9 +112,21 @@
         .manifest-preview{width:120px;height:120px;border-radius:24px;background:rgba(255,255,255,0.1);border:2px solid var(--border-color);margin:0 auto 20px auto;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;box-shadow:0 10px 20px rgba(0,0,0,0.3)}
         .manifest-preview img{width:100%;height:100%;object-fit:cover}
         .manifest-preview span{font-size:40px;color:rgba(255,255,255,0.2)}
+        #loading-screen{position:fixed;top:0;left:0;width:100%;height:100%;background-color:var(--bg-dark);background-image:radial-gradient(at 50% 50%, rgba(59,130,246,0.2) 0%, transparent 70%);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.5s ease}
+        .spinner-container{text-align:center;color:var(--text-primary)}
+        .spinner{width:50px;height:50px;border:5px solid rgba(59,130,246,0.3);border-top:5px solid var(--accent-primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px auto}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        .loading-text{font-family:var(--font-en);font-size:18px;font-weight:600;letter-spacing:1px;margin-top:20px;text-align:center}
+        .loading-text small{display:block;font-size:14px;color:var(--text-secondary);font-weight:400;margin-top:5px;opacity:0.8}
     </style>
 </head>
 <body>
+<div id="loading-screen">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <div class="loading-text">Syncing from Cloud... <br><small>University Bot Pro</small></div>
+    </div>
+</div>
 <div class="app-container">
     <header id="main-header">
         <div class="header-info">
@@ -332,7 +344,7 @@
         </div>
         <div id="tab-manifest" class="tab-content">
             <div class="admin-section-title" style="color: #a855f7;">App Installation Settings</div>
-            <p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how the app looks when installed on the home screen.</p>
+            <p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how the app looks when installed on home screen.</p>
             <div class="manifest-preview" id="manifest-icon-preview">
                 <span>📲</span>
             </div>
@@ -357,7 +369,6 @@
         const btn = document.getElementById('pwa-install-btn');
         if(btn) btn.style.display = 'flex';
     });
-
     window.installApp = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
         if (deferredPrompt) {
@@ -373,12 +384,10 @@
             showToast('Installation not available or already installed.', 'info');
         }
     };
-
     window.showInstallGuide = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
         document.getElementById('install-guide-overlay').classList.add('active');
     }
-
     function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -394,7 +403,6 @@
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
-
     let currentModalCallback = null;
     function showInputModal(title, placeholder, callback) {
         const overlay = document.getElementById('ui-modal-overlay');
@@ -431,7 +439,6 @@
     document.getElementById('ui-modal-overlay').addEventListener('click', (e) => {
         if(e.target.id === 'ui-modal-overlay') closeUiModal();
     });
-
     const firebaseConfig = {
       apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
       authDomain: "libirary-b2424.firebaseapp.com",
@@ -444,7 +451,6 @@
     let isAuthInitialized = false;
     try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch (e) {}
     const OWNER_EMAIL = "peacemaker3050@gmail.com";
-
     const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
     const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
     const defaultDatabase = {
@@ -467,7 +473,6 @@
     let CONFIG = { ...defaultConfig };
     let database = CONFIG.database; 
     let refreshInterval = null;
-
     window.handleMenuAuthClick = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
         if (!auth) return;
@@ -487,7 +492,6 @@
     window.logoutUser = function() {
         if (auth) { auth.signOut().then(() => { window.location.reload(); }).catch((error) => {}); }
     };
-    
     function initFirebaseAuth() { 
         if (!auth) return; 
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
@@ -504,7 +508,6 @@
                 });
             });
     }
-    
     window.updateAuthUI = function() {
         if (!isAuthInitialized) return;
         const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon');
@@ -520,7 +523,6 @@
             }
         } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; loginBtn.classList.remove('is-owner', 'is-admin'); }
     }
-
     function compressImage(file, callback) {
         const reader = new FileReader(); reader.readAsDataURL(file);
         reader.onload = (event) => {
@@ -535,7 +537,6 @@
             reader.onerror = (err) => { showToast("Error processing image", "error"); };
         };
     }
-
     function resizeAppIcon(file, callback) {
         const reader = new FileReader(); reader.readAsDataURL(file);
         reader.onload = (event) => {
@@ -545,11 +546,9 @@
                 const canvas = document.createElement('canvas'); 
                 canvas.width = SIZE; canvas.height = SIZE;
                 const ctx = canvas.getContext('2d');
-                
                 let sWidth = img.width;
                 let sHeight = img.height;
                 let sx = 0, sy = 0;
-
                 if (sWidth > sHeight) {
                     sx = (sWidth - sHeight) / 2;
                     sWidth = sHeight;
@@ -557,7 +556,6 @@
                     sy = (sHeight - sWidth) / 2;
                     sHeight = sWidth;
                 }
-
                 ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, SIZE, SIZE);
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.8); 
                 callback(dataUrl);
@@ -565,7 +563,6 @@
             reader.onerror = (err) => { showToast("Error processing icon", "error"); };
         };
     }
-
     function updateDynamicManifest(name, iconData) {
         const manifest = {
             "name": name || CONFIG.botName,
@@ -576,7 +573,6 @@
             "theme_color": "#0f172a",
             "icons": []
         };
-
         if (iconData) {
             manifest.icons.push({
                 "src": iconData,
@@ -590,14 +586,11 @@
                 "type": "image/png"
             });
         }
-
         const stringManifest = JSON.stringify(manifest);
         const blob = new Blob([stringManifest], {type: 'application/manifest+json'});
         const manifestURL = URL.createObjectURL(blob);
-        
         const link = document.querySelector('#dynamic-manifest');
         link.setAttribute('href', manifestURL);
-
         let appleLink = document.querySelector('link[rel="apple-touch-icon"]');
         if (!appleLink) {
             appleLink = document.createElement('link');
@@ -606,11 +599,10 @@
         }
         appleLink.href = iconData || "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
     }
-
     function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
     function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
     function fetchConfig() {
-        fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } })
+        return fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } })
         .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
         .then(data => { 
             CONFIG = { ...defaultConfig, ...data }; 
@@ -631,7 +623,7 @@
                 }
             }
             if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { checkAndShowBroadcast(); }
-        }).catch(err => {});
+        });
     }
     function saveConfigToBin(newConfig) {
         const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving...";
@@ -661,7 +653,6 @@
 
         window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
     }
-    
     function checkAndShowBroadcast() {
         const existingBroadcast = document.getElementById('app-broadcast-msg');
         if (existingBroadcast) existingBroadcast.remove();
@@ -680,17 +671,14 @@
             chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
         }
     }
-
     window.markBroadcastRead = function() { };
     function replacePlaceholders(text, name) { let res = text || ""; if (name) res = res.replace(/{name}/g, name); res = res.replace(/{botName}/g, CONFIG.botName); return res; }
-
     function showVisualAlertWithBody(bodyText) {
         const overlay = document.getElementById('visual-alert-overlay'); if (overlay.classList.contains('active')) return;
         document.getElementById('visual-alert-body').innerText = bodyText; overlay.classList.add('active');
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
     window.closeVisualAlert = function() { document.getElementById('visual-alert-overlay').classList.remove('active'); };
-
     function hasAdminAccess() { const user = auth.currentUser; if (!user) return false; const email = user.email; return email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email)); }
     window.populateNotifSubjects = function() {
         const select = document.getElementById('notif-subject-select'); select.innerHTML = '<option value="">-- Select Subject --</option>';
@@ -763,18 +751,15 @@
             } else { showToast("Permission denied.", "error"); }
         });
     };
-
     let currentSubject = null, currentDoctor = null, currentCategory = null;
     const chatArea = document.getElementById('chat-area'); const keyboardArea = document.getElementById('keyboard-area');
     const typingIndicator = document.getElementById('typing'); const menuBtn = document.getElementById('menu-btn'); const menuDropdown = document.getElementById('menu-dropdown');
-    
     const adminNameInput = document.getElementById('admin-bot-name'); const adminStatusInput = document.getElementById('admin-bot-status');
     const adminIconUpload = document.getElementById('admin-icon-upload'); const adminIconRemove = document.getElementById('admin-icon-remove');
     const adminBgUpload = document.getElementById('admin-bg-upload'); const adminBgRemove = document.getElementById('admin-bg-remove');
     const adminAddInput = document.getElementById('admin-add-input'); const adminListContainer = document.getElementById('admin-list-container');
     const respWelcome = document.getElementById('admin-msg-welcome'); const respSubject = document.getElementById('admin-msg-subject');
     const respDoctor = document.getElementById('admin-msg-doctor'); const respCategory = document.getElementById('admin-msg-category'); const respBacks = document.getElementById('admin-msg-backs');
-
     const appNameInput = document.getElementById('manifest-app-name');
     const appIconUpload = document.getElementById('manifest-icon-upload');
     const appIconPreview = document.getElementById('manifest-icon-preview');
@@ -799,7 +784,6 @@
         menuDropdown.classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; }
         Notification.requestPermission().then(permission => { if (permission === 'granted') { showToast("✅ Notifications Enabled", "success"); new Notification("Enabled", { body: "You will now receive updates." }); } else { showToast("❌ Permission Denied", "error"); } });
     };
-    
     window.forceReload = function() {
         document.getElementById('menu-dropdown').classList.remove('active');
         showConfirmModal("Force Reload", "Do you want to fully reload app?", (confirm) => {
@@ -808,7 +792,6 @@
             }
         });
     };
-
     let adminNavStack = [];
     let currentAdminTab = 0; 
 
@@ -819,7 +802,6 @@
         adminBgUpload.value = ""; if(CONFIG.chatBgImage) adminBgRemove.style.display = 'inline-block'; else adminBgRemove.style.display = 'none';
         respWelcome.value = CONFIG.welcomeMessage; respSubject.value = CONFIG.subjectPrompt; respDoctor.value = CONFIG.doctorPrompt; respCategory.value = CONFIG.categoryPrompt;
         const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; respBacks.value = backs.join(' | ');
-        
         const ownerSection = document.getElementById('owner-admin-section');
         const typoSection = document.getElementById('owner-typography-section');
         const appTabNav = document.getElementById('nav-4'); 
@@ -839,11 +821,9 @@
 
         if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; }
         window.populateNotifSubjects(); renderAdminDataView();
-        
         appNameInput.value = CONFIG.appName || CONFIG.botName;
         appIconUpload.value = "";
         updateAppIconPreview(CONFIG.appIcon);
-
         selectEnFont.value = CONFIG.englishFont || "'Inter', sans-serif";
         selectArFont.value = CONFIG.arabicFont || "'Cairo', sans-serif";
 
@@ -1013,7 +993,6 @@
             renderAdminDataView();
         });
     }
-
     function resetStateVariables() { currentSubject = null; currentDoctor = null; currentCategory = null; renderKeyboard(); }
     function renderKeyboard() {
         keyboardArea.innerHTML = ''; const subjects = Object.keys(database);
@@ -1046,10 +1025,8 @@
         else if (currentDoctor) { currentDoctor = null; const msg = replacePlaceholders(CONFIG.backSubject, currentSubject); botReply(msg, true); } 
         else if (currentSubject) { currentSubject = null; botReply(CONFIG.backMain, true); } renderKeyboard();
     }
-
     window.onload = () => {
         if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
-        
         if ('serviceWorker' in navigator) { 
             navigator.serviceWorker.register('./sw.js')
             .then(reg => { 
@@ -1061,18 +1038,36 @@
                             newWorker.postMessage({type: 'SKIP_WAITING'}); 
                     }); 
                 }); 
-            }).catch(err => {}); 
+            }).catch(err => console.error("SW Fail:", err)); 
         }
-
         initFirebaseAuth(); 
-        fetchConfig(); 
-        startSync();
-        
-        setTimeout(() => { 
+        const loadingScreen = document.getElementById('loading-screen');
+        const appContainer = document.querySelector('.app-container');
+        appContainer.style.opacity = '0';
+        appContainer.style.pointerEvents = 'none';
+        loadingScreen.style.display = 'flex';
+        fetchConfig().then(() => {
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                appContainer.style.opacity = '1';
+                appContainer.style.pointerEvents = 'auto';
+                const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); 
+                botReply(welcomeMsg, true); 
+                renderKeyboard(); 
+                startSync();
+            }, 300);
+        }).catch(err => {
+            console.error("Initial Sync Failed", err);
+            showToast("Offline Mode: Using cached data", "error");
+            loadingScreen.style.display = 'none';
+            appContainer.style.opacity = '1';
+            appContainer.style.pointerEvents = 'auto';
             const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); 
             botReply(welcomeMsg, true); 
             renderKeyboard(); 
-        }, 500);
+            startSync();
+        });
     };
 </script>
 </body>
