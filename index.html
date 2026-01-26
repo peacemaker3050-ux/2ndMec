@@ -31,7 +31,7 @@
         @keyframes pulse-green{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(74,222,128,0.7)}70%{transform:scale(1);box-shadow:0 0 0 6px rgba(74,222,128,0)}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(74,222,128,0)}}
         .header-actions{color:var(--text-secondary);font-size:26px;cursor:pointer;padding:5px;transition:color 0.2s}
         .header-actions:hover{color:#fff}
-        .menu-dropdown{position:absolute;top:70px;width:280px;background:rgba(15,23,42,0.95);backdrop-filter:blur(16px);border:1px solid var(--border-color);border-radius:var(--radius-lg);box-shadow:0 10px 30px rgba(0,0,0,0.5);display:none;flex-direction:column;z-index:100;overflow:hidden;animation:slideDown 0.25s cubic-bezier(0.16,1,0.3,1);padding:8px 0;left:auto;right:10px}
+        .menu-dropdown{position:absolute;top:70px;width:280px;background:rgba(15,23,42,0.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border-color);border-radius:var(--radius-lg);box-shadow:0 10px 30px rgba(0,0,0,0.5);display:none;flex-direction:column;z-index:100;overflow:hidden;animation:slideDown 0.25s cubic-bezier(0.16,1,0.3,1);padding:8px 0;left:auto;right:10px}
         .menu-dropdown.active{display:flex}
         .menu-item{padding:14px 20px;cursor:pointer;color:#cbd5e1;font-size:14px;font-weight:500;display:flex;align-items:center;gap:12px;transition:all 0.2s;direction:ltr}
         .menu-item:hover{background:rgba(255,255,255,0.05);color:#fff;padding-left:25px}
@@ -529,21 +529,15 @@
         } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; loginBtn.classList.remove('is-owner', 'is-admin'); }
     }
     
-    // --- FIX 1: OPTIMIZED COMPRESSION ---
-    // Reduced header icon resolution to 150px to save database space.
-    // Increased JPEG compression for App Icon to 0.4 quality.
     function compressImage(file, callback) {
         const reader = new FileReader(); reader.readAsDataURL(file);
         reader.onload = (event) => {
             const img = new Image(); img.src = event.target.result;
             img.onload = () => {
-                let width = img.width; let height = img.height; 
-                // FIX: Reduce max size to 150px for header icons. Massive space saver.
-                const MAX_SIZE = 150; 
+                let width = img.width; let height = img.height; const MAX_SIZE = 150; 
                 if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
                 const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-                // FIX: 0.6 Quality is decent, but 0.5 is safer for size
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
                 callback(dataUrl);
             };
@@ -560,18 +554,9 @@
                 const canvas = document.createElement('canvas'); 
                 canvas.width = SIZE; canvas.height = SIZE;
                 const ctx = canvas.getContext('2d');
-                let sWidth = img.width;
-                let sHeight = img.height;
-                let sx = 0, sy = 0;
-                if (sWidth > sHeight) {
-                    sx = (sWidth - sHeight) / 2;
-                    sWidth = sHeight;
-                } else {
-                    sy = (sHeight - sWidth) / 2;
-                    sHeight = sWidth;
-                }
+                let sWidth = img.width; let sHeight = img.height; let sx = 0, sy = 0;
+                if (sWidth > sHeight) { sx = (sWidth - sHeight) / 2; sWidth = sHeight; } else { sy = (sHeight - sWidth) / 2; sHeight = sWidth; }
                 ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, SIZE, SIZE);
-                // FIX: 0.4 Quality is safer to prevent JSONBin overflow
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.4); 
                 callback(dataUrl);
             };
@@ -579,8 +564,6 @@
         };
     }
 
-    // --- FIX 2: CACHE BUSTING MANIFEST ---
-    // Updates manifest version to force browser refresh of PWA icon
     function updateDynamicManifest(name, iconData) {
         const manifest = {
             "name": name || CONFIG.botName,
@@ -592,42 +575,25 @@
             "icons": []
         };
         if (iconData && iconData.length > 10) {
-            manifest.icons.push({
-                "src": iconData,
-                "sizes": "512x512",
-                "type": "image/jpeg"
-            });
+            manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": "image/jpeg" });
         } else {
-            manifest.icons.push({
-                "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png",
-                "sizes": "512x512",
-                "type": "image/png"
-            });
+            manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" });
         }
-        
-        // FIX: Increment version number to force update
         CONFIG.appVersion = (CONFIG.appVersion || 1) + 1;
-        
         const stringManifest = JSON.stringify(manifest);
         const blob = new Blob([stringManifest], {type: 'application/manifest+json'});
         const manifestURL = URL.createObjectURL(blob);
         const link = document.querySelector('#dynamic-manifest');
-        
-        // FIX: Force manifest refresh by recreating the blob URL
         if(link.href) URL.revokeObjectURL(link.href);
         link.setAttribute('href', manifestURL);
-        
         let appleLink = document.querySelector('link[rel="apple-touch-icon"]');
-        if (!appleLink) {
-            appleLink = document.createElement('link');
-            appleLink.rel = 'apple-touch-icon';
-            document.head.appendChild(appleLink);
-        }
+        if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); }
         appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
     }
     
     function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
     function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
+    
     function fetchConfig() {
         return fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } })
         .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
@@ -642,7 +608,7 @@
                 if (newUpdates.length > 0) {
                     const notifBody = newUpdates.map(u => `${u.doctor} (${u.subject})`).join('\n');
                     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({ type: 'SYNCED_NOTIF_DOCTOR', body: notifBody, icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
+                        navigator.serviceWorker.controller.postMessage({ type: 'SYNCED_NOTIF_DOCTOR', body: notifBody, icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
                     }
                     showVisualAlertWithBody(notifBody);
                     const updatedSeenIds = [...seenIds, ...newUpdates.map(u => u.id)];
@@ -665,7 +631,6 @@
         document.getElementById('header-status').innerText = "Online"; 
         
         const avatarEl = document.getElementById('header-avatar');
-        // FIX: Only set background if string is valid and not empty
         if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { 
             avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; 
             avatarEl.style.backgroundSize = "cover"; 
@@ -777,10 +742,10 @@
         Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
                 if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
+                    navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
                     showToast("Test notification sent...", "success");
                 } else {
-                    new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', vibrate: [200, 100, 200] });
+                    new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', vibrate: [200, 100, 200] });
                     showToast("Test notification sent...", "success");
                 }
             } else { showToast("Permission denied.", "error"); }
@@ -889,7 +854,7 @@
 
     window.forceResetIcon = function() {
         CONFIG.appIcon = "";
-        updateDynamicManifest(CONFIG.appName, ""); // Force update to null immediately
+        updateDynamicManifest(CONFIG.appName, ""); 
         updateAppIconPreview("");
         showToast("Icon reset. You can now install the app.", "success");
     };
@@ -901,15 +866,10 @@
         document.getElementById('manifest-icon-remove').style.display = 'none';
     };
 
-    // FIX 3: Cache Busting for Preview Images
     function updateAppIconPreview(base64) {
         appIconPreview.innerHTML = '';
         if(base64 && base64.length > 10) {
             const img = document.createElement('img');
-            // Add timestamp to base64 string as a dummy param to force browser to treat it as a new resource
-            // Note: For Base64 src, changing the string content is usually enough, but appending a query param 
-            // technically works if the browser parser allows it. However, purely updating the src attribute 
-            // with a new Base64 string is the standard way.
             img.src = base64; 
             appIconPreview.appendChild(img);
         } else {
@@ -934,10 +894,21 @@
         fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
         .then(res => { 
             if (!res.ok) throw new Error("Save failed"); 
-            showToast("✅ App Manifest Updated", "success"); 
+            showToast("✅ Saved. Clearing cache & Reloading...", "success"); 
             CONFIG.appName = name;
             updateDynamicManifest(CONFIG.appName, CONFIG.appIcon);
-            saveBtn.innerText = originalText;
+            
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 1500);
         })
         .catch(err => { 
             showToast("❌ Error: " + err.message, "error"); 
@@ -1090,18 +1061,22 @@
         else if (currentSubject) { currentSubject = null; botReply(CONFIG.backMain, true); } renderKeyboard();
     }
     window.onload = () => {
-        if ('caches' in window) { caches.keys().then(function(names) { for (let name of names) caches.delete(name); }); }
+        // Note: We are relying on the external sw.js for Background Sync logic.
+        // We still register it here.
         if ('serviceWorker' in navigator) { 
             navigator.serviceWorker.register('./sw.js')
             .then(reg => { 
-                if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'}); 
-                reg.addEventListener('updatefound', () => { 
-                    const newWorker = reg.installing; 
-                    newWorker.addEventListener('statechange', () => { 
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) 
-                            newWorker.postMessage({type: 'SKIP_WAITING'}); 
-                    }); 
-                }); 
+                console.log("SW Registered", reg);
+                // Request permission for Periodic Sync
+                if ('periodicSync' in reg) {
+                    return reg.periodicSync.register('check-updates', {
+                        minInterval: 15 * 60 * 1000 // 15 minutes
+                    }).then(() => {
+                        console.log('Periodic Sync Registered');
+                    }).catch(err => {
+                        console.log('Periodic Sync failed (maybe not allowed or not supported):', err);
+                    });
+                }
             }).catch(err => console.error("SW Fail:", err)); 
         }
         initFirebaseAuth(); 
