@@ -355,6 +355,7 @@
             <div class="form-group">
                 <label class="form-label">App Icon (Upload Image)</label>
                 <input type="file" id="manifest-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+                <button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button>
                 <p style="font-size:11px; color:#64748b; margin-top:5px;">Image will be cropped to a square. Recommended: High resolution PNG/JPG.</p>
             </div>
             <button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button>
@@ -573,7 +574,7 @@
             "theme_color": "#0f172a",
             "icons": []
         };
-        if (iconData) {
+        if (iconData && iconData.length > 10) {
             manifest.icons.push({
                 "src": iconData,
                 "sizes": "512x512",
@@ -597,7 +598,7 @@
             appleLink.rel = 'apple-touch-icon';
             document.head.appendChild(appleLink);
         }
-        appleLink.href = iconData || "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
+        appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
     }
     function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
     function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
@@ -762,6 +763,7 @@
     const respDoctor = document.getElementById('admin-msg-doctor'); const respCategory = document.getElementById('admin-msg-category'); const respBacks = document.getElementById('admin-msg-backs');
     const appNameInput = document.getElementById('manifest-app-name');
     const appIconUpload = document.getElementById('manifest-icon-upload');
+    const appIconRemove = document.getElementById('manifest-icon-remove');
     const appIconPreview = document.getElementById('manifest-icon-preview');
     const selectEnFont = document.getElementById('select-en-font');
     const selectArFont = document.getElementById('select-ar-font');
@@ -839,9 +841,17 @@
             resizeAppIcon(file, (base64String) => {
                 CONFIG.appIcon = base64String;
                 updateAppIconPreview(base64String);
+                document.getElementById('manifest-icon-remove').style.display = 'inline-block';
             });
         }
     });
+
+    window.removeAppIcon = function() {
+        CONFIG.appIcon = "";
+        updateAppIconPreview("");
+        appIconUpload.value = "";
+        document.getElementById('manifest-icon-remove').style.display = 'none';
+    };
 
     function updateAppIconPreview(base64) {
         appIconPreview.innerHTML = '';
