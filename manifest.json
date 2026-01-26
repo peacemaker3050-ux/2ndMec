@@ -1,6 +1,6 @@
 {
-  "name": "University Bot Pro",
-  "short_name": "UniBot",
+  "name": "University Bot",
+  "short_name": "Hamdy",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0f172a",
