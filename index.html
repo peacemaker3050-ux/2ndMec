@@ -24,6 +24,7 @@
 
     <style>
         :root {
+            /* Default Color Palette */
             --bg-dark: #0f172a;
             --bg-glass: rgba(15, 23, 42, 0.85);
             --bg-glass-heavy: rgba(15, 23, 42, 0.95);
@@ -153,7 +154,7 @@
         .notif-header { display: flex; justify-content: space-between; font-size: 11px; color: #f97316; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
 
         .file-link-btn {
-            display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.1);
+            display: flex; align-items: center; gap: 12px; background: rgba(255,255, 255, 0.1);
             padding: 10px; border-radius: var(--radius-md); text-decoration: none; color: #fff;
             margin-top: 5px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px;
             cursor: pointer; transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
@@ -621,7 +622,7 @@
     <script>
         /**
          * University Bot Pro - Single File Implementation
-         * Includes: LocalStorage Persistence (Offline Sync) & Web Share API for File Menu
+         * Includes: LocalStorage Persistence (Offline Sync) & Google Docs Viewer Fix
          */
 
         // --- Configuration & Constants ---
@@ -810,39 +811,20 @@
         }
 
         // ==========================================
-        // حل عرض قائمة التطبيقات (Web Share API)
+        // الحل النهائي: Google Docs Viewer (لمنع التكرار)
         // ==========================================
-        async function openFileNative(url, fileName) {
-            // 1. محاولة استخدام Web Share API (الحل الأفضل للموبايل)
-            // هذا الكود يجعل الموبايل يظهر قائمة التطبيقات التي تفتح الملف
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("فشل الاتصال");
-                
-                const blob = await response.blob();
-                const file = new File([blob], fileName, { type: blob.type });
-
-                // نتأكد أن المتصفح يدعم مشاركة الملفات
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        showToast("📤 جاري تجهيز القائمة...", "info");
-                        await navigator.share({
-                            files: [file],
-                            title: fileName,
-                            text: "فتح الملف"
-                        });
-                        return; // إذا نجح نوقف هنا
-                    } catch (shareError) {
-                        // إذا ألغى المستخدم أو حدث خطأ، نكمل للطريقة البديلة
-                        console.log("Share cancelled or failed", shareError);
-                    }
-                }
-            } catch (fetchError) {
-                console.log("Fetch failed (CORS or Network), using fallback", fetchError);
+        function openFileNative(url, fileName) {
+            // 1. التحقق إذا كان الملف PDF
+            if (fileName.toLowerCase().includes('.pdf') || url.toLowerCase().includes('.pdf')) {
+                // 2. استخدام عارض جوجل (Google Docs Viewer)
+                // هذا الحل يحل مشكلة التحميل المتكرر لأنه يعرض الملف فقط
+                // ويعطيك زرار "Download" واضح داخل العارض
+                const googleViewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(url)}&nopreview=1`;
+                window.open(googleViewerUrl, '_blank');
+            } else {
+                // 3. إذا كان الملف صورة أو ملف آخر، افتحه عادي
+                window.open(url, '_blank');
             }
-
-            // 2. الطريقة البديلة: فتح الرابط مباشرة
-            window.open(url, '_blank');
         }
 
         function handleFileClick(fileObj) {
@@ -988,7 +970,7 @@
             if (!rgb) return hex;
             const amt = Math.round(2.55 * percent);
             const R = (rgb.r - amt) < 0 ? 0 : rgb.r - amt;
-            const G = (rgb.g - amt) < 0 ? 0 : rgb.g - amt;
+            const G = (rgb.g - amt) < 0 ?0 : rgb.g - amt;
             const B = (rgb.b - amt) < 0 ? 0 : rgb.b - amt;
             return "#" + (0x1000000 + (R << 16) + (G << 8) + B).toString(16).slice(1);
         }
