@@ -811,20 +811,42 @@
         }
 
         // ==========================================
-        // الحل النهائي: Google Docs Viewer (لمنع التكرار)
+        // الحل النهائي: Download and Open (App)
         // ==========================================
-        function openFileNative(url, fileName) {
-            // 1. التحقق إذا كان الملف PDF
-            if (fileName.toLowerCase().includes('.pdf') || url.toLowerCase().includes('.pdf')) {
-                // 2. استخدام عارض جوجل (Google Docs Viewer)
-                // هذا الحل يحل مشكلة التحميل المتكرر لأنه يعرض الملف فقط
-                // ويعطيك زرار "Download" واضح داخل العارض
-                const googleViewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(url)}&nopreview=1`;
-                window.open(googleViewerUrl, '_blank');
-            } else {
-                // 3. إذا كان الملف صورة أو ملف آخر، افتحه عادي
-                window.open(url, '_blank');
-            }
+        
+        function downloadAndOpen(url, fileName) {
+            showToast('⬇️ جاري تحميل الملف...', 'info');
+            
+            // Fetch يحتاج أن يكون الملف من نفس المصدر أو يسمح بـ CORS
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error("Network response was not ok");
+                    return response.blob();
+                })
+                .then(blob => {
+                    // إنشاء رابط تحميل مؤقت
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = fileName; // اسم الملف سيتم حفظه به
+                    
+                    // إضافة الرابط للصفحة والضغط عليه برمجياً
+                    document.body.appendChild(link);
+                    link.click();
+                    
+                    // تنظيف
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+                    
+                    showToast('✅ تم التحميل! اختر التطبيق لفتح الملف.', 'success');
+                })
+                .catch(err => {
+                    console.error("Download Error:", err);
+                    showToast('❌ فشل التحميل التلقائي. جاري الفتح...', 'error');
+                    // في حالة الفشل (مثلاً روابط Telegram المحجوبة)، نفتحه في عارض جوجل
+                    const googleViewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(url)}&nopreview=1`;
+                    window.open(googleViewerUrl, '_blank');
+                });
         }
 
         function handleFileClick(fileObj) {
@@ -840,11 +862,12 @@
                         const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
                         addMessage(htmlContent, 'bot', true); 
                     } else { 
+                        // التعديل الجديد: زر التحميل
                         const htmlContent = `
                             <div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div>
-                            <div onclick="openFileNative('${fileObj.link}', '${fileObj.name.replace(/'/g, "\\'")}')" 
-                                 class="file-link-btn" style="cursor:pointer;">
-                                <span>📂</span><span>اضغط هنا لفتح الملف</span>
+                            <div onclick="downloadAndOpen('${fileObj.link}', '${fileObj.name.replace(/'/g, "\\'")}')" 
+                                 class="file-link-btn" style="cursor:pointer; background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3);">
+                                <span>⬇️</span><span>تحميل وفتح بالتطبيق</span>
                             </div>
                         `; 
                         addMessage(htmlContent, 'bot', true);
