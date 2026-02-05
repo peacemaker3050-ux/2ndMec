@@ -622,7 +622,7 @@
     <script>
         /**
          * University Bot Pro - Single File Implementation
-         * Includes: LocalStorage Persistence (Offline Sync) & Smart File Download Logic
+         * Includes: LocalStorage Persistence (Offline Sync) & Native Link Handling
          */
 
         // --- Configuration & Constants ---
@@ -811,48 +811,19 @@
         }
 
         // ==========================================
-        // Smart File Opening (First Time Download, Second Time Open)
+        // NATIVE FILE OPENING (Triggers System Intent Menu)
         // ==========================================
-        async function openFileBlob(url, fileName) {
-            // Check if file was downloaded before using LocalStorage
-            // We use the URL as a unique ID
-            const fileId = url; 
-            const storageKey = `dl_${fileId}`;
-            const wasDownloaded = localStorage.getItem(storageKey) === 'true';
-
-            try {
-                // Fetch from Service Worker Cache or Network
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("فشل الاتصال");
-
-                const blob = await response.blob();
-                const blobUrl = URL.createObjectURL(blob);
-
-                if (!wasDownloaded) {
-                    // --- First Click: Trigger Download ---
-                    showToast("⬇️ جاري تحميل الملف...", "info");
-                    const a = document.createElement('a');
-                    a.href = blobUrl;
-                    a.download = fileName; // This forces download
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    // Mark as downloaded
-                    localStorage.setItem(storageKey, 'true');
-                    showToast("✅ تم التحميل للجهاز", "success");
-                } else {
-                    // --- Second Click: Trigger Open (View) ---
-                    showToast("👁️ جاري فتح الملف...", "info");
-                    window.open(blobUrl, '_blank');
-                    // No need to mark anything, keep it as downloaded state
-                }
-            } catch (error) {
-                console.error(error);
-                // Fallback
-                window.open(url, '_blank');
-                showToast("⚠️ فشل الفتح التلقائي، جاري المحاولة...", "error");
-            }
+        function openFileNative(url) {
+            // Create a temporary anchor tag to invoke the browser's native behavior
+            // using target="_blank" triggers the OS "Open With" menu on mobile
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank'; 
+            // We do NOT set the 'download' attribute, because that forces a download
+            // Without 'download', the browser tries to navigate/view it, which invokes the picker.
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         function handleFileClick(fileObj) {
@@ -870,9 +841,9 @@
                     } else { 
                         const htmlContent = `
                             <div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div>
-                            <div onclick="openFileBlob('${fileObj.link}', '${fileObj.name.replace(/'/g, "\\'")}')" 
+                            <div onclick="openFileNative('${fileObj.link}')" 
                                  class="file-link-btn" style="cursor:pointer;">
-                                <span>📂</span><span>عرض / تحميل الملف</span>
+                                <span>📂</span><span>اضغط هنا لفتح الملف</span>
                             </div>
                         `; 
                         addMessage(htmlContent, 'bot', true);
