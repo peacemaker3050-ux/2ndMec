@@ -261,7 +261,7 @@
         .form-textarea { height: 90px; resize: vertical; }
 
         input[type="color"] {
-        appearance: none;
+            appearance: none;
             -webkit-appearance: none;
             border: none;
             width: 100%;
@@ -622,7 +622,7 @@
     <script>
         /**
          * University Bot Pro - Single File Implementation
-         * Includes: LocalStorage Persistence (Offline Sync) & Google Docs Viewer Fix
+         * Features: LocalStorage Persistence, Smart Offline Caching, Web Share API
          */
 
         // --- Configuration & Constants ---
@@ -669,7 +669,7 @@
 
         try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch (e) { console.log("Firebase already initialized or error:", e); }
 
-        // --- Service Worker Registration (External File) ---
+        // --- Service Worker Registration ---
         const swUrl = 'sw.js';
 
         // --- UI Logic ---
@@ -811,66 +811,127 @@
         }
 
         // ==========================================
-        // الحل النهائي: Download and Open (App)
+        // NEW OFFLINE STRATEGY IMPLEMENTATION
         // ==========================================
-        
-        function downloadAndOpen(url, fileName) {
-            showToast('⬇️ جاري تحميل الملف...', 'info');
+
+        // 1. Convert Google Drive 'view' links to 'direct download'
+        function getDirectLink(url) {
+            const driveRegex = /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/view/;
+            const match = url.match(driveRegex);
+            if (match) {
+                const id = match[1];
+                return `https://drive.google.com/uc?export=download&id=${id}`;
+            }
+            // If already a download link or other service, return as is
+            return url;
+        }
+
+        // 2. Recursive function to scan DB for all file links
+        function getAllFileLinks(dbStructure) {
+            const links = new Set();
+
+            function traverse(obj) {
+                if (typeof obj !== 'object' || obj === null) return;
+
+                if (Array.isArray(obj)) {
+                    obj.forEach(item => {
+                        if (item && typeof item === 'object') {
+                            if (item.link) {
+                                links.add(getDirectLink(item.link));
+                            } else if (item.type === 'notif' && item.link) {
+                                links.add(getDirectLink(item.link));
+                            }
+                        }
+                    });
+                } else {
+                    Object.values(obj).forEach(value => traverse(value));
+                }
+            }
+
+            traverse(dbStructure.database || dbStructure);
+            return Array.from(links);
+        }
+
+        // 3. Pre-cache trigger: Send list to SW
+        function triggerPrecache(dbData) {
+            if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+                console.warn("Service Worker not active, skipping pre-cache.");
+                return;
+            }
+
+            const urlsToCache = getAllFileLinks(dbData);
+            console.log(`[App] Found ${urlsToCache.length} files. Starting Pre-Cache...`);
+
+            navigator.serviceWorker.controller.postMessage({
+                type: 'PRE_CACHE_PDFS',
+                urls: urlsToCache
+            });
             
-            // Fetch يحتاج أن يكون الملف من نفس المصدر أو يسمح بـ CORS
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) throw new Error("Network response was not ok");
-                    return response.blob();
-                })
-                .then(blob => {
-                    // إنشاء رابط تحميل مؤقت
+            // Only show toast if there are actually files
+            if(urlsToCache.length > 0) {
+                 showToast(`🔄 Updating offline library (${urlsToCache.length} files)...`, 'info');
+            }
+        }
+
+        // 4. Smart Open (Web Share API)
+        async function openFileSmart(url, fileName) {
+            const finalUrl = getDirectLink(url);
+            showToast('⬇️ Opening File...', 'info');
+
+            try {
+                // Fetch using SW (Cache-First strategy)
+                const response = await fetch(finalUrl);
+                if (!response.ok) throw new Error("File not available offline or network error");
+
+                const blob = await response.blob();
+                const file = new File([blob], fileName, { type: blob.type });
+
+                // Attempt to use Web Share API
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: fileName,
+                        text: `File from ${CONFIG.botName}`,
+                        files: [file]
+                    });
+                    showToast('✅ File shared/opened!', 'success');
+                } else {
+                    // Fallback for Desktop or unsupported browsers
                     const blobUrl = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = blobUrl;
-                    link.download = fileName; // اسم الملف سيتم حفظه به
-                    
-                    // إضافة الرابط للصفحة والضغط عليه برمجياً
+                    link.download = fileName;
                     document.body.appendChild(link);
                     link.click();
-                    
-                    // تنظيف
                     document.body.removeChild(link);
-                    window.URL.revokeObjectURL(blobUrl);
-                    
-                    showToast('✅ تم التحميل! اختر التطبيق لفتح الملف.', 'success');
-                })
-                .catch(err => {
-                    console.error("Download Error:", err);
-                    showToast('❌ فشل التحميل التلقائي. جاري الفتح...', 'error');
-                    // في حالة الفشل (مثلاً روابط Telegram المحجوبة)، نفتحه في عارض جوجل
-                    const googleViewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(url)}&nopreview=1`;
-                    window.open(googleViewerUrl, '_blank');
-                });
+                    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+                    showToast('📂 File downloaded.', 'success');
+                }
+
+            } catch (err) {
+                console.error("Smart Open Error:", err);
+                
+                // Final Fallback: Google Docs Viewer if Blob method fails completely
+                const googleViewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(finalUrl)}`;
+                window.open(googleViewerUrl, '_blank');
+                showToast('Opening via Viewer (Smart mode failed)', 'info');
+            }
         }
 
         function handleFileClick(fileObj) {
             const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"));
+            
             if (isNotification) {
                 const actualMsg = fileObj.type === "notif" ? fileObj.name : fileObj.link.replace("content:", "");
                 const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${currentDoctor} (${currentSubject})</div><div>${actualMsg}</div></div>`;
                 addMessage(htmlContent, 'bot', true);
             } else {
-                addMessage(`فتح: ${fileObj.name}`, 'user');
+                addMessage(`Opening: ${fileObj.name}`, 'user');
                 setTimeout(() => {
                     if (!fileObj.link || fileObj.link.startsWith("javascript:") || fileObj.link === "#") { 
                         const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
                         addMessage(htmlContent, 'bot', true); 
                     } else { 
-                        // التعديل الجديد: زر التحميل
-                        const htmlContent = `
-                            <div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div>
-                            <div onclick="downloadAndOpen('${fileObj.link}', '${fileObj.name.replace(/'/g, "\\'")}')" 
-                                 class="file-link-btn" style="cursor:pointer; background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3);">
-                                <span>⬇️</span><span>تحميل وفتح بالتطبيق</span>
-                            </div>
-                        `; 
-                        addMessage(htmlContent, 'bot', true);
+                        openFileSmart(fileObj.link, fileObj.name);
                     }
                 }, 800);
             }
@@ -1028,13 +1089,26 @@
             return fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } })
             .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
             .then(data => { 
+                // Safe Merge: Apply defaults, then overwrite with cloud data, then overwrite with local modifications if needed
+                // Here we prioritize cloud data for DB but ensure structure exists
                 CONFIG = { ...defaultConfig, ...data }; 
-                if (data.database) CONFIG.database = { ...data.database, ...defaultDatabase }; else CONFIG.database = defaultDatabase;
+                
+                // Improved Database Merging: Ensure default keys exist if cloud data is sparse
+                if (data.database) {
+                    // Deep merge strategy for database to preserve structure
+                    CONFIG.database = { ...defaultDatabase, ...data.database };
+                } else {
+                    CONFIG.database = defaultDatabase;
+                }
                 
                 // SAVE TO LOCAL STORAGE (Key Fix for Offline Mode)
                 saveToLocalStorage(CONFIG);
                 
                 applyConfig(CONFIG); 
+
+                // --- NEW: Trigger Pre-caching here ---
+                triggerPrecache(CONFIG); 
+                // ------------------------------------
                 
                 if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
                     const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
@@ -1053,7 +1127,7 @@
             const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving...";
             if(btnSave) btnSave.innerText = "Saving...";
             fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
-            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = { ...newConfig.database, ...defaultDatabase }; database = CONFIG.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; })
+            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = { ...defaultDatabase, ...newConfig.database }; database = CONFIG.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; })
             .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
         }
         function applyConfig(newConfig) {
@@ -1459,20 +1533,26 @@
             if (localData) {
                 CONFIG = localData;
                 applyConfig(CONFIG);
-                showToast("📱 تم تحميل البيانات المحفوظة", "success");
+                showToast("📱 Loaded saved data", "success");
             }
 
             // 2. Then try to fetch from Cloud (Update)
             fetchConfig().then(() => {
                 // If we just loaded from cache, fetchConfig updates UI with cloud data
-                if (localData) showToast("🔄 تم تحديث البيانات من السحابة", "success");
+                if (localData) showToast("🔄 Synced with Cloud", "success");
                 else showToast("🎉 Synced with Cloud", "success");
             }).catch(err => { 
                 console.error("Initial Sync Failed", err); 
                 if (!localData) showToast("⚠️ Offline Mode", "error");
             });
 
-            if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).then(reg => console.log("SW Registered", reg)).catch(err => console.error("SW Fail:", err)); }
+            // Safe Service Worker Registration
+            if ('serviceWorker' in navigator && navigator.serviceWorker) {
+                 navigator.serviceWorker.register(swUrl).then(reg => console.log("SW Registered", reg)).catch(err => {
+                     console.warn("SW Registration Failed (File likely missing for standalone mode):", err);
+                 });
+            }
+            
             initFirebaseAuth(); 
             
             const loadingScreen = document.getElementById('loading-screen');
