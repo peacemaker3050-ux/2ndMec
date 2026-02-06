@@ -2,14 +2,20 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 // ==========================================
-// 1. بيانات البوت والمالك (محدّثة)
+// 1. بيانات البوت وقائمة المستخدمين المسموح لهم
 // ==========================================
 
 // توكن البوت الخاص بك (@MecWebBot)
 const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4'; 
 
-// رقم الـ ID الخاص بك (للسماح لك فقط بالاستخدام)
-const OWNER_ID = 5605597142; 
+// ==========================================
+// ⭐ قائمة الأشخاص المسموح لهم (ضع أرقام الـ ID هنا)
+// ==========================================
+const AUTHORIZED_USERS = [
+    5605597142, // أنت (المالك)
+    // 123456789, // أضف رقم الشخص الثاني هنا
+    // 987654321, // أضف رقم الشخص الثالث هنا
+];
 
 // مفاتيح قاعدة البيانات (JSONBin)
 const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
@@ -59,19 +65,22 @@ async function getTelegramFileLink(fileId) {
 }
 
 // ==========================================
-// 3. استقبال الرسائل والملفات (المنطق الذكي)
+// 3. استقبال الرسائل والملفات
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    if (chatId !== OWNER_ID) {
-        bot.sendMessage(chatId, "⛔ عذراً، هذا البوت للإدارة فقط.");
+    
+    // التحقق من أن المستخدم في القائمة المسموح بها
+    if (!AUTHORIZED_USERS.includes(chatId)) {
+        bot.sendMessage(chatId, "⛔ عذراً، هذا البوت للإدارة فقط ولست مخولاً باستخدامه.");
         return;
     }
+
     bot.sendMessage(chatId, "👋 أهلاً بك في نظام MecWeb.\n\n📄 *لرفع ملف:* أرسل الملف مباشرة.\n📝 *لرسالة للطلاب:* اكتب النص وسأقوم بنشره كإشعار.", { parse_mode: 'Markdown' });
 });
 
-// --- أ) عند استلام ملف (الوضع القديم) ---
+// --- أ) عند استلام ملف ---
 bot.on('document', async (msg) => handleFile(msg));
 bot.on('photo', async (msg) => {
     const photo = msg.photo[msg.photo.length - 1];
@@ -80,7 +89,9 @@ bot.on('photo', async (msg) => {
 
 async function handleFile(msg) {
     const chatId = msg.chat.id;
-    if (chatId !== OWNER_ID) return;
+    
+    // التحقق من الصلاحية
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     const fileId = msg.document.file_id;
     const fileName = msg.document.file_name || "ملف_" + Date.now();
@@ -102,13 +113,15 @@ async function handleFile(msg) {
     });
 }
 
-// --- ب) عند استلام نص (الوضع الجديد والذكي) ---
+// --- ب) عند استلام نص ---
 bot.on('text', (msg) => {
     // تجاهل الأوامر مثل /start
     if (msg.text.startsWith('/')) return;
 
     const chatId = msg.chat.id;
-    if (chatId !== OWNER_ID) return;
+
+    // التحقق من الصلاحية
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     // حفظ الحالة ونوع العملية (نص إشعار)
     userStates[chatId] = {
@@ -137,6 +150,11 @@ bot.on('callback_query', async (query) => {
     const data = query.data;
     const state = userStates[chatId];
 
+    // ⭐ تحقق إضافي عند الضغط على الأزرار (لمنع أي شخص من التلاعب بالأزرار)
+    if (!AUTHORIZED_USERS.includes(chatId)) {
+        return bot.answerCallbackQuery(query.id, { text: "⛔ غير مصرح لك", show_alert: true });
+    }
+
     if (!state) return bot.answerCallbackQuery(query.id, { text: "أرسل الملف أو النص مرة أخرى.", show_alert: true });
 
     // اختيار المادة (مشترك للملف والنص)
@@ -151,7 +169,7 @@ bot.on('callback_query', async (query) => {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
     }
-    // اختيار الدكتور (هنا يحدث الفرق الذكي)
+    // اختيار الدكتور
     else if (state.step === 'select_doctor' && data.startsWith('doc_')) {
         const doctorName = data.replace('doc_', '');
         state.doctor = doctorName;
@@ -201,9 +219,8 @@ bot.on('callback_query', async (query) => {
 async function processTextNotification(chatId, state, messageId) {
     const db = await getDatabase();
     
-    // التأكد من وجود قسم الإشعارات، إذا لم يكن موجوداً ننشئه
+    // التأكد من وجود قسم الإشعارات
     if (!db.database[state.subject][state.doctor]["🔔 Notifications"]) {
-        // إضافة القسم لقائمة الأقسام إذا لم يكن موجوداً
         if (!db.database[state.subject][state.doctor].sections) {
             db.database[state.subject][state.doctor].sections = [];
         }
