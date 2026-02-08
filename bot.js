@@ -1,60 +1,28 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
+const express = require('express');
 const fs = require('fs'); 
-const path = require('path');
-const FormData = require('form-data'); 
 
 // ==========================================
-// 1. بيانات البوت وقائمة المستخدمين المسموح لهم
+// 1. التهيئة
 // ==========================================
 
 const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4'; 
 
 const AUTHORIZED_USERS = [
-    5605597142, // أنت (المالك)
+    5605597142, 
 ];
 
 const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-const GITHUB_TOKEN = "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"; 
-const GITHUB_REPO_OWNER = "peacemaker3050-ux";      
-const GITHUB_REPO_NAME = "2ndMec";             
-
 const bot = new TelegramBot(token, { polling: true });
-
+const app = express();
 const userStates = {}; 
+const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// دالة رفع الملف على GitHub (تعديل بسيط لضمان الرفع المباشر)
-// ==========================================
-async function uploadToGithub(filePath, fileName) {
-    try {
-        const content = fs.readFileSync(filePath, { encoding: 'base64' });
-        const cleanFileName = fileName.replace(/\s+/g, '_');
-        const uploadPath = `uploads/${Date.now()}_${cleanFileName}`;
-
-        const url = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${uploadPath}`;
-
-        await axios.put(url, {
-            message: `Upload file: ${cleanFileName}`,
-            content: content
-        }, {
-            headers: {
-                'Authorization': `token ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
-        });
-
-        return `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/main/${uploadPath}`;
-    } catch (error) {
-        console.error("GitHub Error:", error.response ? error.response.data : error.message);
-        throw error;
-    }
-}
-
-// ==========================================
-// 2. دوال الاتصال بقاعدة البيانات
+// 2. دوال قاعدة البيانات
 // ==========================================
 
 async function getDatabase() {
@@ -81,16 +49,41 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 3. استقبال الرسائل والملفات (تم تعديل هذا الجزء لحل مشكلتك)
+// 3. وسيط الملفات (الجزء السحري) 👇
+// ==========================================
+// هذا الرابط سيستخدمه الموقع لتحميل الملفات
+// يخفي توكن البوت ويستخدم تليجرام كخادم
+app.get('/get-file/:fileId', async (req, res) => {
+    const fileId = req.params.fileId;
+    try {
+        // 1. جلب رابط الملف من تليجرام (هذا الرابط يحتوي على التوكن لذا يجب أن يكون مخفياً في الباك اند)
+        const fileLink = await bot.getFileLink(fileId);
+        
+        // 2. جلب الملف من تليجرام وإرساله للمستخدم
+        const response = await axios({ url: fileLink, responseType: 'stream' });
+        
+        // تحديد نوع الملف (مهم ليفتح الملف الصحيح)
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+        // اسم الملف (اختياري)
+        // res.setHeader('Content-Disposition', 'attachment');
+        
+        response.data.pipe(res);
+    } catch (error) {
+        console.error("Error proxying file:", error.message);
+        res.status(500).send("Error loading file");
+    }
+});
+
+// ==========================================
+// 4. أوامر تليجرام
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
-    bot.sendMessage(chatId, "👋 أهلاً بك في نظام MecWeb.\n\n📄 *لرفع ملف:* أرسل الملف مباشرة.\n📝 *لرسالة للطلاب:* اكتب النص وسأقوم بنشره كإشعار.", { parse_mode: 'Markdown' });
+    bot.sendMessage(chatId, "👋 أهلاً بك في نظام MecWeb (Telegram Storage).\n\n📄 *لرفع ملف:* أرسل الملف مباشرة.\n📝 *لرسالة للطلاب:* اكتب النص وسأقوم بنشره كإشعار.\n\n✨ الآن الملفات محفوظة على تليجرام ومتاحة أونلاين وأوفلاين بسرعة فائقة.", { parse_mode: 'Markdown' });
 });
 
-// التعامل مع الملفات والصور
 bot.on('document', async (msg) => handleFile(msg));
 bot.on('photo', async (msg) => {
     const photo = msg.photo[msg.photo.length - 1];
@@ -118,12 +111,10 @@ async function handleFile(msg) {
     });
 }
 
-// التعامل مع النصوص (تم تعديل الفلتر هنا ليشتغل صح)
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
     
-    // التأكد أنها رسالة نصية وليست ملفاً أو أمراً
     if (msg.text && !msg.text.startsWith('/') && !msg.document && !msg.photo) {
         userStates[chatId] = {
             step: 'select_subject',
@@ -139,10 +130,6 @@ bot.on('message', async (msg) => {
         });
     }
 });
-
-// ==========================================
-// 4. التعامل مع اختيار الأزرار
-// ==========================================
 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
@@ -182,29 +169,38 @@ bot.on('callback_query', async (query) => {
     }
     else if (state.step === 'select_section' && data.startsWith('sec_')) {
         const sectionName = data.replace('sec_', '');
-        bot.answerCallbackQuery(query.id, { text: "⏳ جاري الرفع..." });
+        bot.answerCallbackQuery(query.id, { text: "⏳ جاري الحفظ..." });
 
         try {
-            const fileLink = await bot.getFileLink(state.file.id);
-            const tempFilePath = path.join('/tmp', state.file.name);
-            
-            const response = await axios({ url: fileLink, responseType: 'stream' });
-            const writer = fs.createWriteStream(tempFilePath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve) => writer.on('finish', resolve));
-
-            const githubLink = await uploadToGithub(tempFilePath, state.file.name);
-            fs.unlinkSync(tempFilePath);
-
+            // ==========================================
+            // المنطق الجديد: حفظ fileId فقط
+            // ==========================================
             const db = await getDatabase();
-            db.database[state.subject][state.doctor][sectionName].push({ name: state.file.name, link: githubLink });
+            
+            // رابط وهمي سيستخدمه الموقع للوصول للملف عبر البوت
+            // استبدل الرابط أدناه برابط موقعك الفعلي
+            const BOT_BASE_URL = 'https://2ndmec-production.up.railway.app'; // تأكد من تعديله لرابطك الصحيح
+            const proxyLink = `${BOT_BASE_URL}/get-file/${state.file.id}`;
+
+            if (!db.database[state.subject][state.doctor][sectionName]) {
+                db.database[state.subject][state.doctor][sectionName] = [];
+            }
+
+            db.database[state.subject][state.doctor][sectionName].push({ 
+                name: state.file.name, 
+                link: proxyLink, 
+                fileId: state.file.id // نحفظ الـ ID كمرجع
+            });
             
             await saveDatabase(db);
-            bot.editMessageText(`✅ تم الرفع بنجاح للقسم!\n🔗 الرابط: ${githubLink}`, { chat_id: chatId, message_id: query.message.message_id });
+            bot.editMessageText(`✅ تم الحفظ بنجاح!\n📂 الملف محفوظ على تليجرام.\n🔗 ${proxyLink}`, { 
+                chat_id: chatId, message_id: query.message.message_id,
+                disable_web_page_preview: true
+            });
             delete userStates[chatId];
         } catch (error) {
-            bot.sendMessage(chatId, `❌ خطأ: ${error.message}`);
+            console.error(error);
+            bot.sendMessage(chatId, `❌ خطأ في الحفظ: ${error.message}`);
         }
     }
 });
@@ -229,3 +225,7 @@ async function processTextNotification(chatId, state, messageId) {
         bot.sendMessage(chatId, "❌ فشل حفظ الإشعار.");
     }
 }
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
