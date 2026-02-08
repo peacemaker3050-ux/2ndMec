@@ -622,7 +622,7 @@
     <script>
         /**
          * University Bot Pro - Single File Implementation
-         * Includes: LocalStorage Persistence (Offline Sync) & Smart File Download Logic
+         * Includes: Fixed LocalStorage Persistence (True Offline Mode)
          */
 
         // --- Configuration & Constants ---
@@ -814,14 +814,11 @@
         // Smart File Opening (First Time Download, Second Time Open)
         // ==========================================
         async function openFileBlob(url, fileName) {
-            // Check if file was downloaded before using LocalStorage
-            // We use the URL as a unique ID
             const fileId = url; 
             const storageKey = `dl_${fileId}`;
             const wasDownloaded = localStorage.getItem(storageKey) === 'true';
 
             try {
-                // Fetch from Service Worker Cache or Network
                 const response = await fetch(url);
                 if (!response.ok) throw new Error("فشل الاتصال");
 
@@ -829,27 +826,22 @@
                 const blobUrl = URL.createObjectURL(blob);
 
                 if (!wasDownloaded) {
-                    // --- First Click: Trigger Download ---
                     showToast("⬇️ جاري تحميل الملف...", "info");
                     const a = document.createElement('a');
                     a.href = blobUrl;
-                    a.download = fileName; // This forces download
+                    a.download = fileName; 
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     
-                    // Mark as downloaded
                     localStorage.setItem(storageKey, 'true');
                     showToast("✅ تم التحميل للجهاز", "success");
                 } else {
-                    // --- Second Click: Trigger Open (View) ---
                     showToast("👁️ جاري فتح الملف...", "info");
                     window.open(blobUrl, '_blank');
-                    // No need to mark anything, keep it as downloaded state
                 }
             } catch (error) {
                 console.error(error);
-                // Fallback
                 window.open(url, '_blank');
                 showToast("⚠️ فشل الفتح التلقائي، جاري المحاولة...", "error");
             }
@@ -1004,7 +996,7 @@
         }
 
         // ==========================================
-        // PERSISTENCE LOGIC (The Fix for Offline Data)
+        // FIXED PERSISTENCE LOGIC (True Offline Mode)
         // ==========================================
         
         function saveToLocalStorage(data) {
@@ -1019,9 +1011,7 @@
             try {
                 const data = localStorage.getItem('uniBot_db');
                 if (data) {
-                    const parsed = JSON.parse(data);
-                    // Merge with defaults to ensure structure integrity
-                    return { ...defaultConfig, ...parsed, database: { ...defaultDatabase, ...parsed.database } };
+                    return JSON.parse(data);
                 }
             } catch (e) {
                 console.error("Error loading from LocalStorage", e);
@@ -1029,36 +1019,84 @@
             return null;
         }
 
-        function fetchConfig() {
-            return fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } })
-            .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
-            .then(data => { 
-                CONFIG = { ...defaultConfig, ...data }; 
-                if (data.database) CONFIG.database = { ...data.database, ...defaultDatabase }; else CONFIG.database = defaultDatabase;
+        async function fetchConfig() {
+            try {
+                // 1. محاولة جلب البيانات من السحابة
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { 
+                    headers: { 
+                        'X-Master-Key': JSONBIN_ACCESS_KEY, 
+                        'X-Bin-Meta': 'false' 
+                    } 
+                });
+
+                if (!response.ok) throw new Error("Failed to fetch");
                 
-                // SAVE TO LOCAL STORAGE (Key Fix for Offline Mode)
+                const cloudData = await response.json();
+
+                // 2. دمج البيانات بشكل آمن
+                CONFIG = { ...defaultConfig, ...cloudData };
+                
+                // 3. التأكد من أن قاعدة البيانات الموجودة في السحابة هي المعتمدة بالكامل
+                if (cloudData.database) {
+                    CONFIG.database = cloudData.database; 
+                } else {
+                    CONFIG.database = defaultDatabase; 
+                }
+
+                // 4. حفظ البيانات فوراً في LocalStorage
                 saveToLocalStorage(CONFIG);
                 
-                applyConfig(CONFIG); 
+                // 5. تطبيق الإعدادات
+                applyConfig(CONFIG);
                 
+                // 6. التحقق من الإشعارات الجديدة
                 if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
                     const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
                     const newUpdates = CONFIG.recentUpdates.filter(u => !seenIds.includes(u.id));
+                    
                     if (newUpdates.length > 0) {
                         const notifBody = newUpdates.map(u => `${u.doctor} (${u.subject})`).join('\n');
-                        if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: 'SYNCED_NOTIF_DOCTOR', body: notifBody, icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
+                        
+                        if (navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({ 
+                                type: 'SYNCED_NOTIF_DOCTOR', 
+                                body: notifBody, 
+                                icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' 
+                            });
+                        }
+                        
                         showVisualAlertWithBody(notifBody);
                         localStorage.setItem('seenNotifIds', JSON.stringify([...seenIds, ...newUpdates.map(u => u.id)]));
                     }
                 }
-                if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) checkAndShowBroadcast();
-            });
+
+                if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
+                    checkAndShowBroadcast();
+                }
+
+            } catch (error) {
+                console.error("Cloud Sync Failed, checking local storage...", error);
+                
+                // 7. عند فشل الاتصال (وضع الأوفلاين)
+                const localData = loadFromLocalStorage();
+                
+                if (localData) {
+                    CONFIG = localData;
+                    applyConfig(CONFIG);
+                    showToast("📱 أنت الآن في وضع عدم الاتصال (آخر تحديث محفوظ)", "info");
+                } else {
+                    CONFIG = { ...defaultConfig };
+                    applyConfig(CONFIG);
+                    showToast("⚠️ لا توجد بيانات محفوظة", "error");
+                }
+            }
         }
+        
         function saveConfigToBin(newConfig) {
             const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving...";
             if(btnSave) btnSave.innerText = "Saving...";
             fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
-            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = { ...newConfig.database, ...defaultDatabase }; database = CONFIG.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; })
+            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = newConfig.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; })
             .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
         }
         function applyConfig(newConfig) {
@@ -1292,7 +1330,7 @@
                 if(!confirmed) return;
                 if (level === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } 
                 else if (level === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; }
-                else if (level === 2) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
+                else if (level === 2) { const sub = adminNavStack[0]; const docName = database.sub[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
                 else if (level === 3) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2]; database[sub][doc][sec].splice(index, 1); }
                 renderAdminDataView();
             });
@@ -1458,7 +1496,7 @@
                 setTimeout(() => { if (window.location.href.includes('/__/auth/handler')) window.location.replace(window.location.origin); }, 2000); return; 
             }
 
-            // --- STRATEGY CHANGE FOR OFFLINE DATA ---
+            // --- OFFLINE MODE STRATEGY ---
             // 1. Load from LocalStorage first (Instant offline view)
             const localData = loadFromLocalStorage();
             if (localData) {
