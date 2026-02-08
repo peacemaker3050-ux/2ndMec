@@ -1,23 +1,62 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
+const fs = require('fs'); 
+const path = require('path');
+const FormData = require('form-data'); 
 
 // ==========================================
-// 1. الإعدادات
+// 1. بيانات البوت وقائمة المستخدمين المسموح لهم
 // ==========================================
+
 const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4'; 
+
 const AUTHORIZED_USERS = [
-    5605597142, // ID الخاص بك
+    5605597142, // أنت (المالك)
 ];
 
 const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
+const GITHUB_TOKEN = "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"; 
+const GITHUB_REPO_OWNER = "peacemaker3050-ux";      
+const GITHUB_REPO_NAME = "2ndMec";             
+
 const bot = new TelegramBot(token, { polling: true });
+
 const userStates = {}; 
 
 // ==========================================
-// 2. دوال قاعدة البيانات
+// دالة رفع الملف على GitHub (تعديل بسيط لضمان الرفع المباشر)
 // ==========================================
+async function uploadToGithub(filePath, fileName) {
+    try {
+        const content = fs.readFileSync(filePath, { encoding: 'base64' });
+        const cleanFileName = fileName.replace(/\s+/g, '_');
+        const uploadPath = `uploads/${Date.now()}_${cleanFileName}`;
+
+        const url = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${uploadPath}`;
+
+        await axios.put(url, {
+            message: `Upload file: ${cleanFileName}`,
+            content: content
+        }, {
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+
+        return `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/main/${uploadPath}`;
+    } catch (error) {
+        console.error("GitHub Error:", error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+
+// ==========================================
+// 2. دوال الاتصال بقاعدة البيانات
+// ==========================================
+
 async function getDatabase() {
     try {
         const response = await axios.get(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
@@ -25,7 +64,7 @@ async function getDatabase() {
         });
         return response.data;
     } catch (error) {
-        console.error("❌ Database Fetch Error:", error.message);
+        console.error("خطأ في جلب البيانات:", error.message);
         return null;
     }
 }
@@ -35,195 +74,158 @@ async function saveDatabase(data) {
         await axios.put(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, data, {
             headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }
         });
-        console.log("✅ Database Saved Successfully!");
-        return true;
     } catch (error) {
-        console.error("❌ Database Save Error:", error.message);
-        return false;
+        console.error("خطأ في حفظ البيانات:", error.message);
+        throw error;
     }
 }
 
 // ==========================================
-// 3. التعامل مع النصوص (هذا الجزء هو الأهم)
+// 3. استقبال الرسائل والملفات (تم تعديل هذا الجزء لحل مشكلتك)
 // ==========================================
 
-// أولاً: سنستمع لأي نص (حتى لو لم يبدأ بـ /)
-bot.on('text', async (msg) => {
+bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    const text = msg.text;
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
+    bot.sendMessage(chatId, "👋 أهلاً بك في نظام MecWeb.\n\n📄 *لرفع ملف:* أرسل الملف مباشرة.\n📝 *لرسالة للطلاب:* اكتب النص وسأقوم بنشره كإشعار.", { parse_mode: 'Markdown' });
+});
 
-    // 1. التحقق من الصلاحية
-    if (!AUTHORIZED_USERS.includes(chatId)) {
-        console.log(`Unauthorized access attempt by: ${chatId}`);
-        return; 
-    }
+// التعامل مع الملفات والصور
+bot.on('document', async (msg) => handleFile(msg));
+bot.on('photo', async (msg) => {
+    const photo = msg.photo[msg.photo.length - 1];
+    handleFile({ ...msg, document: photo, file_name: "photo_" + Date.now() + ".jpg" });
+});
 
-    // 2. تجاهل الأوامر التي تبدأ بـ / (مثل /start)
-    if (text.startsWith('/')) {
-        if(text === '/start') {
-            bot.sendMessage(chatId, "البوت يعمل! جرب إرسال نص عادي الآن.");
-        }
-        return;
-    }
+async function handleFile(msg) {
+    const chatId = msg.chat.id;
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
 
-    // 3. طباعة في الكونسول للتأكد أن البوت استقبل الرسالة (مهم جداً للديباغ)
-    console.log(`📩 Received Text from ${chatId}: "${text}"`);
+    const fileId = msg.document ? msg.document.file_id : msg.file_id;
+    const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
 
-    // 4. تخزين الحالة
     userStates[chatId] = {
-        step: 'select_subject_for_text',
-        type: 'text',
-        content: text
+        step: 'select_subject',
+        type: 'file',
+        file: { id: fileId, name: fileName }
     };
 
-    // 5. جلب المواد
     const data = await getDatabase();
-    if (!data || !data.database) {
-        return bot.sendMessage(chatId, "❌ تعذر الاتصال بقاعدة البيانات.");
-    }
-
     const subjects = Object.keys(data.database);
-    if (subjects.length === 0) return bot.sendMessage(chatId, "❌ لا توجد مواد في قاعدة البيانات.");
+    const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+    bot.sendMessage(chatId, `📂 الملف: *${fileName}*\n\nاختر المادة:`, {
+        reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+    });
+}
 
-    // 6. إرسال لوحة اختيار المادة
-    const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_text_${sub}` }]);
+// التعامل مع النصوص (تم تعديل الفلتر هنا ليشتغل صح)
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
     
-    try {
-        await bot.sendMessage(chatId, `📝 *رسالة جديدة*\n\n"${text}"\n\nاختر المادة لإرسالها:`, {
-            reply_markup: { inline_keyboard: keyboard },
-            parse_mode: 'Markdown'
+    // التأكد أنها رسالة نصية وليست ملفاً أو أمراً
+    if (msg.text && !msg.text.startsWith('/') && !msg.document && !msg.photo) {
+        userStates[chatId] = {
+            step: 'select_subject',
+            type: 'text',
+            content: msg.text
+        };
+
+        const data = await getDatabase();
+        const subjects = Object.keys(data.database);
+        const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+        bot.sendMessage(chatId, `📝 رسالة جديدة: "${msg.text}"\n\nاختر المادة:`, {
+            reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
-        console.log(`✅ Sent Subject Selection for text`);
-    } catch (err) {
-        console.error("Error sending keyboard:", err);
     }
 });
 
 // ==========================================
-// 4. التعامل مع الأزرار (Callback Query)
+// 4. التعامل مع اختيار الأزرار
 // ==========================================
 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
     const state = userStates[chatId];
-    const msgId = query.message.message_id;
 
-    // تحقق الصلاحية
-    if (!AUTHORIZED_USERS.includes(chatId)) return bot.answerCallbackQuery(query.id, { text: "غير مصرح" });
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
+    if (!state) return;
 
-    console.log(`🔘 Button Clicked: ${data}`);
-
-    // --- أ. اختيار المادة للنص ---
-    if (data.startsWith('sub_text_')) {
-        const subjectName = data.replace('sub_text_', '');
-        
-        // تحديث الحالة
-        state.subject = subjectName;
-        state.step = 'select_doctor_for_text';
-
+    if (state.step === 'select_subject' && data.startsWith('sub_')) {
+        const subjectName = data.replace('sub_', '');
+        state.subject = subjectName; state.step = 'select_doctor';
         const db = await getDatabase();
         const doctors = db.database[subjectName]?.doctors || [];
-
-        if (doctors.length === 0) {
-            return bot.answerCallbackQuery(query.id, { text: "لا يوجد دكاترة لهذه المادة!", show_alert: true });
-        }
-
-        const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_text_${doc}` }]);
-        
-        await bot.editMessageText(`المادة: *${subjectName}*\n\nاختر الدكتور:`, {
-            chat_id: chatId, message_id: msgId,
+        const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
+        bot.editMessageText(`المادة: *${subjectName}*\n\nاختر الدكتور:`, {
+            chat_id: chatId, message_id: query.message.message_id,
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
     }
+    else if (state.step === 'select_doctor' && data.startsWith('doc_')) {
+        const doctorName = data.replace('doc_', '');
+        state.doctor = doctorName;
 
-    // --- ب. اختيار الدكتور للنص ---
-    else if (data.startsWith('doc_text_')) {
-        const doctorName = data.replace('doc_text_', '');
-        
-        // هنا سنقوم بالرفع فوراً بدون اختيار قسم
-        bot.answerCallbackQuery(query.id, { text: "جاري رفع الإشعار..." });
-        
-        await processTextNotification(chatId, state, doctorName, msgId);
+        if (state.type === 'text') {
+            await processTextNotification(chatId, state, query.message.message_id);
+        } else {
+            state.step = 'select_section';
+            const db = await getDatabase();
+            const sections = db.database[state.subject][state.doctor]?.sections || [];
+            const keyboard = sections.map(sec => [{ text: sec, callback_data: `sec_${sec}` }]);
+            bot.editMessageText(`الدكتور: *${doctorName}*\n\nاختر القسم:`, {
+                chat_id: chatId, message_id: query.message.message_id,
+                reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+            });
+        }
     }
+    else if (state.step === 'select_section' && data.startsWith('sec_')) {
+        const sectionName = data.replace('sec_', '');
+        bot.answerCallbackQuery(query.id, { text: "⏳ جاري الرفع..." });
 
-    // --- (الجزء الخاص بالملفات تم اختصاره هنا للتركيز على النص، لكنه موجود إذا احتجته) ---
+        try {
+            const fileLink = await bot.getFileLink(state.file.id);
+            const tempFilePath = path.join('/tmp', state.file.name);
+            
+            const response = await axios({ url: fileLink, responseType: 'stream' });
+            const writer = fs.createWriteStream(tempFilePath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve) => writer.on('finish', resolve));
+
+            const githubLink = await uploadToGithub(tempFilePath, state.file.name);
+            fs.unlinkSync(tempFilePath);
+
+            const db = await getDatabase();
+            db.database[state.subject][state.doctor][sectionName].push({ name: state.file.name, link: githubLink });
+            
+            await saveDatabase(db);
+            bot.editMessageText(`✅ تم الرفع بنجاح للقسم!\n🔗 الرابط: ${githubLink}`, { chat_id: chatId, message_id: query.message.message_id });
+            delete userStates[chatId];
+        } catch (error) {
+            bot.sendMessage(chatId, `❌ خطأ: ${error.message}`);
+        }
+    }
 });
 
-// ==========================================
-// 5. دالة رفع الإشعار (تم تحسينها)
-// ==========================================
-
-async function processTextNotification(chatId, state, doctorName, messageId) {
+async function processTextNotification(chatId, state, messageId) {
     const db = await getDatabase();
-    const notifKey = "🔔 Notifications";
-    const subjectName = state.subject;
-
-    // تحقق من وجود المادة
-    if (!db.database[subjectName]) {
-        return bot.sendMessage(chatId, "❌ المادة غير موجودة.");
-    }
-
-    // تحقق من وجود الدكتور
-    if (!db.database[subjectName][doctorName]) {
-        // إذا لم يكن الدكتور موجوداً، قم بإنشاء هيكل بسيط له (حل طوارئ)
-        db.database[subjectName][doctorName] = {};
-        console.log(`Created new doctor structure for ${doctorName}`);
-    }
-
-    const doctorObj = db.database[subjectName][doctorName];
-
-    // التأكد من وجود مصفوفة الإشعارات
-    if (!Array.isArray(doctorObj[notifKey])) {
-        doctorObj[notifKey] = [];
-        console.log(`Created new Notifications array for ${doctorName}`);
-    }
-
-    // إضافة الإشعار
-    const newNotif = {
+    const docData = db.database[state.subject][state.doctor];
+    
+    if (!docData["🔔 Notifications"]) docData["🔔 Notifications"] = [];
+    
+    docData["🔔 Notifications"].unshift({
         name: state.content,
         date: new Date().toLocaleString(),
-        type: "notif",
-        id: Date.now().toString()
-    };
+        type: "notif"
+    });
 
-    // إضافة في البداية
-    doctorObj[notifKey].unshift(newNotif);
-
-    // تحديث قائمة الأقسام (لظهورها في التطبيق)
-    if (!doctorObj.sections || !Array.isArray(doctorObj.sections)) {
-        doctorObj.sections = [];
-    }
-    if (!doctorObj.sections.includes(notifKey)) {
-        doctorObj.sections.unshift(notifKey);
-    }
-
-    // الحفظ
-    const saved = await saveDatabase(db);
-
-    if (saved) {
-        try {
-            await bot.editMessageText(`✅ تم إرسال الإشعار!\n\n📂 ${subjectName}\n👨‍🏫 ${doctorName}\n📁 ${notifKey}\n\n"${state.content}"`, {
-                chat_id: chatId, 
-                message_id: messageId, 
-                parse_mode: 'Markdown'
-            });
-            delete userStates[chatId];
-        } catch (err) {
-            console.error("Error editing success message:", err);
-            // إذا فشل تعديل الرسالة، أرسل رسالة جديدة
-            bot.sendMessage(chatId, "✅ تم الحفظ بنجاح!");
-            delete userStates[chatId];
-        }
-    } else {
-        bot.sendMessage(chatId, "❌ فشل حفظ البيانات.");
+    try {
+        await saveDatabase(db);
+        bot.editMessageText(`✅ تم إرسال الإشعار بنجاح!`, { chat_id: chatId, message_id: messageId });
+        delete userStates[chatId];
+    } catch (err) {
+        bot.sendMessage(chatId, "❌ فشل حفظ الإشعار.");
     }
 }
-
-// التعامل مع الملفات (نفس الكود السابق مبسط لكي لا يتداخل)
-bot.on('document', async (msg) => {
-    const chatId = msg.chat.id;
-    if (!AUTHORIZED_USERS.includes(chatId)) return;
-    // يمكنك وضع كود رفع الملفات هنا إذا أردت الجمع بينهما
-    bot.sendMessage(chatId, "تم استلام ملف. (خاصية الملفات غير مفعلة في نسخة الاختبار هذه، جرب النص فقط الآن)");
-});
