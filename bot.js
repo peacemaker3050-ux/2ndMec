@@ -20,15 +20,14 @@ const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
 // ==========================================
-// إعدادات Google Drive (Hardcoded لـ Railway)
+// إعدادات Google Drive (بياناتك المحفوظة)
 // ==========================================
 
-// ضع القيم هنا التي نسختها من الخطوة 1
 const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';         
 const CLIENT_SECRET = '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';
 const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U'; 
 
-const REDIRECT_URI = 'http://localhost'; // ثابت للـ Desktop App
+const REDIRECT_URI = 'http://localhost'; 
 
 const oAuth2Client = new google.auth.OAuth2(
     CLIENT_ID,
@@ -40,7 +39,6 @@ oAuth2Client.setCredentials({
     refresh_token: DRIVE_REFRESH_TOKEN
 });
 
-// تجديد التوكن تلقائياً
 oAuth2Client.on('tokens', (tokens) => {
     if (tokens.refresh_token) {
         console.log('Refresh Token updated.');
@@ -194,7 +192,80 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 4. API للحذف
+// 4. وظيفة الرفع الرئيسية (Refactored)
+// ==========================================
+async function performUpload(state, chatId, editMessageId = null) {
+    try {
+        // تحديد رسالة الحالة
+        let statusMsgId;
+        if (editMessageId) {
+            await bot.editMessageText("⏳ جاري الرفع على Drive...", { 
+                chat_id: chatId, message_id: editMessageId 
+            });
+        } else {
+            const msg = await bot.sendMessage(chatId, "⏳ جاري الرفع على Drive...");
+            statusMsgId = msg.message_id;
+        }
+
+        // 1. تحميل الملف مؤقتاً
+        const fileLink = await bot.getFileLink(state.file.id);
+        const tempFilePath = path.join('/tmp', state.file.name);
+        
+        const response = await axios({ url: fileLink, responseType: 'stream' });
+        const writer = fs.createWriteStream(tempFilePath);
+        response.data.pipe(writer);
+
+        await new Promise((resolve) => writer.on('finish', resolve));
+
+        // 2. التحضير للرفع على Drive
+        const rootId = await getRootFolderId();
+        const subjectFolderId = await findOrCreateFolder(state.subject, rootId);
+        const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
+        const sectionFolderId = await findOrCreateFolder(state.section, doctorFolderId);
+
+        // 3. الرفع
+        const driveResult = await uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
+        
+        // تنظيف
+        fs.unlink(tempFilePath, (err) => { if(err) console.error(err); });
+
+        // 4. الحفظ في قاعدة البيانات
+        const db = await getDatabase();
+        if (!db.database[state.subject][state.doctor][state.section]) {
+            db.database[state.subject][state.doctor][state.section] = [];
+        }
+
+        db.database[state.subject][state.doctor][state.section].push({ 
+            name: state.file.name, 
+            link: driveResult.link, 
+            driveId: driveResult.id 
+        });
+        
+        await saveDatabase(db);
+        
+        const finalText = `✅ تم الرفع بنجاح!\n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 الاسم: *${state.file.name}*\n🔗 ${driveResult.link}`;
+        
+        if (editMessageId) {
+            bot.editMessageText(finalText, { 
+                chat_id: chatId, message_id: editMessageId, 
+                parse_mode: 'Markdown', disable_web_page_preview: true 
+            });
+        } else {
+            bot.sendMessage(chatId, finalText, { 
+                parse_mode: 'Markdown', disable_web_page_preview: true 
+            });
+        }
+        
+        delete userStates[chatId];
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, `❌ خطأ في الرفع: ${error.message}`);
+        delete userStates[chatId];
+    }
+}
+
+// ==========================================
+// 5. API للحذف
 // ==========================================
 
 app.post('/delete-drive-file', async (req, res) => {
@@ -208,7 +279,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 5. أوامر تليجرام
+// 6. أوامر تليجرام
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -246,26 +317,43 @@ async function handleFile(msg) {
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
-    if (!AUTHORIZED_USERS.includes(chatId)) return;
+    const text = msg.text;
     
-    if (msg.text && !msg.text.startsWith('/') && !msg.document && !msg.photo) {
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
+
+    // 1. منطق تغيير اسم الملف (جديد)
+    const state = userStates[chatId];
+    if (state && state.step === 'waiting_for_new_name') {
+        if (!text || text.startsWith('/')) return; 
+        
+        // تحديث اسم الملف
+        state.file.name = text.trim();
+        state.step = 'ready_to_upload'; 
+        
+        // بدء الرفع
+        performUpload(state, chatId);
+        return;
+    }
+
+    // 2. منطق إرسال الإشعار النصي
+    if (text && !text.startsWith('/') && !msg.document && !msg.photo) {
         userStates[chatId] = {
             step: 'select_subject',
             type: 'text',
-            content: msg.text
+            content: text
         };
 
         const data = await getDatabase();
         const subjects = Object.keys(data.database);
         const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-        bot.sendMessage(chatId, `📝 رسالة جديدة: "${msg.text}"\n\nاختر المادة:`, {
+        bot.sendMessage(chatId, `📝 رسالة جديدة: "${text}"\n\nاختر المادة:`, {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
     }
 });
 
 // ==========================================
-// 6. منطق الرفع (Upload)
+// 7. معالجة الأزرار (Callback Query)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -304,54 +392,37 @@ bot.on('callback_query', async (query) => {
             });
         }
     }
+    // -----------------------------------------------------------
+    // التعديل الجديد: اختيار القسم -> تأكيد الاسم
+    // -----------------------------------------------------------
     else if (state.step === 'select_section' && data.startsWith('sec_')) {
         const sectionName = data.replace('sec_', '');
-        bot.answerCallbackQuery(query.id, { text: "⏳ جاري الرفع على Drive..." });
+        state.section = sectionName;
+        state.step = 'confirm_name'; // الانتقال لخطوة التأكيد
 
-        try {
-            // 1. تحميل الملف مؤقتاً
-            const fileLink = await bot.getFileLink(state.file.id);
-            const tempFilePath = path.join('/tmp', state.file.name);
-            
-            const response = await axios({ url: fileLink, responseType: 'stream' });
-            const writer = fs.createWriteStream(tempFilePath);
-            response.data.pipe(writer);
+        const nameKeyboard = [
+            [{ text: "✅ Same Name", callback_data: 'act_same' }],
+            [{ text: "✏️ Rename", callback_data: 'act_rename' }]
+        ];
 
-            await new Promise((resolve) => writer.on('finish', resolve));
-
-            // 2. التحضير للرفع على Drive
-            const rootId = await getRootFolderId();
-            const subjectFolderId = await findOrCreateFolder(state.subject, rootId);
-            const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
-            const sectionFolderId = await findOrCreateFolder(sectionName, doctorFolderId);
-
-            // 3. الرفع
-            const driveResult = await uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
-            
-            // تنظيف
-            fs.unlink(tempFilePath, (err) => { if(err) console.error(err); });
-
-            // 4. الحفظ في قاعدة البيانات
-            const db = await getDatabase();
-            if (!db.database[state.subject][state.doctor][sectionName]) {
-                db.database[state.subject][state.doctor][sectionName] = [];
-            }
-
-            db.database[state.subject][state.doctor][sectionName].push({ 
-                name: state.file.name, 
-                link: driveResult.link, 
-                driveId: driveResult.id 
-            });
-            
-            await saveDatabase(db);
-            bot.editMessageText(`✅ تم الرفع بنجاح!\n🔗 ${driveResult.link}`, { 
-                chat_id: chatId, message_id: query.message.message_id,
-                disable_web_page_preview: true
-            });
-            delete userStates[chatId];
-        } catch (error) {
-            console.error(error);
-            bot.sendMessage(chatId, `❌ خطأ في الرفع: ${error.message}`);
+        bot.editMessageText(`📂 القسم: *${sectionName}*\n\n📝 الاسم الحالي:\n\`${state.file.name}\`\n\nاختر إجراء:`, {
+            chat_id: chatId, 
+            message_id: query.message.message_id,
+            reply_markup: { inline_keyboard: nameKeyboard }, 
+            parse_mode: 'Markdown'
+        });
+    }
+    // -----------------------------------------------------------
+    // التعامل مع أزرار Same Name / Rename
+    // -----------------------------------------------------------
+    else if (state.step === 'confirm_name') {
+        if (data === 'act_same') {
+            // رفع بنفس الاسم
+            performUpload(state, chatId, query.message.message_id);
+        } else if (data === 'act_rename') {
+            // طلب اسم جديد
+            state.step = 'waiting_for_new_name';
+            bot.sendMessage(chatId, "✏️ أرسل الاسم الجديد للملف:");
         }
     }
 });
@@ -377,9 +448,7 @@ async function processTextNotification(chatId, state, messageId) {
     }
 }
 
-// تشغيل السيرفر
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    // التأكد من المجلد الرئيسي
     getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
 });
