@@ -278,7 +278,7 @@
 
         .admin-section-title {
             color: #60a5fa; margin: 25px 0 15px 0; font-size: 14px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             padding-bottom: 8px;
         }
 
@@ -1004,7 +1004,7 @@
         }
 
         // ==========================================
-        // PERSISTENCE LOGIC (Offline Mode Fix)
+        // PERSISTENCE LOGIC (The Fix for Offline Data)
         // ==========================================
         
         function saveToLocalStorage(data) {
@@ -1020,20 +1020,8 @@
                 const data = localStorage.getItem('uniBot_db');
                 if (data) {
                     const parsed = JSON.parse(data);
-                    
-                    // === التعديل الهام لضمان ظهور آخر تحديث ===
-                    // 1. نحتفظ بقاعدة البيانات المحفوظة كما هي (الملفات والمواد)
-                    const savedDatabase = parsed.database || {};
-                    
-                    // 2. نبني الإعدادات بحيث تأخذ المحفوظ أولاً ثم الافتراضي كاحتياطي
-                    // لكن نمنع الافتراضي من مسح قاعدة البيانات المحفوظة
-                    const localConfig = {
-                        ...defaultConfig,       // Base defaults
-                        ...parsed,              // Saved settings overrides
-                        database: savedDatabase // Saved database (Full State)
-                    };
-                    
-                    return localConfig;
+                    // Merge with defaults to ensure structure integrity
+                    return { ...defaultConfig, ...parsed, database: { ...defaultDatabase, ...parsed.database } };
                 }
             } catch (e) {
                 console.error("Error loading from LocalStorage", e);
