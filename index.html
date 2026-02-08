@@ -19,31 +19,37 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Poppins:wght@400;500;600;700&family=Open+Sans:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&family=Almarai:wght@400;700;800&family=Amiri:wght@400;700&family=El+Messiri:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js" defer></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
     <style>
         :root {
-            /* Default Color Palette */
+            /* Default Color Palette - Will be overridden by JS */
             --bg-dark: #0f172a;
             --bg-glass: rgba(15, 23, 42, 0.85);
             --bg-glass-heavy: rgba(15, 23, 42, 0.95);
-            --accent-primary: #3b82f6;
-            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            --msg-bot-bg: rgba(255, 255, 255, 0.1);
-            --msg-user-bg: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            --accent-primary: #3b82f6; /* Dynamic User Color */
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); /* Dynamic User Gradient */
+            --msg-bot-bg: rgba(255, 255, 255, 0.1); /* Dynamic Bot Color */
+            --msg-user-bg: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); /* Dynamic User Gradient */
+            
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --border-color: rgba(255, 255, 255, 0.1);
+            
+            /* UI Elements */
             --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --glass-blur: blur(16px);
             --radius-md: 12px;
             --radius-lg: 20px;
             --radius-full: 999px;
+            
+            /* Typography Defaults */
             --font-en: 'Inter', sans-serif;
             --font-ar: 'Cairo', sans-serif;
         }
 
+        /* Reset & Base Styles */
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         
         html, body {
@@ -55,12 +61,14 @@
             color: var(--text-primary);
         }
 
+        /* Main App Layout */
         .app-container {
             width: 100%; max-width: 500px; height: 100%; margin: 0 auto;
             display: flex; flex-direction: column; position: relative;
             box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); z-index: 10;
         }
 
+        /* Header Section */
         header {
             padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
             background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px);
@@ -97,6 +105,7 @@
         .header-actions { color: var(--text-secondary); font-size: 26px; cursor: pointer; padding: 5px; transition: color 0.2s; }
         .header-actions:hover { color: #fff; }
 
+        /* Dropdown Menu */
         .menu-dropdown {
             position: absolute; top: 70px; width: 280px; background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -118,6 +127,7 @@
 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
+        /* Chat Area */
         #chat-area {
             flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
             scroll-behavior: smooth; background-color: transparent; direction: ltr;
@@ -138,6 +148,7 @@
             margin-top: 6px; user-select: none;
         }
 
+        /* Special Message Types */
         .broadcast-msg {
             background: linear-gradient(145deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05));
             border: 1px solid rgba(234, 179, 8, 0.4); border-left: 3px solid #eab308;
@@ -154,7 +165,7 @@
         .notif-header { display: flex; justify-content: space-between; font-size: 11px; color: #f97316; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
 
         .file-link-btn {
-            display: flex; align-items: center; gap: 12px; background: rgba(255,255,255, 0.1);
+            display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.1);
             padding: 10px; border-radius: var(--radius-md); text-decoration: none; color: #fff;
             margin-top: 5px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px;
             cursor: pointer; transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
@@ -162,6 +173,7 @@
         }
         .file-link-btn:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
 
+        /* Interactive Keyboard */
         #keyboard-area {
             background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
             padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
@@ -183,6 +195,7 @@
 
         @keyframes messagePop { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
+        /* Modals & Overlays */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 9999;
@@ -208,11 +221,13 @@
         }
         .alert-btn:active, .ui-btn:active { transform: scale(0.96); }
 
+        /* Install Guide Steps */
         .install-step { margin-bottom: 15px; display: flex; align-items: flex-start; gap: 10px; }
         .install-icon { font-size: 24px; background: rgba(255, 255, 255, 0.1); padding: 8px; border-radius: 50%; }
         .install-text h4 { margin: 0 0 5px 0; color: #fff; font-size: 15px; }
         .install-text p { margin: 0; color: #94a3b8; font-size: 13px; line-height: 1.4; }
 
+        /* Admin Panel Styles */
         .admin-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -260,8 +275,9 @@
         }
         .form-textarea { height: 90px; resize: vertical; }
 
+        /* Color Inputs */
         input[type="color"] {
-            appearance: none;
+        appearance: none;
             -webkit-appearance: none;
             border: none;
             width: 100%;
@@ -296,6 +312,7 @@
         }
         .btn-delete:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
 
+        /* Admin Data List */
         .data-list { display: flex; flex-direction: column; gap: 10px; max-height: 40vh; overflow-y: auto; }
         .data-item {
             background: rgba(255, 255, 255, 0.03); padding: 12px; border-radius: var(--radius-md);
@@ -306,6 +323,7 @@
         .btn-del { background: rgba(239, 68, 68, 0.2); color: #f87171; }
         .btn-edit { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
 
+        /* Toast Notifications */
         #toast-container {
             position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; gap: 10px; z-index: 9998;
@@ -321,16 +339,19 @@
         .toast.success { border-left: 4px solid #22c55e; }
         .toast.error { border-left: 4px solid #ef4444; }
 
+        /* Animations */
         @keyframes toastIn { from { opacity: 0; transform: translateY(30px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUpFade { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+        /* Typing Indicator */
         .typing-indicator {
             font-size: 12px; color: var(--text-secondary); margin-left: 15px; margin-bottom: 10px;
             display: none; font-style: italic; opacity: 0.7; font-weight: 600; direction: ltr; text-align: left;
         }
         .typing-indicator.active { display: block; }
 
+        /* Admin Header */
         .admin-header-top {
             display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -340,6 +361,7 @@
         .close-modal { font-size: 32px; color: #64748b; cursor: pointer; line-height: 1; transition: color 0.2s; }
         .close-modal:hover { color: #fff; }
 
+        /* Manifest Preview */
         .manifest-preview {
             width: 120px; height: 120px; border-radius: 24px; background: rgba(255, 255, 255, 0.1);
             border: 2px solid var(--border-color); margin: 0 auto 20px auto;
@@ -349,6 +371,7 @@
         .manifest-preview img { width: 100%; height: 100%; object-fit: cover; }
         .manifest-preview span { font-size: 40px; color: rgba(255, 255, 255, 0.2); }
 
+        /* Loading Screen */
         #loading-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--bg-dark); background-image: radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
@@ -424,6 +447,8 @@
     </div>
 
     <!-- Modals -->
+
+    <!-- Visual Alert Modal -->
     <div id="visual-alert-overlay" class="modal-overlay">
         <div class="visual-alert-card">
             <span class="alert-icon">🔔</span>
@@ -433,6 +458,7 @@
         </div>
     </div>
 
+    <!-- Install Guide Modal -->
     <div id="install-guide-overlay" class="modal-overlay">
         <div class="install-guide-box">
             <div class="alert-title" style="text-align:center;">Install App 📲</div>
@@ -442,6 +468,7 @@
                 <div class="install-text">
                     <h4>Android (Chrome)</h4>
                     <p>Tap <b>"Install App"</b> button in menu above, or look for "Add to Home Screen" in browser menu (⋮).</p>
+                    <p style="color:#f87171;font-size:12px;margin-top:5px;">⚠️ <b>Important:</b> Disable Battery Optimization for Chrome in Settings to ensure notifications work in background!</p>
                 </div>
             </div>
             <div id="guide-ios" class="install-step">
@@ -449,12 +476,14 @@
                 <div class="install-text">
                     <h4>iPhone (Safari)</h4>
                     <p>Tap <b>Share</b> button (square with arrow) → Scroll down → Tap <b>"Add to Home Screen"</b>.</p>
+                    <p style="color:#f87171;font-size:12px;margin-top:5px;">⚠️ <b>Note:</b> iOS is strict. Notifications might only appear when you open app or wake up screen.</p>
                 </div>
             </div>
             <button class="alert-btn" onclick="document.getElementById('install-guide-overlay').classList.remove('active')" style="width:100%;">Close</button>
         </div>
     </div>
 
+    <!-- Input/Confirm Modal -->
     <div id="ui-modal-overlay" class="modal-overlay">
         <div class="ui-modal-box">
             <div class="ui-modal-title" id="ui-modal-title" style="font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;">Title</div>
@@ -467,6 +496,7 @@
         </div>
     </div>
 
+    <!-- Toast Container -->
     <div id="toast-container"></div>
 
     <!-- Admin Panel -->
@@ -488,6 +518,7 @@
                 <div style="text-align: left;margin-bottom: 20px;">
                     <span onclick="window.logoutUser()" style="cursor: pointer; color: #f87171; font-size: 13px; font-weight: 600;">Sign Out 🚪</span>
                 </div>
+                
                 <div id="owner-theme-section" style="display: none;">
                     <div class="admin-section-title" style="color: #fbbf24;">Theme Colors (Owner Only)</div>
                     <div class="form-group" style="display: flex; gap: 15px;">
@@ -500,7 +531,9 @@
                             <input type="color" id="color-bot-input" value="#ffffff">
                         </div>
                     </div>
+                    <p style="font-size:11px; color:#94a3b8; margin-top:-10px; margin-bottom: 20px;">Primary color affects buttons and student messages. Bot color adds a tint to bot messages (Glassy effect).</p>
                 </div>
+
                 <div id="owner-typography-section" style="display: none;">
                     <div class="admin-section-title" style="color: #fbbf24;">Typography (Owner Only)</div>
                     <div class="form-group">
@@ -614,6 +647,9 @@
                     <button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button>
                     <p style="font-size:11px; color:#64748b; margin-top:5px;">Image will be resized to 512x512 for sharp look.</p>
                 </div>
+                <p style="font-size:12px; color:#fbbf24; background:rgba(251, 191, 36, 0.1); padding:10px; border-radius:8px; text-align:center; border:1px solid rgba(251,191,36,0.2); margin-bottom:15px;">
+                    ⚠️ Note: Changing icon/name requires users to <b>Uninstall</b> and <b>Re-install</b> app to see changes.
+                </p>
                 <button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button>
             </div>
         </div>
@@ -622,7 +658,7 @@
     <script>
         /**
          * University Bot Pro - Single File Implementation
-         * Features: LocalStorage Persistence, Smart Offline Caching, Web Share API
+         * Features: Firebase Auth, JSONBin Sync, PWA, Admin Panel, Notifications, Live Theme
          */
 
         // --- Configuration & Constants ---
@@ -649,14 +685,16 @@
             generalBroadcast: { active: false, title: "", body: "", timestamp: 0 },
             englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif",
             appName: "UniBot Pro", appIcon: "", appVersion: 1,
-            themeColor: "#3b82f6",
-            botMsgColor: "#ffffff",
+            // NEW: Theme Config
+            themeColor: "#3b82f6", // Blue (Student/Buttons)
+            botMsgColor: "#ffffff", // White (Bot BG)
             welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.",
             subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇",
             categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:",
             backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", database: defaultDatabase
         };
 
+        // --- State Variables ---
         let CONFIG = { ...defaultConfig };
         let database = CONFIG.database;
         let auth, isAuthInitialized = false;
@@ -667,10 +705,36 @@
         let currentAdminTab = 0;
         let currentModalCallback = null;
 
+        // --- Initialization ---
         try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch (e) { console.log("Firebase already initialized or error:", e); }
 
-        // --- Service Worker Registration ---
-        const swUrl = 'sw.js';
+        // --- Service Worker (Blob Technique for Single File) ---
+        const swCode = `
+            const CACHE_NAME = 'uni-bot-cache-v1';
+            self.addEventListener('install', e => { e.waitUntil(self.skipWaiting()); });
+            self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+            self.addEventListener('fetch', e => {
+                e.respondWith(
+                    caches.match(e.request).then(res => res || fetch(e.request))
+                );
+            });
+            self.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'TEST_NOTIF') {
+                    self.registration.showNotification("🧪 Test Successful", { 
+                        body: "Notifications are working.", 
+                        icon: event.data.icon || "https://cdn-icons-png.flaticon.com/512/2991/2991148.png" 
+                    });
+                }
+                if (event.data && event.data.type === 'SYNCED_NOTIF_DOCTOR') {
+                    self.registration.showNotification("📢 New Update Available", { 
+                        body: event.data.body, 
+                        icon: event.data.icon || "https://cdn-icons-png.flaticon.com/512/2991/2991148.png" 
+                    });
+                }
+            });
+        `;
+        const swBlob = new Blob([swCode], {type: 'application/javascript'});
+        const swUrl = URL.createObjectURL(swBlob);
 
         // --- UI Logic ---
         const chatArea = document.getElementById('chat-area');
@@ -732,10 +796,12 @@
         });
         document.getElementById('ui-modal-overlay').addEventListener('click', (e) => { if(e.target.id === 'ui-modal-overlay') closeUiModal(); });
 
+        // --- Chat & Bot Logic ---
         function addMessage(content, sender, isHtml = false) {
             const msgDiv = document.createElement('div'); 
             msgDiv.classList.add('message', sender === 'bot' ? 'msg-bot' : 'msg-user');
             if (isHtml) msgDiv.innerHTML = content; else msgDiv.innerText = content;
+            
             const timeSpan = document.createElement('span'); 
             timeSpan.classList.add('timestamp'); 
             timeSpan.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
@@ -809,163 +875,25 @@
             const msg = replacePlaceholders(CONFIG.categoryPrompt, categoryName); 
             botReply(msg, true); renderKeyboard(); 
         }
-
-        // ==========================================
-        // NEW OFFLINE STRATEGY IMPLEMENTATION
-        // ==========================================
-
-        // 1. ROBUST LINK CONVERSION (Google Drive fix)
-        function getDirectLink(url) {
-            if (!url) return url;
-            if (url.startsWith('http://')) url = url.replace('http://', 'https://');
-
-            const driveRegex = /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/view/;
-            const match = url.match(driveRegex);
-            if (match) {
-                const id = match[1];
-                return `https://drive.google.com/uc?export=download&id=${id}`;
-            }
-            return url;
-        }
-
-        // 2. Recursive function to scan DB for all file links
-        function getAllFileLinks(dbStructure) {
-            const links = new Set();
-
-            function traverse(obj) {
-                if (typeof obj !== 'object' || obj === null) return;
-
-                if (Array.isArray(obj)) {
-                    obj.forEach(item => {
-                        if (item && typeof item === 'object') {
-                            if (item.link) {
-                                let link = item.link;
-                                if (link.startsWith('http://')) link = link.replace('http://', 'https://');
-                                links.add(link);
-                            } else if (item.type === 'notif' && item.link) {
-                                let link = item.link;
-                                if (link.startsWith('http://')) link = link.replace('http://', 'https://');
-                                links.add(link);
-                            }
-                        }
-                    });
-                } else {
-                    Object.values(obj).forEach(value => traverse(value));
-                }
-            }
-
-            traverse(dbStructure.database || dbStructure);
-            return Array.from(links);
-        }
-
-        // 3. Pre-cache trigger: Send list to SW
-        function triggerPrecache(dbData) {
-            if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
-                console.warn("Service Worker not active, skipping pre-cache.");
-                return;
-            }
-
-            const rawLinks = getAllFileLinks(dbData);
-            const convertedLinks = rawLinks.map(url => getDirectLink(url));
-            
-            console.log(`[App] Found ${convertedLinks.length} files. Triggering Pre-Cache...`);
-
-            navigator.serviceWorker.controller.postMessage({
-                type: 'PRE_CACHE_PDFS',
-                urls: convertedLinks
-            });
-            
-            if(convertedLinks.length > 0) {
-                 showToast(`🔄 Updating offline library (${convertedLinks.length} files)...`, 'info');
-            }
-        }
-
-        // 4. Helper for MIME type (Fixed for Opaque responses)
-        function getMimeType(filename) {
-            const ext = filename.split('.').pop().toLowerCase();
-            const types = {
-                'pdf': 'application/pdf',
-                'doc': 'application/msword',
-                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'ppt': 'application/vnd.ms-powerpoint',
-                'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
-                'png': 'image/png', 'gif': 'image/gif'
-            };
-            return types[ext] || 'application/octet-stream';
-        }
-
-        // 5. Smart Open (Web Share API) - FORCED BLOB SERVING
-        async function openFileSmart(url, fileName) {
-            const finalUrl = getDirectLink(url);
-            showToast('⬇️ Opening File...', 'info');
-
-            try {
-                // === VERIFIED: CREDENTIALS OMIT ===
-                const response = await fetch(finalUrl, { credentials: 'omit' });
-                // ===============================
-                
-                if (!response.ok) throw new Error("File not available offline or network error");
-
-                const blob = await response.blob();
-                
-                // Fix for Opaque responses (CORS stripping MIME types)
-                const mimeType = blob.type || getMimeType(fileName);
-                const file = new File([blob], fileName, { type: mimeType });
-                
-                const localUrl = window.URL.createObjectURL(file);
-
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    console.log("[App] Using Web Share API");
-                    await navigator.share({
-                        title: fileName,
-                        text: `File from ${CONFIG.botName}`,
-                        files: [file]
-                    });
-                    showToast('✅ File shared!', 'success');
-                } else {
-                    console.log("[App] Using Local Blob URL (Fallback)");
-                    // === VERIFIED: BLOB -> OBJECTURL -> HIDDEN ANCHOR ===
-                    const link = document.createElement('a');
-                    link.href = localUrl;
-                    link.download = fileName;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    setTimeout(() => window.URL.revokeObjectURL(localUrl), 1000);
-                    // =================================================
-                    showToast('📂 File downloaded.', 'success');
-                }
-            } catch (err) {
-                console.error("Smart Open Error:", err);
-                showToast('❌ Failed to open file', 'error');
-                const googleViewerUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(finalUrl)}`;
-                window.open(googleViewerUrl, '_blank');
-            }
-        }
-
-        // === VERIFIED: BUTTON LINKAGE ===
         function handleFileClick(fileObj) {
             const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"));
-            
             if (isNotification) {
                 const actualMsg = fileObj.type === "notif" ? fileObj.name : fileObj.link.replace("content:", "");
                 const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${currentDoctor} (${currentSubject})</div><div>${actualMsg}</div></div>`;
                 addMessage(htmlContent, 'bot', true);
             } else {
-                addMessage(`Opening: ${fileObj.name}`, 'user');
+                addMessage(`Open: ${fileObj.name}`, 'user');
                 setTimeout(() => {
                     if (!fileObj.link || fileObj.link.startsWith("javascript:") || fileObj.link === "#") { 
                         const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
                         addMessage(htmlContent, 'bot', true); 
                     } else { 
-                        openFileSmart(fileObj.link, fileObj.name);
+                        const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><a href="${fileObj.link}" target="_blank" class="file-link-btn"><span>📂</span><span>Download / Open File</span></a>`; 
+                        addMessage(htmlContent, 'bot', true); 
                     }
                 }, 800);
             }
         }
-        // ================================
-
         function goBack() {
             addMessage("🔙 Back", 'user');
             if (currentCategory) { currentCategory = null; const msg = replacePlaceholders(CONFIG.backDoctor, currentDoctor); botReply(msg, true); } 
@@ -995,6 +923,7 @@
             });
         };
 
+        // --- PWA & Install Logic ---
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -1041,6 +970,7 @@
             appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
         }
 
+        // --- Image Processing ---
         function compressImage(file, callback) {
             const reader = new FileReader(); reader.readAsDataURL(file);
             reader.onload = (event) => {
@@ -1069,6 +999,7 @@
             };
         }
 
+        // --- Helper: Hex to RGB & Darken ---
         function hexToRgb(hex) {
             var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
             return result ? {
@@ -1083,50 +1014,19 @@
             if (!rgb) return hex;
             const amt = Math.round(2.55 * percent);
             const R = (rgb.r - amt) < 0 ? 0 : rgb.r - amt;
-            const G = (rgb.g - amt) < 0 ?0 : rgb.g - amt;
+            const G = (rgb.g - amt) < 0 ? 0 : rgb.g - amt;
             const B = (rgb.b - amt) < 0 ? 0 : rgb.b - amt;
             return "#" + (0x1000000 + (R << 16) + (G << 8) + B).toString(16).slice(1);
         }
 
-        // ==========================================
-        // PERSISTENCE LOGIC (The Fix for Offline Data)
-        // ==========================================
-        
-        function saveToLocalStorage(data) {
-            try {
-                localStorage.setItem('uniBot_db', JSON.stringify(data));
-            } catch (e) {
-                console.warn("LocalStorage full or disabled");
-            }
-        }
-
-        function loadFromLocalStorage() {
-            try {
-                const data = localStorage.getItem('uniBot_db');
-                if (data) {
-                    const parsed = JSON.parse(data);
-                    return { ...defaultConfig, ...parsed, database: { ...defaultDatabase, ...parsed.database } };
-                }
-            } catch (e) {
-                console.error("Error loading from LocalStorage", e);
-            }
-            return null;
-        }
-
+        // --- Data Sync & Configuration ---
         function fetchConfig() {
             return fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } })
             .then(res => { if (!res.ok) throw new Error("Failed"); return res.json(); })
             .then(data => { 
                 CONFIG = { ...defaultConfig, ...data }; 
-                if (data.database) {
-                    CONFIG.database = { ...defaultDatabase, ...data.database };
-                } else {
-                    CONFIG.database = defaultDatabase;
-                }
-                
-                saveToLocalStorage(CONFIG);
+                if (data.database) CONFIG.database = { ...data.database, ...defaultDatabase }; else CONFIG.database = defaultDatabase;
                 applyConfig(CONFIG); 
-                triggerPrecache(CONFIG); 
                 
                 if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
                     const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
@@ -1145,7 +1045,7 @@
             const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving...";
             if(btnSave) btnSave.innerText = "Saving...";
             fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
-            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = { ...defaultDatabase, ...newConfig.database }; database = CONFIG.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; })
+            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = { ...newConfig.database, ...defaultDatabase }; database = CONFIG.database; if(btnSave) btnSave.innerText = originalText; })
             .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
         }
         function applyConfig(newConfig) {
@@ -1159,23 +1059,29 @@
             document.documentElement.style.setProperty('--font-en', CONFIG.englishFont || "'Inter', sans-serif");
             document.documentElement.style.setProperty('--font-ar', CONFIG.arabicFont || "'Cairo', sans-serif");
 
+            // --- Apply Theme Colors ---
             const primaryHex = CONFIG.themeColor || "#3b82f6";
             const botColorHex = CONFIG.botMsgColor || "#ffffff";
             const botRgb = hexToRgb(botColorHex);
             
+            // Update Primary Color (User Messages, Buttons, Accents)
             document.documentElement.style.setProperty('--accent-primary', primaryHex);
+            // Generate Gradient for User Messages
             const darkerHex = darkenColor(primaryHex, 30);
             const userGradient = `linear-gradient(135deg, ${primaryHex} 0%, ${darkerHex} 100%)`;
             document.documentElement.style.setProperty('--accent-gradient', userGradient);
             document.documentElement.style.setProperty('--msg-user-bg', userGradient);
 
+            // Update Bot Color (Glassy effect with 0.1 opacity)
             if (botRgb) {
                 const botRgba = `rgba(${botRgb.r}, ${botRgb.g}, ${botRgb.b}, 0.1)`;
                 document.documentElement.style.setProperty('--msg-bot-bg', botRgba);
             }
 
+            // --- Update Welcome Message in DOM if exists ---
             const welcomeEl = document.getElementById('unique-welcome-msg');
             if (welcomeEl) {
+                // Preserve timestamp
                 const timestamp = welcomeEl.querySelector('.timestamp');
                 const newContent = replacePlaceholders(CONFIG.welcomeMessage, null);
                 welcomeEl.innerHTML = newContent;
@@ -1219,6 +1125,7 @@
             });
         };
 
+        // --- Admin Panel Logic ---
         function resetStateVariables() { currentSubject = null; currentDoctor = null; currentCategory = null; renderKeyboard(); }
         function hasAdminAccess() { const user = auth.currentUser; if (!user) return false; const email = user.email; return email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email)); }
         
@@ -1235,11 +1142,12 @@
             const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL);
             document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none';
             document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none';
-            document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; 
+            document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; // NEW
             document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';
             
             if (isOwner) {
                 renderAdminList();
+                // Populate Colors
                 document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6";
                 document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff";
             } else {
@@ -1277,6 +1185,7 @@
             setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration);
         };
         
+        // --- Admin Data & Settings ---
         window.saveAdminSettings = function() {
             const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim());
             const newConfig = {
@@ -1294,6 +1203,7 @@
                 englishFont: document.getElementById('select-en-font').value,
                 arabicFont: document.getElementById('select-ar-font').value,
                 appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion,
+                // NEW: Save Colors
                 themeColor: document.getElementById('color-primary-input').value,
                 botMsgColor: document.getElementById('color-bot-input').value
             };
@@ -1330,6 +1240,7 @@
             showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index,1); renderAdminList(); } }); 
         }
 
+        // --- Admin Data Manager ---
         function renderAdminDataView() {
             const pathContainer = document.getElementById('admin-data-path'); const listContainer = document.getElementById('admin-list-items');
             listContainer.innerHTML = ''; document.getElementById('new-item-name').value = ''; document.getElementById('new-item-link').value = ''; 
@@ -1385,6 +1296,7 @@
             });
         }
 
+        // --- Notifications (Admin) ---
         window.populateNotifSubjects = function() {
             const select = document.getElementById('notif-subject-select'); select.innerHTML = '<option value="">-- Select Subject --</option>';
             const subjects = Object.keys(database); subjects.forEach(sub => { const opt = document.createElement('option'); opt.value = sub; opt.innerText = sub; select.appendChild(opt); });
@@ -1413,6 +1325,7 @@
             .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; });
         };
 
+        // --- Broadcast (Admin) ---
         window.saveBroadcast = function() {
             const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner;
             if (!allowed) { showInputModal("Verify Identity", "Password (Owner)", (pass) => { if (pass === "1234") proceedBroadcastSave(); else showToast("Wrong Password", "error"); }); return; } proceedBroadcastSave();
@@ -1440,6 +1353,7 @@
             });
         }
 
+        // --- App Manifest Logic (Admin) ---
         document.getElementById('manifest-icon-upload').addEventListener('change', function(e) {
             const file = e.target.files[0]; if(file) { resizeAppIcon(file, (base64String) => { CONFIG.appIcon = base64String; updateAppIconPreview(base64String); document.getElementById('manifest-icon-remove').style.display = 'inline-block'; }); }
         });
@@ -1461,10 +1375,14 @@
             .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = originalText; });
         }
 
+        // --- Auth Logic (Web Fallback for WebView) ---
         window.handleMenuAuthClick = async function() {
             document.getElementById('menu-dropdown').classList.remove('active');
             if (!auth) return;
+            
             const user = auth.currentUser;
+            
+            // 1. If user is already logged in, handle Admin Access
             if (user) {
                 const email = user.email;
                 if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { 
@@ -1474,6 +1392,8 @@
                 }
                 return;
             }
+
+            // 2. If not logged in, perform Login (Standard Web Auth)
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 const result = await auth.signInWithPopup(provider);
@@ -1510,6 +1430,7 @@
             } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; loginBtn.classList.remove('is-owner', 'is-admin'); }
         }
 
+        // --- Sync & Start ---
         function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
         function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
         function handleDeepLink() {
@@ -1534,8 +1455,14 @@
             }
         }
         
-        async function setupCapacitorNotifications() { console.log("WebView Mode: Skipping Native Notification Setup."); }
+        // --- Capacitor Notifications (Disabled for WebView) ---
+        async function setupCapacitorNotifications() {
+            // Since we removed Capacitor imports, this function does nothing.
+            // Notifications will rely on Web Notifications API and Service Worker.
+            console.log("WebView Mode: Skipping Native Notification Setup.");
+        }
 
+        // --- Main OnLoad ---
         window.onload = () => {
             if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch(e){} }
             const currentUrl = window.location.href;
@@ -1545,48 +1472,17 @@
                 setTimeout(() => { if (window.location.href.includes('/__/auth/handler')) window.location.replace(window.location.origin); }, 2000); return; 
             }
 
-            // --- STRATEGY CHANGE FOR OFFLINE DATA ---
-            // 1. Load from LocalStorage first (Instant offline view)
-            const localData = loadFromLocalStorage();
-            if (localData) {
-                CONFIG = localData;
-                applyConfig(CONFIG);
-                showToast("📱 Loaded saved data", "success");
-            }
-
-            // 2. Then try to fetch from Cloud (Update)
-            fetchConfig().then(() => {
-                if (localData) showToast("🔄 Synced with Cloud", "success");
-                else showToast("🎉 Synced with Cloud", "success");
-                
-                // Hide loading screen only after sync is done
-                const loadingScreen = document.getElementById('loading-screen');
-                loadingScreen.style.opacity = '0';
-                setTimeout(() => { loadingScreen.style.display = 'none'; }, 300);
-            }).catch(err => { 
-                console.error("Initial Sync Failed", err); 
-                if (!localData) showToast("⚠️ Offline Mode", "error");
-                
-                // Hide loading screen even on error if we have local data
-                if (localData) {
-                     const loadingScreen = document.getElementById('loading-screen');
-                     loadingScreen.style.opacity = '0';
-                     setTimeout(() => { loadingScreen.style.display = 'none'; }, 300);
-                }
-            });
-
-            // Safe Service Worker Registration
-            if ('serviceWorker' in navigator && navigator.serviceWorker) {
-                 navigator.serviceWorker.register(swUrl).then(reg => console.log("SW Registered", reg)).catch(err => {
-                     console.warn("SW Registration Failed (File likely missing for standalone mode):", err);
-                 });
-            }
-            
+            if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).then(reg => console.log("SW Registered", reg)).catch(err => console.error("SW Fail:", err)); }
             initFirebaseAuth(); 
             
+            const loadingScreen = document.getElementById('loading-screen');
+            setTimeout(() => { loadingScreen.style.opacity = '0'; setTimeout(() => { loadingScreen.style.display = 'none'; }, 300); }, 1500);
+            
             const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null);
+            // Send welcome and mark it with ID
             botReply(welcomeMsg, true); 
             
+            // Add ID to the first message (Welcome)
             setTimeout(() => {
                 const firstMsg = chatArea.querySelector('.message.msg-bot:last-child');
                 if(firstMsg) firstMsg.id = 'unique-welcome-msg';
@@ -1594,6 +1490,8 @@
 
             renderKeyboard(); 
 
+            fetchConfig().then(() => showToast("🎉 Synced with Cloud", "success")).catch(err => { console.error("Initial Sync Failed", err); showToast("⚠️ Offline Mode", "error"); });
+            
             handleDeepLink(); setupCapacitorNotifications(); startSync();
         };
     </script>

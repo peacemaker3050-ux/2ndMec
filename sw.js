@@ -1,14 +1,8 @@
 // ============================================================
-// === HYBRID SERVICE WORKER (OFFLINE + FCM + POLLING + WORKBOX) ===
+// === HYBRID SERVICE WORKER (FCM + FAST POLLING + CACHING) ===
 // ============================================================
 
-// 1. WORKBOX SETUP
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.4.1/workbox-sw.js');
-workbox.setConfig({
-  modulePathPrefix: 'https://storage.googleapis.com/workbox-cdn/releases/6.4.1/',
-});
-
-// 2. FIREBASE IMPORTS & CONFIG
+// 1. FIREBASE IMPORTS & CONFIG
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
 
@@ -27,21 +21,32 @@ const messaging = firebase.messaging();
 // CONSTANTS
 const BIN_ID = "696e77bfae596e708fe71e9d";
 const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-const CACHE_NAME = 'uni-bot-cache-v7'; 
-const FILE_CACHE_NAME = 'uni-files-cache';
+const CACHE_NAME = 'uni-bot-cache-v5'; // Cache version number
 
-// 3. INDEXEDDB SETUP
-let db; let dbReady = false; let isPolling = false;
+// 2. INDEXEDDB SETUP (For tracking notification timestamps)
+let db;
+let dbReady = false;
+let isPolling = false; // To prevent multiple intervals
 
 const initDB = () => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('UniBotSWDB', 1);
     request.onupgradeneeded = (e) => {
         db = e.target.result;
-        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('settings')) {
+            db.createObjectStore('settings', { keyPath: 'id' });
+        }
     };
-    request.onsuccess = (e) => { db = e.target.result; dbReady = true; resolve(db); };
-    request.onerror = (e) => { console.error("[SW] DB Error", e); reject(e); };
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        dbReady = true;
+        console.log("[SW] DB Initialized");
+        resolve(db);
+    };
+    request.onerror = (e) => {
+        console.error("[SW] DB Error", e);
+        reject(e);
+    };
   });
 };
 
@@ -49,7 +54,8 @@ async function getLastTime() {
     if (!db) return 0;
     return new Promise((resolve) => {
         const tx = db.transaction('settings', 'readonly');
-        const req = tx.objectStore('settings').get('lastNotifTime');
+        const store = tx.objectStore('settings');
+        const req = store.get('lastNotifTime');
         req.onsuccess = () => resolve(req.result ? req.result.value : 0);
         req.onerror = () => resolve(0);
     });
@@ -61,128 +67,140 @@ async function setLastTime(time) {
     tx.objectStore('settings').put({ id: 'lastNotifTime', value: time });
 }
 
-// 4. INSTALL & PRE-CACHING
+// 3. SW INSTALL (Merge of DB Init + Cache Init)
 self.addEventListener('install', (event) => { 
-    console.log("[SW] Installing & Caching Libraries...");
-    self.skipWaiting(); 
+    console.log("[SW] Installing...");
+    self.skipWaiting(); // Force the waiting service worker to become the active service worker.
     
     event.waitUntil(
         Promise.all([
+            // A. Initialize IndexedDB
             initDB(),
+            // B. Cache App Assets
             caches.open(CACHE_NAME).then(cache => {
-                return cache.addAll([
-                    './', 
-                    'index.html',
-                    'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
-                    'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js',
-                    'https://cdn-icons-png.flaticon.com/512/2991/2991148.png'
-                ]);
+                return cache.addAll(['./', 'index.html']);
             })
         ])
     );
 });
 
-// 5. ACTIVATE
+// 4. SW ACTIVATE (Merge of Claim + Cleanup + Sync + Polling)
 self.addEventListener('activate', (event) => { 
     console.log("[SW] Activated");
+    
     event.waitUntil(
         Promise.all([
+            // A. Claim clients immediately
             self.clients.claim(),
-            caches.keys().then(keys => Promise.all(keys.map(key => key !== CACHE_NAME && key !== FILE_CACHE_NAME ? caches.delete(key) : Promise.resolve()))),
+            
+            // B. Clean old caches
+            caches.keys().then(keys => {
+                return Promise.all(
+                    keys.map(key => {
+                        if (key !== CACHE_NAME) {
+                            console.log("[SW] Deleting old cache:", key);
+                            return caches.delete(key);
+                        }
+                    })
+                );
+            }),
+
+            // C. Register Periodic Sync (Safety Net - 15 mins)
             (async () => {
                 if ('periodicSync' in self.registration) {
-                    try { await self.registration.periodicSync.register('check-doctor-msg', { minInterval: 15 * 60 * 1000 }); } catch (err) {}
+                    try {
+                        await self.registration.periodicSync.register('check-doctor-msg', {
+                            minInterval: 15 * 60 * 1000 
+                        });
+                        console.log("[SW] Periodic Sync Registered");
+                    } catch (err) {
+                        console.log("[SW] Periodic Sync not supported/allowed:", err);
+                    }
                 }
-                if (!isPolling) { isPolling = true; setInterval(checkNotifications, 60 * 1000); }
             })()
         ])
     ); 
+
+    // FAST POLLING LOOP (Aggressive: 1 Minute)
+    // This runs while SW is alive. We use a simple check to ensure it doesn't run twice.
+    if (!isPolling) {
+        isPolling = true;
+        setInterval(() => {
+            checkNotifications();
+        }, 60 * 1000); // 60 seconds
+    }
 });
 
-// 6. WORKBOX ROUTING STRATEGIES
+// 5. FETCH HANDLER (Caching Strategy)
+self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
 
-// A. Network First for JSONBin API
-workbox.routing.registerRoute(
-    ({ url }) => url.hostname.includes('jsonbin.io'),
-    new workbox.strategies.NetworkFirst({
-        cacheName: 'api-cache',
-        plugins: [
-            new workbox.expiration.ExpirationPlugin({
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 5 
-            })
-        ]
-    })
-);
-
-// B. CACHE FIRST for FILES (PDFs, Docs, Images)
-workbox.routing.registerRoute(
-    ({ request, url }) => {
-        // Match common file extensions OR Telegram domains OR Google Drive domains
-        // VERIFIED: Removed 'request.destination === "document"'
-        const isFileRequest = (
-            /\.(?:pdf|docx?|pptx?|txt|jpg|png|jpeg|gif|webp|svg)$/i.test(url.pathname) ||
-            url.hostname.includes('api.telegram.org') || 
-            url.hostname.includes('drive.google.com')
-        );
-                
-        if (isFileRequest) {
-            console.log(`[SW] FILE REQUEST DETECTED: ${url}`);
-        }
-
-        return isFileRequest;
-    },
-    new workbox.strategies.CacheFirst({
-        cacheName: FILE_CACHE_NAME,
-        plugins: [
-            new workbox.expiration.ExpirationPlugin({
-                maxEntries: 50,
-                maxAgeSeconds: 30 * 24 * 60 * 60,
-                purgeOnQuotaError: true
-            })
-        ]
-    })
-);
-
-// C. StaleWhileRevalidate for HTML and Assets
-workbox.routing.registerRoute(
-    ({ request }) => request.mode === 'navigate',
-    new workbox.strategies.StaleWhileRevalidate({
-        cacheName: CACHE_NAME
-    })
-);
-
-// 7. PRE-CACHE MESSAGE LISTENER
-self.addEventListener('message', (event) => {
-    const data = event.data;
-    
-    // Handle Pre-Caching PDFs
-    if (data && data.type === 'PRE_CACHE_PDFS' && Array.isArray(data.urls)) {
-        console.log(`[SW] Starting Pre-Cache for ${data.urls.length} files...`);
-        event.waitUntil(
-            caches.open(FILE_CACHE_NAME).then((cache) => {
-                return Promise.all(data.urls.map(url => {
-                    // === VERIFIED: EXPLICIT FETCH WITH NO-CORS & CREDENTIALS OMIT ===
-                    return fetch(url, { mode: 'no-cors', credentials: 'omit' })
-                        .then(response => {
-                            if (!response.ok && response.type !== 'opaque') {
-                                throw new Error(`Failed to fetch ${url}: ${response.status}`);
-                            }
-                            return cache.put(url, response);
-                        })
-                        .then(() => {
-                            console.log(`[SW] ✅ Cached: ${url}`);
-                        })
-                        .catch(err => {
-                            console.warn(`[SW] ❌ Failed to cache (Network/CORS): ${url}`, err);
-                        });
-                    // ==============================================
-                }));
-            })
-        );
+    // Strategy (A): Network First for JSONBin API (Always get fresh data)
+    if (url.hostname.includes('jsonbin.io')) {
+        event.respondWith(fetch(event.request));
+        return;
     }
 
-    // Existing Message Handlers (Test/Notification)
+    // Strategy (B): Cache First for assets (Images, Files, Pages) - Offline Support
+    event.respondWith(
+        caches.match(event.request).then(cached => {
+            return cached || fetch(event.request).then(response => {
+                // If valid response, cache it
+                if (response.status === 200) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+                }
+                return response;
+            }).catch(() => {
+                // Fallback to index.html if navigation fails
+                if (event.request.mode === 'navigate') {
+                    return caches.match('./');
+                }
+            });
+        })
+    );
+});
+
+// 6. FCM BACKGROUND HANDLER
+messaging.onBackgroundMessage((payload) => {
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: payload.notification.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+    badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+    vibrate: [200, 100, 200],
+    data: { click_action: payload.fcmOptions?.link || '/' }
+  };
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// 7. HANDLE NOTIFICATION CLICKS (Open App + Deep Link)
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = event.notification.data.click_action || '/';
+    
+    event.waitUntil(
+        clients.matchAll({
+            type: 'window',
+            includeUncontrolled: true
+        }).then((clientList) => {
+            // If app is open, focus it
+            for (const client of clientList) {
+                if (client.url.includes(window.location.origin) && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // If app is closed, open it
+            if (clients.openWindow) {
+                return clients.openWindow(url);
+            }
+        })
+    );
+});
+
+// 8. APP MESSAGES (Testing & Manual Triggers)
+self.addEventListener('message', (event) => {
+    const data = event.data;
     if (data.type === 'SYNCED_NOTIF_DOCTOR' || data.type === 'TEST_NOTIF') {
         if (Notification.permission === 'granted') {
             self.registration.showNotification(data.type === 'TEST_NOTIF' ? '🧪 Test Successful' : '📢 Update Available', { 
@@ -195,53 +213,68 @@ self.addEventListener('message', (event) => {
     }
 });
 
-// 8. FCM & POLLING LOGIC (Kept from original)
-messaging.onBackgroundMessage((payload) => {
-    self.registration.showNotification(payload.notification.title, {
-        body: payload.notification.body,
-        icon: payload.notification.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-        badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-        vibrate: [200, 100, 200],
-        data: { click_action: payload.fcmOptions?.link || '/' }
-    });
-});
-
+// 9. POLLING LOGIC (Deep Content Extraction)
 async function checkNotifications() {
-    if (!dbReady) { await initDB(); if(!dbReady) return; }
+    if (!dbReady) {
+        console.log("[SW] DB not ready, initializing...");
+        await initDB();
+        if(!dbReady) return;
+    }
+
     try {
         const lastNotifTime = await getLastTime();
+        
+        // Fetch Data (Add timestamp to prevent caching by browser)
         const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
-        const response = await fetch(url, { method: 'GET', headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' } });
+        
+        const response = await fetch(url, { 
+            method: 'GET', 
+            headers: { 
+                'X-Master-Key': BIN_KEY, 
+                'X-Bin-Meta': 'false'
+            }
+        });
+
         if (!response.ok) throw new Error("Network response was not ok");
         const data = await response.json();
+
+        // Check for new updates
         if (data && data.recentUpdates && data.recentUpdates.length > 0) {
-            const newestUpdate = data.recentUpdates[0];
-            if ((newestUpdate.timestamp || 0) > lastNotifTime) {
-                setLastTime(newestUpdate.timestamp);
+            const newestUpdate = data.recentUpdates[0]; // Assuming sorted by newest first
+            const updateTimestamp = newestUpdate.timestamp || Date.now();
+
+            if (updateTimestamp > lastNotifTime) {
+                console.log("[SW] New Update detected!");
+                
+                // Save timestamp
+                setLastTime(updateTimestamp);
+
                 if (Notification.permission === 'granted') {
+                    // CONSTRUCT DEEP LINK
                     const deepLink = `/?subject=${encodeURIComponent(newestUpdate.subject)}&doctor=${encodeURIComponent(newestUpdate.doctor)}&action=open_notification`;
+
                     self.registration.showNotification('📢 New Message', { 
                         body: `From ${newestUpdate.doctor} (${newestUpdate.subject})`, 
                         icon: data.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', 
+                        requireInteraction: true, 
                         tag: 'latest-update', 
+                        silent: false, 
                         vibrate: [200, 100, 200],
-                        data: { click_action: deepLink }
+                        data: {
+                            click_action: deepLink
+                        }
                     });
                 }
             }
         }
-    } catch (err) { console.error("[SW] Polling Error:", err); }
+    } catch (err) {
+        console.error("[SW] Polling Error:", err);
+    }
 }
 
-self.addEventListener('sync', event => {
-    if (event.tag === 'check-doctor-msg') event.waitUntil(checkNotifications());
-});
-
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    const url = event.notification.data.click_action || '/';
-    event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-        for (const client of clientList) if (client.url.includes(self.location.origin) && 'focus' in client) return client.focus();
-        if (clients.openWindow) return clients.openWindow(url);
-    }));
+// 10. PERIODIC SYNC EVENT (Background Trigger)
+self.addEventListener('sync', (event) => {
+    if (event.tag === 'check-doctor-msg') {
+        event.waitUntil(checkNotifications());
+    }
 });
