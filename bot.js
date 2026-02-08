@@ -20,15 +20,15 @@ const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
 // ==========================================
-// إعدادات Google Drive (بدون Service Account)
+// إعدادات Google Drive (Hardcoded لـ Railway)
 // ==========================================
 
-// ضع هنا الـ refresh_token الذي حصلت عليه من الخطوة السابقة
+// ضع القيم هنا التي نسختها من الخطوة 1
+const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';         
+const CLIENT_SECRET = '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';
 const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U'; 
 
-const CLIENT_ID = 'your_client_id_from_json';         // من ملف client_secret.json
-const CLIENT_SECRET = 'your_client_secret_from_json'; // من ملف client_secret.json
-const REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob';
+const REDIRECT_URI = 'http://localhost'; // ثابت للـ Desktop App
 
 const oAuth2Client = new google.auth.OAuth2(
     CLIENT_ID,
@@ -40,10 +40,9 @@ oAuth2Client.setCredentials({
     refresh_token: DRIVE_REFRESH_TOKEN
 });
 
-// هذا الحدث سيقوم بتجديد التوكن تلقائياً إذا انتهت صلاحيته
+// تجديد التوكن تلقائياً
 oAuth2Client.on('tokens', (tokens) => {
     if (tokens.refresh_token) {
-        // حفظ التوكن الجديد لو حاب (بس الرفريش معمول مش يتغير غالباً)
         console.log('Refresh Token updated.');
     }
 });
@@ -55,6 +54,10 @@ const app = express();
 app.use(bodyParser.json());
 
 const userStates = {}; 
+
+// ==========================================
+// إعدادات المنفذ (Port) لـ Railway
+// ==========================================
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
@@ -85,12 +88,10 @@ async function findOrCreateFolder(folderName, parentId) {
         return folder.data.id;
     } catch (error) {
         console.error('[Drive] Error:', error.message);
-        // إذا فشل الرفع بسبب الصلاحية، حاول إعادة التوثيق
         if (error.message.includes('invalid')) {
             console.log("Attempting to refresh token...");
             const { credentials } = await oAuth2Client.refreshAccessToken();
             oAuth2Client.setCredentials(credentials);
-            // إعادة المحاولة (يمكن تكرار الدالة هنا للاكتمال)
         }
         throw error;
     }
@@ -113,7 +114,6 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             fields: 'id, webViewLink'
         });
 
-        // جعل الملف عاماً (Public) لضمان عمله في الموقع
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
@@ -377,6 +377,7 @@ async function processTextNotification(chatId, state, messageId) {
     }
 }
 
+// تشغيل السيرفر
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     // التأكد من المجلد الرئيسي
