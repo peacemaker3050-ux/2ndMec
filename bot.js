@@ -217,7 +217,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية
+// 5. وظيفة الرفع الرئيسية (تم تحسين معالجة الأخطاء والوقت)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -238,6 +238,7 @@ async function executeUpload(chatId) {
 
     try {
         console.log(`[Upload] Starting upload for file: ${state.file.name}`);
+        console.log(`[Upload] Using File ID: ${state.file.id}`);
 
         statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
         const statusMsgId = statusMsg.message_id;
@@ -253,33 +254,59 @@ async function executeUpload(chatId) {
             } catch (e) {}
         };
 
-        // 1. تحميل الملف مع معالجة الأخطاء
+        // 1. تحميل الملف مع معالجة الأخطاء و Timeout
         updateText("⏳ Downloading From Telegram...");
         
+        let fileIdToUse = state.file.id;
+        let retryAttempt = false;
+
         try {
-            const fileLink = await bot.getFileLink(state.file.id);
+            // التحقق من صحة الـ ID
+            if (!fileIdToUse || typeof fileIdToUse !== 'string') {
+                throw new Error("Invalid File ID in state");
+            }
+
+            const fileLink = await bot.getFileLink(fileIdToUse);
             tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
             
             const writer = fs.createWriteStream(tempFilePath);
-            const tgStream = await axios({ url: fileLink, responseType: 'stream' });
+            
+            // إضافة timeout لمنع التوقف الدائم
+            const tgStream = await axios({ 
+                url: fileLink, 
+                responseType: 'stream',
+                timeout: 60000 // 60 ثانية كحد أقصى للتحميل
+            });
             
             await pipeline(tgStream.data, writer);
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
             
-            // محاولة استرداد الـ ID
-            console.log(`[Recovery] Attempting to recover file ID...`);
+            // محاولة الاسترداد من آخر ملف تم رفعه
             const lastUpload = lastFileUploads[chatId];
             
-            if (lastUpload && lastUpload.fileId) {
-                console.log(`[Recovery] Found recent file, retrying...`);
-                state.file.id = lastUpload.fileId;
+            if (lastUpload && lastUpload.fileId && lastUpload.fileId !== fileIdToUse) {
+                console.log(`[Recovery] Retrying with cached File ID: ${lastUpload.fileId}`);
+                updateText("⏳ Retrying Download...");
                 
-                const fileLink = await bot.getFileLink(state.file.id);
-                tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
-                const writer = fs.createWriteStream(tempFilePath);
-                const tgStream = await axios({ url: fileLink, responseType: 'stream' });
-                await pipeline(tgStream.data, writer);
+                // تحديث الـ ID في الحالة الحالية
+                state.file.id = lastUpload.fileId;
+                fileIdToUse = lastUpload.fileId;
+
+                try {
+                    const fileLink = await bot.getFileLink(fileIdToUse);
+                    tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
+                    const writer = fs.createWriteStream(tempFilePath);
+                    const tgStream = await axios({ 
+                        url: fileLink, 
+                        responseType: 'stream',
+                        timeout: 60000 
+                    });
+                    await pipeline(tgStream.data, writer);
+                } catch (retryError) {
+                    console.error('[Retry Error]', retryError.message);
+                    throw new Error("Failed to download file after retry.");
+                }
             } else {
                 throw downloadError;
             }
@@ -328,7 +355,7 @@ async function executeUpload(chatId) {
             fs.unlinkSync(tempFilePath);
         }
         delete userStates[chatId];
-        delete lastFileUploads[chatId];
+        // نحتفظ بـ lastFileUploads لفترة أطول قليلاً في حال كان هناك خطأ متكرر، لكن يتم حذفه عند رفع ملف جديد
         console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
 }
@@ -348,7 +375,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 7. معالجة الرسائل والأوامر (تم التعديل)
+// 7. معالجة الرسائل والأوامر
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -402,16 +429,17 @@ bot.on('message', async (msg) => {
     const state = userStates[chatId];
 
     // ==========================================
-    // تعديل هام: التحقق من تغيير الاسم أولاً
+    // الأولوية: تغيير اسم الملف
     // ==========================================
     
     if (state && state.step === 'waiting_for_new_name') {
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
         executeUpload(chatId);
-        return; // إنهاء التنفيذ هنا لمنع الوصول لكود الإشعارات
+        return; 
     }
 
+    // التعامل مع الملف السابق (إذا لم يكن هناك حالة نشطة وتم إرسال نص سريع)
     if (!state && lastFileUploads[chatId] && (Date.now() - lastFileUploads[chatId].timestamp < 120000)) {
         const lastUpload = lastFileUploads[chatId];
         
@@ -430,6 +458,7 @@ bot.on('message', async (msg) => {
         return;
     }
 
+    // رسالة نصية جديدة (إشعار)
     if (!state) {
         userStates[chatId] = {
             step: 'select_subject',
