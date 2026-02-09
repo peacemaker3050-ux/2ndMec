@@ -622,7 +622,7 @@
     <script>
         /**
          * University Bot Pro - Single File Implementation
-         * Includes: Fixed LocalStorage Persistence (True Offline Mode)
+         * Includes: Fixed Drive Link Handling (No Blob)
          */
 
         // --- Configuration & Constants ---
@@ -811,42 +811,8 @@
         }
 
         // ==========================================
-        // Smart File Opening (First Time Download, Second Time Open)
+        // MODIFIED FILE HANDLING (For Google Drive)
         // ==========================================
-        async function openFileBlob(url, fileName) {
-            const fileId = url; 
-            const storageKey = `dl_${fileId}`;
-            const wasDownloaded = localStorage.getItem(storageKey) === 'true';
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("فشل الاتصال");
-
-                const blob = await response.blob();
-                const blobUrl = URL.createObjectURL(blob);
-
-                if (!wasDownloaded) {
-                    showToast("⬇️ جاري تحميل الملف...", "info");
-                    const a = document.createElement('a');
-                    a.href = blobUrl;
-                    a.download = fileName; 
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    localStorage.setItem(storageKey, 'true');
-                    showToast("✅ تم التحميل للجهاز", "success");
-                } else {
-                    showToast("👁️ جاري فتح الملف...", "info");
-                    window.open(blobUrl, '_blank');
-                }
-            } catch (error) {
-                console.error(error);
-                window.open(url, '_blank');
-                showToast("⚠️ فشل الفتح التلقائي، جاري المحاولة...", "error");
-            }
-        }
-
         function handleFileClick(fileObj) {
             const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"));
             if (isNotification) {
@@ -860,12 +826,13 @@
                         const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
                         addMessage(htmlContent, 'bot', true); 
                     } else { 
+                        // FIX: Direct Open to avoid Blob/Offline Auth Issues
                         const htmlContent = `
                             <div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div>
-                            <div onclick="openFileBlob('${fileObj.link}', '${fileObj.name.replace(/'/g, "\\'")}')" 
-                                 class="file-link-btn" style="cursor:pointer;">
-                                <span>📂</span><span>عرض / تحميل الملف</span>
+                            <div class="file-link-btn" onclick="window.open('${fileObj.link}', '_blank')">
+                                <span>🔗</span><span>Open in Google Drive</span>
                             </div>
+                            <div style="font-size:11px; color:#64748b; margin-top:4px; text-align:center;">⚠️ First time requires internet to select account.</div>
                         `; 
                         addMessage(htmlContent, 'bot', true);
                     }
@@ -1021,7 +988,6 @@
 
         async function fetchConfig() {
             try {
-                // 1. محاولة جلب البيانات من السحابة
                 const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { 
                     headers: { 
                         'X-Master-Key': JSONBIN_ACCESS_KEY, 
@@ -1032,24 +998,17 @@
                 if (!response.ok) throw new Error("Failed to fetch");
                 
                 const cloudData = await response.json();
-
-                // 2. دمج البيانات بشكل آمن
                 CONFIG = { ...defaultConfig, ...cloudData };
                 
-                // 3. التأكد من أن قاعدة البيانات الموجودة في السحابة هي المعتمدة بالكامل
                 if (cloudData.database) {
                     CONFIG.database = cloudData.database; 
                 } else {
                     CONFIG.database = defaultDatabase; 
                 }
 
-                // 4. حفظ البيانات فوراً في LocalStorage
                 saveToLocalStorage(CONFIG);
-                
-                // 5. تطبيق الإعدادات
                 applyConfig(CONFIG);
                 
-                // 6. التحقق من الإشعارات الجديدة
                 if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
                     const seenIds = JSON.parse(localStorage.getItem('seenNotifIds') || '[]');
                     const newUpdates = CONFIG.recentUpdates.filter(u => !seenIds.includes(u.id));
@@ -1077,7 +1036,6 @@
             } catch (error) {
                 console.error("Cloud Sync Failed, checking local storage...", error);
                 
-                // 7. عند فشل الاتصال (وضع الأوفلاين)
                 const localData = loadFromLocalStorage();
                 
                 if (localData) {
@@ -1095,7 +1053,9 @@
         function saveConfigToBin(newConfig) {
             const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving...";
             if(btnSave) btnSave.innerText = "Saving...";
-            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
+            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, newConfig, { 
+                method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY } 
+            })
             .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = newConfig.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; })
             .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
         }
@@ -1326,12 +1286,41 @@
         }
         function deleteAdminDataItem(index) {
             let level = adminNavStack.length;
-            showConfirmModal("Confirm Delete", "Are you sure?", (confirmed) => {
+            showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => {
                 if(!confirmed) return;
+                
+                // 1. Get item to delete from Drive if it has a driveId
+                let itemToDelete = null;
+                let sub, doc, sec;
+
+                if (level === 3) { 
+                    sub = adminNavStack[0]; doc = adminNavStack[1]; sec = adminNavStack[2]; 
+                    itemToDelete = database[sub][doc][sec][index]; 
+                }
+
+                // 2. Delete from Drive if exists
+                if (itemToDelete && itemToDelete.driveId) {
+                    try {
+                        // استبدل الرابط أدناه برابط بوتك الفعلي على Railway
+                        await fetch('https://peacemaker3050-bot.up.railway.app/delete-drive-file', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fileId: itemToDelete.driveId })
+                        });
+                        console.log("Deleted from Drive");
+                    } catch (e) {
+                        console.error("Failed to delete from Drive", e);
+                    }
+                }
+
+                // 3. Delete from JSONBin DB
                 if (level === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } 
                 else if (level === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; }
-                else if (level === 2) { const sub = adminNavStack[0]; const docName = database.sub[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
+                else if (level === 2) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
                 else if (level === 3) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2]; database[sub][doc][sec].splice(index, 1); }
+                
+                // 4. Save Changes
+                saveConfigToBin(CONFIG);
                 renderAdminDataView();
             });
         }
@@ -1359,9 +1348,9 @@
             if (CONFIG.recentUpdates.length > 5) CONFIG.recentUpdates = CONFIG.recentUpdates.slice(0, 5);
             CONFIG.latestNotificationUpdate = fullDate; CONFIG.database = database;
             const saveBtn = document.querySelector('#tab-notifications .btn-send'); saveBtn.innerText = "Sending..."; saveBtn.disabled = true;
-            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
-            .then(res => { if (!res.ok) throw new Error("Send failed"); showToast("✅ Notification Sent", "success"); document.getElementById('notif-message-text').value = ""; saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; fetchConfig(); })
-            .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; });
+            saveConfigToBin(CONFIG).then(() => {
+                showToast("✅ Notification Sent", "success"); document.getElementById('notif-message-text').value = ""; saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; fetchConfig();
+            }).catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; });
         };
 
         window.saveBroadcast = function() {
@@ -1373,9 +1362,9 @@
             if(!title || !body) return showToast("Please enter title and body", "error");
             CONFIG.generalBroadcast = { active: true, title: title, body: body, timestamp: Date.now() };
             const saveBtn = document.querySelector('#tab-broadcast .btn-save'); saveBtn.innerText = "Posting...";
-            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
-            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Broadcast Posted", "success"); saveBtn.innerText = "Post Broadcast"; checkAndShowBroadcast(); fetchConfig(); })
-            .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Post Broadcast"; });
+            saveConfigToBin(CONFIG).then(() => {
+                showToast("✅ Broadcast Posted", "success"); saveBtn.innerText = "Post Broadcast"; checkAndShowBroadcast(); fetchConfig();
+            }).catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Post Broadcast"; });
         }
         window.deleteBroadcast = function() {
             const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner;
@@ -1385,8 +1374,7 @@
             showConfirmModal("Confirm Delete", "Are you sure you want to delete this broadcast?", (confirmed) => {
                 if (!confirmed) return; CONFIG.generalBroadcast = { active: false, title: "", body: "", timestamp: 0 };
                 document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = "";
-                fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
-                .then(res => { if (!res.ok) throw new Error("Delete failed"); showToast("✅ Deleted Successfully", "success"); const existing = document.getElementById('app-broadcast-msg'); if(existing) existing.remove(); })
+                saveConfigToBin(CONFIG).then(() => { showToast("✅ Deleted Successfully", "success"); const existing = document.getElementById('app-broadcast-msg'); if(existing) existing.remove(); })
                 .catch(err => showToast("❌ Error: " + err.message, "error"));
             });
         }
@@ -1404,8 +1392,7 @@
             CONFIG.appVersion = (CONFIG.appVersion || 1) + 1;
             const newConfig = { ...CONFIG, appName: name, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion };
             const saveBtn = document.querySelector('#tab-manifest .btn-save'); const originalText = saveBtn.innerText; saveBtn.innerText = "Updating...";
-            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
-            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Settings Saved! Reloading...", "success"); CONFIG = { ...CONFIG, ...newConfig }; updateDynamicManifest(CONFIG.appName, CONFIG.appIcon);
+            saveConfigToBin(newConfig).then(() => { showToast("✅ Settings Saved! Reloading...", "success"); CONFIG = { ...CONFIG, ...newConfig }; updateDynamicManifest(CONFIG.appName, CONFIG.appIcon);
                 if ('caches' in window) { caches.keys().then(names => { for (let name of names) caches.delete(name); }); }
                 setTimeout(() => { const baseUrl = window.location.href.split('?')[0]; window.location.href = `${baseUrl}?v=${CONFIG.appVersion}`; }, 1500);
             })
@@ -1497,7 +1484,6 @@
             }
 
             // --- OFFLINE MODE STRATEGY ---
-            // 1. Load from LocalStorage first (Instant offline view)
             const localData = loadFromLocalStorage();
             if (localData) {
                 CONFIG = localData;
@@ -1505,9 +1491,7 @@
                 showToast("📱 تم تحميل البيانات المحفوظة", "success");
             }
 
-            // 2. Then try to fetch from Cloud (Update)
             fetchConfig().then(() => {
-                // If we just loaded from cache, fetchConfig updates the UI with cloud data
                 if (localData) showToast("🔄 تم تحديث البيانات من السحابة", "success");
                 else showToast("🎉 Synced with Cloud", "success");
             }).catch(err => { 
