@@ -14,6 +14,8 @@ const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
 
 const AUTHORIZED_USERS = [
     5605597142, 
+    5797320196,
+    6732616473,
 ];
 
 const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
