@@ -112,6 +112,7 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             fields: 'id, webViewLink'
         });
 
+        // جعل الملف عاماً (Public)
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
@@ -120,8 +121,14 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             }
         });
 
+        // إصلاح الرابط: التأكد من وجود usp=sharing
+        let finalLink = file.data.webViewLink;
+        if (!finalLink.includes('usp=sharing')) {
+            finalLink += '&usp=sharing';
+        }
+
         return {
-            link: file.data.webViewLink,
+            link: finalLink,
             id: file.data.id
         };
     } catch (error) {
@@ -192,7 +199,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 4. وظيفة الرفع الرئيسية (Refactored)
+// 4. وظيفة الرفع الرئيسية
 // ==========================================
 async function performUpload(state, chatId, editMessageId = null) {
     try {
@@ -321,16 +328,13 @@ bot.on('message', async (msg) => {
     
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
-    // 1. منطق تغيير اسم الملف (جديد)
+    // 1. منطق تغيير اسم الملف
     const state = userStates[chatId];
     if (state && state.step === 'waiting_for_new_name') {
         if (!text || text.startsWith('/')) return; 
         
-        // تحديث اسم الملف
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
-        
-        // بدء الرفع
         performUpload(state, chatId);
         return;
     }
@@ -393,12 +397,12 @@ bot.on('callback_query', async (query) => {
         }
     }
     // -----------------------------------------------------------
-    // التعديل الجديد: اختيار القسم -> تأكيد الاسم
+    // اختيار القسم -> تأكيد الاسم
     // -----------------------------------------------------------
     else if (state.step === 'select_section' && data.startsWith('sec_')) {
         const sectionName = data.replace('sec_', '');
         state.section = sectionName;
-        state.step = 'confirm_name'; // الانتقال لخطوة التأكيد
+        state.step = 'confirm_name'; 
 
         const nameKeyboard = [
             [{ text: "✅ Same Name", callback_data: 'act_same' }],
@@ -417,10 +421,8 @@ bot.on('callback_query', async (query) => {
     // -----------------------------------------------------------
     else if (state.step === 'confirm_name') {
         if (data === 'act_same') {
-            // رفع بنفس الاسم
             performUpload(state, chatId, query.message.message_id);
         } else if (data === 'act_rename') {
-            // طلب اسم جديد
             state.step = 'waiting_for_new_name';
             bot.sendMessage(chatId, "✏️ أرسل الاسم الجديد للملف:");
         }
