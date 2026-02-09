@@ -149,7 +149,7 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             resource: fileMetadata,
             media: media,
             fields: 'id, webViewLink',
-            supportsAllDrives: true, // دعم أفضل للأنواع المختلفة من الدرايف
+            supportsAllDrives: true,
             supportsTeamDrives: true
         });
 
@@ -224,7 +224,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية (مع إصلاحات التعلق)
+// 5. وظيفة الرفع الرئيسية
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -288,7 +288,7 @@ async function executeUpload(chatId) {
             throw new Error("Failed to download file. Please try again.");
         }
 
-        // --- إصلاح هام: تأخير بسيط لضمان إغلاق الملف ---
+        // تأخير بسيط لضمان إغلاق الملف
         await new Promise(resolve => setTimeout(resolve, 1000)); 
 
         // 2. تجهيز البيانات والمجلدات
@@ -311,12 +311,12 @@ async function executeUpload(chatId) {
         const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
         const sectionFolderId = await findOrCreateFolder(state.section, doctorFolderId);
 
-        // 4. رفع الملف مع Timeout (لمنع التعلق للأبد)
+        // 4. رفع الملف مع Timeout
         console.log(`[Upload] Initiating Drive upload for ${state.file.name}...`);
         
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Upload Timeout (5 mins)")), 300000) // 5 دقائق مهلة
+            setTimeout(() => reject(new Error("Upload Timeout (5 mins)")), 300000) // 5 دقائق
         );
 
         let driveResult;
@@ -346,6 +346,7 @@ async function executeUpload(chatId) {
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
+        // نحذف الحالة فقط بعد الانتهاء الكامل
         delete userStates[chatId];
         console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
@@ -366,7 +367,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 7. معالجة الرسائل والأوامر
+// 7. معالجة الرسائل والأوامر (الإصلاح النهائي)
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -419,16 +420,34 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // الحالة 1: المستخدم يرسل اسم الملف الجديد
-    if (state && state.step === 'waiting_for_new_name') {
-        console.log(`[Action] User sent new name: ${text}`);
-        state.file.name = text.trim();
-        state.step = 'ready_to_upload'; 
-        executeUpload(chatId);
-        return; 
+    // ==========================================
+    // الإصلاح: حماية الحالة النشطة
+    // ==========================================
+
+    // إذا كان هناك أي حالة نشطة (حتى لو كانت جاري الرفع)، لا نفعل شيئاً
+    // هذا يمنع تداخل الرسائل أثناء عملية الرفع أو تغيير الاسم
+    if (state) {
+        
+        // الحالة الوحيدة المسموح فيها للنص هو طلب تغيير الاسم
+        if (state.step === 'waiting_for_new_name') {
+            console.log(`[Action] User sent new name: "${text}"`);
+            
+            // تحديث الاسم والحالة فوراً
+            state.file.name = text.trim();
+            state.step = 'uploading'; // تغيير الحالة لـ uploading لمنع تكرار الاستقبال
+            
+            // استدعاء الرفع
+            executeUpload(chatId);
+        } else {
+            // إذا كان البوت مشغول برفع ملف آخر أو في خطوة أخرى، نتجاهل الرسالة
+            console.log(`[Ignored] User sent text while busy in step: ${state.step}`);
+        }
+        return; // خروج فوري إذا كانت هناك حالة
     }
 
-    // الحالة 2: لا توجد حالة نشطة (رسالة نصية جديدة)
+    // ==========================================
+    // حالة: لا توجد حالة (بداية إشعار جديد)
+    // ==========================================
     if (!state) {
         console.log(`[Action] New Notification started`);
         
@@ -445,11 +464,7 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
-        return;
     }
-
-    // تجاهل أي نصوص أخرى أثناء سير العملية
-    console.log(`[Ignored] User sent text while in step: ${state.step}`);
 });
 
 // ==========================================
