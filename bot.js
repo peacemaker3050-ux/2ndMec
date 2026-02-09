@@ -143,18 +143,25 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             body: fs.createReadStream(filePath)
         };
 
+        console.log(`[Drive] Uploading ${fileName} to Drive...`);
+
         const file = await drive.files.create({
             resource: fileMetadata,
             media: media,
-            fields: 'id, webViewLink'
+            fields: 'id, webViewLink',
+            supportsAllDrives: true, // دعم أفضل للأنواع المختلفة من الدرايف
+            supportsTeamDrives: true
         });
+
+        console.log(`[Drive] Upload successful for ${fileName}. ID: ${file.data.id}`);
 
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
                 role: 'reader',
                 type: 'anyone'
-            }
+            },
+            supportsAllDrives: true
         });
 
         let finalLink = file.data.webViewLink;
@@ -217,7 +224,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية
+// 5. وظيفة الرفع الرئيسية (مع إصلاحات التعلق)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -275,10 +282,14 @@ async function executeUpload(chatId) {
             });
             
             await pipeline(tgStream.data, writer);
+            console.log(`[Upload] File downloaded to: ${tempFilePath}`);
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
             throw new Error("Failed to download file. Please try again.");
         }
+
+        // --- إصلاح هام: تأخير بسيط لضمان إغلاق الملف ---
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
 
         // 2. تجهيز البيانات والمجلدات
         updateText("⏳ Preparing Drive Structure...");
@@ -300,8 +311,21 @@ async function executeUpload(chatId) {
         const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
         const sectionFolderId = await findOrCreateFolder(state.section, doctorFolderId);
 
-        // 4. رفع الملف
-        const driveResult = await uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
+        // 4. رفع الملف مع Timeout (لمنع التعلق للأبد)
+        console.log(`[Upload] Initiating Drive upload for ${state.file.name}...`);
+        
+        const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Upload Timeout (5 mins)")), 300000) // 5 دقائق مهلة
+        );
+
+        let driveResult;
+        try {
+            driveResult = await Promise.race([uploadPromise, timeoutPromise]);
+        } catch (err) {
+            console.error('[Upload] Drive upload failed/timed out:', err.message);
+            throw new Error(`Google Drive Upload Failed: ${err.message}`);
+        }
 
         // 5. الحفظ في قاعدة البيانات
         db.database[state.subject][state.doctor][state.section].push({
@@ -342,7 +366,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 7. معالجة الرسائل والأوامر (منطق مبسط ومصحح)
+// 7. معالجة الرسائل والأوامر
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -364,14 +388,12 @@ async function handleFile(msg) {
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
     const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
 
-    // حفظ الملف الأخير للاستعادة عند الحاجة (احتياطي)
     lastFileUploads[chatId] = {
         fileId: fileId,
         fileName: fileName,
         timestamp: Date.now()
     };
 
-    // تعيين الحالة الجديدة (مسح أي حالة سابقة)
     userStates[chatId] = {
         step: 'select_subject',
         type: 'file',
@@ -391,30 +413,23 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
     
-    // فلترة الرسائل غير النصية والأوامر
     if (!text || text.startsWith('/')) return;
     if (msg.document || msg.photo) return;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     const state = userStates[chatId];
 
-    // ==========================================
     // الحالة 1: المستخدم يرسل اسم الملف الجديد
-    // ==========================================
     if (state && state.step === 'waiting_for_new_name') {
         console.log(`[Action] User sent new name: ${text}`);
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
         executeUpload(chatId);
-        return; // وقف التنفيذ
+        return; 
     }
 
-    // ==========================================
-    // الحالة 2: لا توجد حالة نشطة (State Null)
-    // ==========================================
+    // الحالة 2: لا توجد حالة نشطة (رسالة نصية جديدة)
     if (!state) {
-        // إذا لم تكن هناك حالة، فهذا يعني إما أن المستخدم بدأ محادثة جديدة
-        // أو تم عمل reset للبوت. نعتبرها رسالة نصية (إشعار).
         console.log(`[Action] New Notification started`);
         
         userStates[chatId] = {
@@ -433,11 +448,7 @@ bot.on('message', async (msg) => {
         return;
     }
 
-    // ==========================================
-    // الحالة 3: يوجد حالة نشطة ولكن ليست "انتظار اسم"
-    // (مثلاً المستخدم يرسل نصاً أثناء اختيار المادة)
-    // في هذه الحالة نتجاهل الرسالة أو نعتبرها خطأ
-    // ==========================================
+    // تجاهل أي نصوص أخرى أثناء سير العملية
     console.log(`[Ignored] User sent text while in step: ${state.step}`);
 });
 
@@ -451,8 +462,6 @@ bot.on('callback_query', async (query) => {
     const state = userStates[chatId];
 
     if (!AUTHORIZED_USERS.includes(chatId)) return;
-    // ملاحظة: لا نتحقق من وجود state هنا لأن بعض العمليات قد تحتاج لبدء جديد
-    // ولكن في هذا الكود نعتمد على وجود state
 
     try {
         if (state && state.step === 'select_subject' && data.startsWith('sub_')) {
@@ -508,7 +517,6 @@ bot.on('callback_query', async (query) => {
             if (data === 'act_same') {
                 executeUpload(chatId);
             } else if (data === 'act_rename') {
-                // تغيير الحالة إلى انتظار اسم جديد
                 state.step = 'waiting_for_new_name';
                 await bot.sendMessage(chatId, "✏️ Send the *new file name* now.", { parse_mode: 'Markdown' });
             }
