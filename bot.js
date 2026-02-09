@@ -1,5 +1,5 @@
 // ==========================================
-// 1. استيراد المكتبات (تم ترتيبها لتجنب الأخطاء)
+// 1. استيراد المكتبات
 // ==========================================
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
@@ -31,7 +31,6 @@ const CLIENT_SECRET = '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';
 const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U';
 const REDIRECT_URI = 'http://localhost';
 
-// إنشاء عميل OAuth
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 oAuth2Client.setCredentials({ refresh_token: DRIVE_REFRESH_TOKEN });
 
@@ -43,12 +42,14 @@ oAuth2Client.on('tokens', (tokens) => {
 
 const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
-// إعداد البوت والخادم
 const bot = new TelegramBot(token, { polling: true });
 const app = express();
 app.use(bodyParser.json());
 
 const userStates = {};
+// إضافة ذاكرة لتتبع آخر ملف تم رفعه لحل مشكلة Retry
+const lastFileUploads = {}; 
+
 let dbCache = null;
 let lastCacheTime = 0;
 const CACHE_DURATION = 60000; 
@@ -251,9 +252,7 @@ async function executeUpload(chatId) {
                     parse_mode: 'Markdown',
                     disable_web_page_preview: true 
                 });
-            } catch (e) {
-                // Silent fail if message deleted
-            }
+            } catch (e) {}
         };
 
         // 1. تحميل الملف
@@ -309,6 +308,8 @@ async function executeUpload(chatId) {
             fs.unlinkSync(tempFilePath);
         }
         delete userStates[chatId];
+        // مسح آخر ملف تم رفعه لمنع تضارب الحالات
+        delete lastFileUploads[chatId];
         console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
 }
@@ -328,7 +329,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 7. معالجة الرسائل والأوامر (الإصلاح النهائي)
+// 7. معالجة الرسائل والأوامر (التصحيح النهائي)
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -351,6 +352,13 @@ async function handleFile(msg) {
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
     const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
 
+    // حفظ آخر ملف تم رفعه بالتفاصيل الكاملة
+    lastFileUploads[chatId] = {
+        fileId: fileId,
+        fileName: fileName,
+        timestamp: Date.now()
+    };
+
     userStates[chatId] = {
         step: 'select_subject',
         type: 'file',
@@ -371,10 +379,10 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
     
-    // 1. تجاهل الأوامر (تبدأ بـ /)
+    // 1. تجاهل الأوامر
     if (!text || text.startsWith('/')) return;
     
-    // 2. تجاهل الملفات والصور (لأن لها مستمعين خاصين)
+    // 2. تجاهل الملفات والصور
     if (msg.document || msg.photo) return;
     
     // 3. التحقق من الصلاحية
@@ -382,16 +390,62 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // --- الحالة أ: المستخدم يكتب اسم ملف جديد ---
+    // ==========================================
+    // المنطق الجديد للتعامل مع المشكلة (Retry)
+    // ==========================================
+
+    // أولاً: التحقق إذا كان المستخدم ينتظر اسم جديد بشكل صحيح
     if (state && state.step === 'waiting_for_new_name') {
+        // هذا هو المسار الصحيح الطبيعي
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
         executeUpload(chatId);
-        return; // التوقف هنا لمنع تنفيذ باقي الكود
+        return;
     }
 
-    // --- الحالة ب: المستخدم يرسل رسالة نصية عادية (إشعار) ---
-    // نفذ هذا فقط إذا لم يكن المستخدم في عملية رفع حالية
+    // ثانياً: حالة الطوارئ (Retry أو فقدان الحالة)
+    // إذا لم يكن هناك حالة، لكن تم إرسال ملف في آخر دقيقتين، نعتبر المستخدم يريد تغيير اسمه
+    const lastUpload = lastFileUploads[chatId];
+    const isRecentUpload = lastUpload && (Date.now() - lastUpload.timestamp < 120000); // دقيقتين
+
+    if (!state && isRecentUpload) {
+        // محاولة استعادة الحالة من آخر ملف
+        console.log(`[Recovery] Recovering state for last file: ${lastUpload.fileName}`);
+        userStates[chatId] = {
+            step: 'waiting_for_new_name', // العودة لوضع الانتظار لاستكمال الرفع
+            type: 'file',
+            file: { id: lastUpload.fileId, name: lastUpload.fileName },
+            subject: state ? state.subject : null, // محاولة الحفظ إذا كان موجوداً
+            doctor: state ? state.doctor : null,
+            section: state ? state.section : null
+        };
+
+        // الآن ننفذ نفس منطق تغيير الاسم
+        userStates[chatId].file.name = text.trim();
+        userStates[chatId].step = 'ready_to_upload';
+        
+        // نحتاج هنا لتحديد إذا كان لدينا باقي البيانات (المادة، الدكتور..)
+        // إذا فقدناها، سنعتبر هذا الاسم هو الاسم النهائي للملف الذي تم "رفعه مؤقتاً" في الذاكرة
+        // ولكن بما أننا فقدنا الخطوات السابقة، سنقوم برفعه في مجلد "Uncategorized" أو نطلب من المستخدم إعادة الإرسال.
+        // لتبسيط الأمر سنفترض أن المستخدم كان في منتصف العملية ولديه البيانات.
+        // إذا كانت البيانات مفقودة (Subject, Doctor..) سنقوم برفعه في مجلد مؤقت.
+        
+        if (!userStates[chatId].subject) {
+            // حالة نادرة: تم إرسال الاسم لكن البيانات ضاعت
+            // سنقوم بعرض رسالة توضيحية ولكن سنكمل الرفع بافتراض أن البيانات قد تكون موجودة في userStates القديمة (لو لم يتم مسحها)
+            // ولكن كحل آمن، سنوقف هنا ونطلب إعادة الإرسال
+             bot.sendMessage(chatId, "⚠️ Something went wrong. Please send the file again.");
+             delete userStates[chatId];
+             delete lastFileUploads[chatId];
+             return;
+        }
+
+        executeUpload(chatId);
+        return;
+    }
+
+    // ثالثاً: التعامل مع الرسائل العادية (إشعارات)
+    // يصل هنا فقط إذا لم يكن هناك ملف حديث ولا حالة انتظار
     if (!state) {
         userStates[chatId] = {
             step: 'select_subject',
@@ -476,7 +530,8 @@ bot.on('callback_query', async (query) => {
                 executeUpload(chatId);
             } else if (data === 'act_rename') {
                 state.step = 'waiting_for_new_name';
-                await bot.sendMessage(chatId, "✏️ Enter The New File Name :");
+                // تخصيص رسالة توضح أن هذا لتغيير الاسم فقط
+                await bot.sendMessage(chatId, "✏️ Send the *new file name* now.\nℹ️ If you want to send a text notification, press /cancel first.", { parse_mode: 'Markdown' });
             }
         }
     } catch (error) {
@@ -509,7 +564,6 @@ async function processTextNotification(chatId, state, messageId) {
     }
 }
 
-// بدء الخادم
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
