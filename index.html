@@ -621,8 +621,8 @@
 
     <script>
         /**
-         * University Bot Pro - Merged Implementation
-         * Offline Engine (Code 2) + Direct File Opening (Code 1)
+         * University Bot Pro - Final Merged & Fixed Implementation
+         * Features: Offline-First, Direct Drive Links, Smart Reload
          */
 
         // --- Configuration & Constants ---
@@ -811,7 +811,7 @@
         }
 
         // ==========================================
-        // MODIFIED FILE HANDLING (From Code 1 - Direct Open)
+        // MODIFIED FILE HANDLING (Direct Drive Open)
         // ==========================================
         function handleFileClick(fileObj) {
             const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"));
@@ -826,7 +826,7 @@
                         const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
                         addMessage(htmlContent, 'bot', true); 
                     } else { 
-                        // FIX: Direct Open to avoid Blob/Offline Auth Issues
+                        // Direct Open Logic
                         const htmlContent = `
                             <div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div>
                             <div class="file-link-btn" onclick="window.open('${fileObj.link}', '_blank')">
@@ -862,10 +862,23 @@
                 else { showToast("❌ Permission Denied", "error"); } 
             });
         };
+
+        // ==========================================
+        // FIXED FORCE RELOAD (Offline Safe)
+        // ==========================================
         window.forceReload = function() {
             document.getElementById('menu-dropdown').classList.remove('active');
             showConfirmModal("Force Reload", "Do you want to fully reload app?", (confirm) => {
-                if(confirm) window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime();
+                if(confirm) {
+                    // 1. Save current state to LocalStorage immediately
+                    // This ensures we have the latest data even if offline
+                    saveToLocalStorage(CONFIG);
+
+                    // 2. Update URL with timestamp to force browser reload
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('t', Date.now());
+                    window.location.href = currentUrl.toString();
+                }
             });
         };
 
@@ -963,7 +976,7 @@
         }
 
         // ==========================================
-        // OFFLINE PERSISTENCE LOGIC (From Code 2)
+        // OFFLINE PERSISTENCE LOGIC
         // ==========================================
         
         function saveToLocalStorage(data) {
@@ -1292,7 +1305,7 @@
             renderAdminDataView();
         }
         
-        // Merge deletion logic: Try to delete from Drive (Code 1) then DB (Code 2)
+        // Merge deletion logic: Try to delete from Drive then DB
         function deleteAdminDataItem(index) {
             let level = adminNavStack.length;
             showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => {
@@ -1307,7 +1320,7 @@
                     itemToDelete = database[sub][doc][sec][index]; 
                 }
 
-                // 2. Delete from Drive if exists (Code 1 logic)
+                // 2. Delete from Drive if exists
                 if (itemToDelete && itemToDelete.driveId) {
                     try {
                         // استبدل الرابط أدناه برابط بوتك الفعلي على Railway
@@ -1322,7 +1335,7 @@
                     }
                 }
 
-                // 3. Delete from JSONBin DB (Code 2 logic)
+                // 3. Delete from JSONBin DB
                 if (level === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } 
                 else if (level === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; }
                 else if (level === 2) { const sub = adminNavStack[0]; const docName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][docName]; }
@@ -1494,23 +1507,32 @@
                 setTimeout(() => { if (window.location.href.includes('/__/auth/handler')) window.location.replace(window.location.origin); }, 2000); return; 
             }
 
-            // --- OFFLINE MODE STRATEGY (From Code 2) ---
-            // 1. Load from LocalStorage first (Instant offline view)
+            // --- OFFLINE MODE STRATEGY (Smart Reload) ---
+            
+            // 1. محاولة جلب البيانات من LocalStorage (الذاكرة الدائمة)
+            // هذا يشمل البيانات التي تم حفظها قبل آخر إغلاق للموقع أو قبل Force Reload
             const localData = loadFromLocalStorage();
+
+            // 2. عرض البيانات المحفوظة فوراً إذا وجدت (ضمان عمل التطبيق أثناء التحميل)
             if (localData) {
                 CONFIG = localData;
+                database = CONFIG.database; // التأكد من ربط قاعدة البيانات
                 applyConfig(CONFIG);
                 showToast("📱 تم تحميل البيانات المحفوظة", "success");
             }
 
-            // 2. Then try to fetch from Cloud (Update)
+            // 3. محاولة المزامنة مع السحابة
+            // ملاحظة: حتى لو فشلت هذه الخطوة (لعدم وجود نت)، الموقع سيظل شغالًا لأننا عرضنا البيانات المحفوظة بالأعلى
             fetchConfig().then(() => {
-                // If we just loaded from cache, fetchConfig updates the UI with cloud data
                 if (localData) showToast("🔄 تم تحديث البيانات من السحابة", "success");
                 else showToast("🎉 Synced with Cloud", "success");
             }).catch(err => { 
-                console.error("Initial Sync Failed", err); 
-                if (!localData) showToast("⚠️ Offline Mode", "error");
+                console.error("Cloud Sync Failed", err); 
+                // لا نظهر خطأ فادح هنا لأننا بالفعل عرضنا النسخة الأوفلاين
+                if (!localData) {
+                    // حالة نادرة جداً: لا يوجد نت ولا يوجد بيانات محفوظة مسبقاً
+                    showToast("⚠️ لا توجد بيانات محفوظة", "error");
+                }
             });
 
             if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).then(reg => console.log("SW Registered", reg)).catch(err => console.error("SW Fail:", err)); }
