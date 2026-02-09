@@ -31,7 +31,6 @@ const REDIRECT_URI = 'http://localhost';
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 oAuth2Client.setCredentials({ refresh_token: DRIVE_REFRESH_TOKEN });
 
-// تحديث التوكن تلقائياً عند الحاجة
 oAuth2Client.on('tokens', (tokens) => {
     if (tokens.refresh_token) {
         console.log('Google Refresh Token updated.');
@@ -48,7 +47,7 @@ const userStates = {};
 // إضافة ذاكرة تخزين مؤقت (Cache) لتسريع القوائم
 let dbCache = null;
 let lastCacheTime = 0;
-const CACHE_DURATION = 60000; // تحديث الذاكرة كل دقيقة
+const CACHE_DURATION = 60000; 
 
 const PORT = process.env.PORT || 3000;
 
@@ -56,7 +55,6 @@ const PORT = process.env.PORT || 3000;
 // 2. دوال Google Drive (محسنة)
 // ==========================================
 
-// تم تغيير اسم المجلد هنا
 const DRIVE_ROOT_FOLDER_NAME = '2nd MEC 2026';
 let ROOT_FOLDER_ID = null;
 
@@ -80,7 +78,6 @@ async function getRootFolderId() {
                 fields: 'id'
             });
             ROOT_FOLDER_ID = folder.data.id;
-            console.log(`[Drive] Root Folder Created with ID: ${ROOT_FOLDER_ID}`);
         }
         return ROOT_FOLDER_ID;
     } catch (error) {
@@ -89,7 +86,6 @@ async function getRootFolderId() {
     }
 }
 
-// دالة مساعدة لضمان صلاحية التوكن
 async function ensureValidToken() {
     try {
         await oAuth2Client.getAccessToken();
@@ -136,7 +132,6 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             'parents': [folderId]
         };
         
-        // محاولة كشف نوع الملف بشكل أفضل إذا أمكن، أو الافتراضي
         let mimeType = 'application/pdf';
         if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) mimeType = 'image/jpeg';
         else if (fileName.endsWith('.png')) mimeType = 'image/png';
@@ -153,7 +148,6 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             fields: 'id, webViewLink'
         });
 
-        // جعل الملف عاماً
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
@@ -178,7 +172,6 @@ async function deleteFileFromDrive(fileId) {
     if (!fileId) return;
     try {
         await drive.files.delete({ fileId: fileId });
-        console.log(`[Drive] Deleted: ${fileId}`);
     } catch (error) {
         console.error('[Drive] Delete Error:', error.message);
     }
@@ -223,22 +216,26 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 4. وظيفة الرفع الرئيسية
+// 4. وظيفة الرفع الرئيسية (تم الإصلاح بالكامل)
 // ==========================================
-async function performUpload(state, chatId, editMessageId = null) {
-    let statusMsgId = editMessageId;
+
+// المنطق المشترك للرفع (ينشئ رسالة حالة جديدة لضمان العمل دائماً)
+async function executeUpload(state, chatId) {
     let tempFilePath = null;
+    
+    // إرسال رسالة حالة جديدة
+    const statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
 
     try {
-        const updateStatus = (text) => {
-            if (statusMsgId) {
-                bot.editMessageText(text, { chat_id: chatId, message_id: statusMsgId }).catch(e => {});
-            } else {
-                bot.sendMessage(chatId, text).then(msg => statusMsgId = msg.message_id).catch(e => {});
-            }
+        // دالة مساعدة لتحديث رسالة الحالة
+        const updateText = (text) => {
+            bot.editMessageText(text, { 
+                chat_id: chatId, 
+                message_id: statusMsg.message_id,
+                parse_mode: 'Markdown',
+                disable_web_page_preview: true 
+            }).catch(e => {});
         };
-
-        updateStatus("⏳ Initializing...");
 
         // 1. تحميل الملف من تليجرام
         const fileLink = await bot.getFileLink(state.file.id);
@@ -247,26 +244,26 @@ async function performUpload(state, chatId, editMessageId = null) {
         const writer = fs.createWriteStream(tempFilePath);
         const tgStream = await axios({ url: fileLink, responseType: 'stream' });
         
-        updateStatus("⏳ Downloading From Telegram...");
+        updateText("⏳ Downloading From Telegram...");
         await pipeline(tgStream.data, writer);
 
-        // 2. تجهيز الهيكلية في Drive وجلب البيانات بشكل متوازي
-        updateStatus("⏳ Preparing Drive Structure...");
+        // 2. تجهيز الهيكلية والبيانات
+        updateText("⏳ Preparing Drive Structure...");
         
         const [rootId, db] = await Promise.all([
             getRootFolderId(),
             getDatabase()
         ]);
 
-        // التأكد من وجود المسار في الذاكرة قبل الحفظ
+        // التأكد من وجود المسار في الذاكرة
         if (!db.database[state.subject]) db.database[state.subject] = {};
         if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
         if (!db.database[state.subject][state.doctor][state.section]) {
             db.database[state.subject][state.doctor][state.section] = [];
         }
 
-        // 3. إنشاء المجلدات بالتتابع السريع
-        updateStatus("⏳ Uploading To Drive...");
+        // 3. إنشاء المجلدات
+        updateText("⏳ Uploading To Drive...");
         const subjectFolderId = await findOrCreateFolder(state.subject, rootId);
         const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
         const sectionFolderId = await findOrCreateFolder(state.section, doctorFolderId);
@@ -283,28 +280,32 @@ async function performUpload(state, chatId, editMessageId = null) {
 
         await saveDatabase(db);
 
-        // النهاية
+        // النتيجة النهائية
         const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${state.file.name}*\n🔗 ${driveResult.link}`;
-        updateStatus(finalText);
-        
-        if (statusMsgId) {
-            bot.editMessageText(finalText, {
-                chat_id: chatId,
-                message_id: statusMsgId,
-                parse_mode: 'Markdown',
-                disable_web_page_preview: true
-            }).catch(e => {});
-        }
+        updateText(finalText);
 
     } catch (error) {
         console.error('[Upload Error]', error);
         bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
     } finally {
+        // تنظيف الملف وحذف الحالة
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
         delete userStates[chatId];
     }
+}
+
+// دالة للاستخدام عند اختيار Same Name (نمرر الـ messageId فقط لمحاكاة الاستمرار، لكن المنطق يعتمد على رسالة جديدة)
+async function performUploadFromInline(state, chatId, messageId) {
+    // يمكننا حذف الرسالة السابقة إذا أردنا، أو تركها.
+    // هنا سنقوم بمجرد استدعاء التنفيذ.
+    await executeUpload(state, chatId);
+}
+
+// دالة للاستخدام عند تغيير الاسم
+async function performUploadFromRename(state, chatId) {
+    await executeUpload(state, chatId);
 }
 
 // ==========================================
@@ -367,13 +368,15 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // 1. منطق تغيير اسم الملف
+    // 1. منطق تغيير اسم الملف (تم التعديل هنا)
     if (state && state.step === 'waiting_for_new_name') {
         if (!text || text.startsWith('/')) return; 
         
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
-        performUpload(state, chatId);
+        
+        // استدعاء دالة الرفع الخاصة بالتغيير
+        performUploadFromRename(state, chatId);
         return;
     }
 
@@ -454,9 +457,10 @@ bot.on('callback_query', async (query) => {
             parse_mode: 'Markdown'
         });
     }
+    // تم التعديل هنا: استدعاء الدوال الجديدة
     else if (state.step === 'confirm_name') {
         if (data === 'act_same') {
-            performUpload(state, chatId, query.message.message_id);
+            performUploadFromInline(state, chatId, query.message.message_id);
         } else if (data === 'act_rename') {
             state.step = 'waiting_for_new_name';
             bot.sendMessage(chatId, "✏️ Enter The New File Name :");
