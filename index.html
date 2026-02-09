@@ -622,7 +622,7 @@
     <script>
         /**
          * University Bot Pro - Single File Implementation
-         * Includes: Fixed Drive Link Handling (No Blob)
+         * Includes: Hybrid Blob Logic (Fixes Drive Offline Issues)
          */
 
         // --- Configuration & Constants ---
@@ -811,8 +811,58 @@
         }
 
         // ==========================================
-        // MODIFIED FILE HANDLING (For Google Drive)
+        // HYBRID FILE OPENING (Restored for Offline)
         // ==========================================
+        
+        // Helper to convert Drive View Link to Export Link
+        function getDriveExportLink(url) {
+            if (!url) return url;
+            // Pattern: https://drive.google.com/file/d/FILE_ID/view...
+            const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+            }
+            return url;
+        }
+
+        async function openFileBlob(url, fileName) {
+            const fileId = url; 
+            const storageKey = `dl_${fileId}`;
+            const wasDownloaded = localStorage.getItem(storageKey) === 'true';
+
+            // Convert to Export Link for direct download access
+            const targetUrl = getDriveExportLink(url);
+
+            try {
+                const response = await fetch(targetUrl);
+                if (!response.ok) throw new Error("فشل الاتصال");
+
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
+                if (!wasDownloaded) {
+                    showToast("⬇️ جاري تحميل الملف...", "info");
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = fileName; 
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    localStorage.setItem(storageKey, 'true');
+                    showToast("✅ تم التحميل للجهاز", "success");
+                } else {
+                    showToast("👁️ جاري فتح الملف...", "info");
+                    window.open(blobUrl, '_blank');
+                }
+            } catch (error) {
+                console.error(error);
+                // Fallback to original link if export fails
+                window.open(url, '_blank');
+                showToast("⚠️ فشل الفتح التلقائي، جاري المحاولة...", "error");
+            }
+        }
+
         function handleFileClick(fileObj) {
             const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"));
             if (isNotification) {
@@ -826,13 +876,12 @@
                         const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
                         addMessage(htmlContent, 'bot', true); 
                     } else { 
-                        // FIX: Direct Open to avoid Blob/Offline Auth Issues
                         const htmlContent = `
                             <div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div>
-                            <div class="file-link-btn" onclick="window.open('${fileObj.link}', '_blank')">
-                                <span>🔗</span><span>Open in Google Drive</span>
+                            <div onclick="openFileBlob('${fileObj.link}', '${fileObj.name.replace(/'/g, "\\'")}')" 
+                                 class="file-link-btn" style="cursor:pointer;">
+                                <span>📂</span><span>عرض / تحميل الملف</span>
                             </div>
-                            <div style="font-size:11px; color:#64748b; margin-top:4px; text-align:center;">⚠️ First time requires internet to select account.</div>
                         `; 
                         addMessage(htmlContent, 'bot', true);
                     }
@@ -963,7 +1012,7 @@
         }
 
         // ==========================================
-        // FIXED PERSISTENCE LOGIC (True Offline Mode)
+        // PERSISTENCE LOGIC (True Offline Mode)
         // ==========================================
         
         function saveToLocalStorage(data) {
@@ -1289,7 +1338,7 @@
             showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => {
                 if(!confirmed) return;
                 
-                // 1. Get item to delete from Drive if it has a driveId
+                // 1. Get item to delete from Drive
                 let itemToDelete = null;
                 let sub, doc, sec;
 
@@ -1298,10 +1347,8 @@
                     itemToDelete = database[sub][doc][sec][index]; 
                 }
 
-                // 2. Delete from Drive if exists
                 if (itemToDelete && itemToDelete.driveId) {
                     try {
-                        // استبدل الرابط أدناه برابط بوتك الفعلي على Railway
                         await fetch('https://peacemaker3050-bot.up.railway.app/delete-drive-file', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1313,13 +1360,12 @@
                     }
                 }
 
-                // 3. Delete from JSONBin DB
+                // 2. Delete from DB
                 if (level === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } 
                 else if (level === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; }
-                else if (level === 2) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
+                else if (level === 2) { const sub = adminNavStack[0]; const docName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][secName]; }
                 else if (level === 3) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2]; database[sub][doc][sec].splice(index, 1); }
                 
-                // 4. Save Changes
                 saveConfigToBin(CONFIG);
                 renderAdminDataView();
             });
@@ -1389,7 +1435,7 @@
         }
         window.saveAppManifest = function() {
             const name = document.getElementById('manifest-app-name').value.trim(); if(!name) return showToast("App name cannot be empty", "error");
-            CONFIG.appVersion = (CONFIG.appVersion || 1) + 1;
+            CONFIG.appVersion = (CONFIG.appVersion || 1) + 100; // Increment large for cache bust
             const newConfig = { ...CONFIG, appName: name, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion };
             const saveBtn = document.querySelector('#tab-manifest .btn-save'); const originalText = saveBtn.innerText; saveBtn.innerText = "Updating...";
             saveConfigToBin(newConfig).then(() => { showToast("✅ Settings Saved! Reloading...", "success"); CONFIG = { ...CONFIG, ...newConfig }; updateDynamicManifest(CONFIG.appName, CONFIG.appIcon);
