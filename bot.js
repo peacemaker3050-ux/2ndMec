@@ -52,7 +52,7 @@ const CACHE_DURATION = 60000;
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 2. دوال Google Drive (محسنة)
+// 2. دوال Google Drive
 // ==========================================
 
 const DRIVE_ROOT_FOLDER_NAME = '2nd MEC 2026';
@@ -70,9 +70,7 @@ async function getRootFolderId() {
 
         if (res.data.files.length > 0) {
             ROOT_FOLDER_ID = res.data.files[0].id;
-            console.log(`[Drive] Found Root Folder: ${DRIVE_ROOT_FOLDER_NAME}`);
         } else {
-            console.log(`[Drive] Creating Root Folder: ${DRIVE_ROOT_FOLDER_NAME}...`);
             const folder = await drive.files.create({
                 resource: { 'name': DRIVE_ROOT_FOLDER_NAME, 'mimeType': 'application/vnd.google-apps.folder' },
                 fields: 'id'
@@ -178,7 +176,7 @@ async function deleteFileFromDrive(fileId) {
 }
 
 // ==========================================
-// 3. دوال قاعدة البيانات (مع Caching)
+// 3. دوال قاعدة البيانات
 // ==========================================
 
 async function getDatabase() {
@@ -216,38 +214,59 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 4. وظيفة الرفع الرئيسية (تم الإصلاح بالكامل)
+// 4. وظيفة الرفع الرئيسية (إصلاح نهائي)
 // ==========================================
 
-// المنطق المشترك للرفع (ينشئ رسالة حالة جديدة لضمان العمل دائماً)
-async function executeUpload(state, chatId) {
-    let tempFilePath = null;
+async function executeUpload(chatId) {
+    // استرجاع الحالة من الذاكرة
+    const state = userStates[chatId];
     
-    // إرسال رسالة حالة جديدة
-    const statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
+    // التحقق من وجود الحالة (إصلاح التوقف)
+    if (!state) {
+        console.error(`[Critical] State missing for chatId: ${chatId}`);
+        return;
+    }
+
+    if (!state.file) {
+        console.error(`[Critical] File data missing for chatId: ${chatId}`);
+        return;
+    }
+
+    let tempFilePath = null;
+    let statusMsg = null;
 
     try {
+        console.log(`[Upload] Starting upload for file: ${state.file.name}`);
+
+        // إرسال رسالة حالة جديدة
+        statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
+        const statusMsgId = statusMsg.message_id;
+
         // دالة مساعدة لتحديث رسالة الحالة
-        const updateText = (text) => {
-            bot.editMessageText(text, { 
-                chat_id: chatId, 
-                message_id: statusMsg.message_id,
-                parse_mode: 'Markdown',
-                disable_web_page_preview: true 
-            }).catch(e => {});
+        const updateText = async (text) => {
+            try {
+                await bot.editMessageText(text, { 
+                    chat_id: chatId, 
+                    message_id: statusMsgId,
+                    parse_mode: 'Markdown',
+                    disable_web_page_preview: true 
+                });
+            } catch (e) {
+                // تجاهل أخطاء التعديل إذا كانت الرسالة غير موجودة
+            }
         };
 
-        // 1. تحميل الملف من تليجرام
+        // 1. تحميل الملف
+        updateText("⏳ Downloading From Telegram...");
         const fileLink = await bot.getFileLink(state.file.id);
         tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
         
         const writer = fs.createWriteStream(tempFilePath);
         const tgStream = await axios({ url: fileLink, responseType: 'stream' });
         
-        updateText("⏳ Downloading From Telegram...");
         await pipeline(tgStream.data, writer);
 
-        // 2. تجهيز الهيكلية والبيانات
+        // 2. تجهيز البيانات والمجلدات
         updateText("⏳ Preparing Drive Structure...");
         
         const [rootId, db] = await Promise.all([
@@ -282,30 +301,20 @@ async function executeUpload(state, chatId) {
 
         // النتيجة النهائية
         const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${state.file.name}*\n🔗 ${driveResult.link}`;
-        updateText(finalText);
+        await updateText(finalText);
 
     } catch (error) {
         console.error('[Upload Error]', error);
         bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
     } finally {
-        // تنظيف الملف وحذف الحالة
+        // تنظيف الملف
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
+        // تنظيف الحالة فقط بعد الانتهاء
         delete userStates[chatId];
+        console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
-}
-
-// دالة للاستخدام عند اختيار Same Name (نمرر الـ messageId فقط لمحاكاة الاستمرار، لكن المنطق يعتمد على رسالة جديدة)
-async function performUploadFromInline(state, chatId, messageId) {
-    // يمكننا حذف الرسالة السابقة إذا أردنا، أو تركها.
-    // هنا سنقوم بمجرد استدعاء التنفيذ.
-    await executeUpload(state, chatId);
-}
-
-// دالة للاستخدام عند تغيير الاسم
-async function performUploadFromRename(state, chatId) {
-    await executeUpload(state, chatId);
 }
 
 // ==========================================
@@ -368,15 +377,16 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // 1. منطق تغيير اسم الملف (تم التعديل هنا)
+    // 1. منطق تغيير اسم الملف (تم التعديل لمنع التوقف)
     if (state && state.step === 'waiting_for_new_name') {
         if (!text || text.startsWith('/')) return; 
         
+        // نحذف الحالة فقط هنا إذا كان هناك خطأ منطقي، لكننا سنحتفظ بها للرفع
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
         
-        // استدعاء دالة الرفع الخاصة بالتغيير
-        performUploadFromRename(state, chatId);
+        // استدعاء دالة الرفع الموحدة
+        executeUpload(chatId);
         return;
     }
 
@@ -457,10 +467,9 @@ bot.on('callback_query', async (query) => {
             parse_mode: 'Markdown'
         });
     }
-    // تم التعديل هنا: استدعاء الدوال الجديدة
     else if (state.step === 'confirm_name') {
         if (data === 'act_same') {
-            performUploadFromInline(state, chatId, query.message.message_id);
+            executeUpload(chatId);
         } else if (data === 'act_rename') {
             state.step = 'waiting_for_new_name';
             bot.sendMessage(chatId, "✏️ Enter The New File Name :");
