@@ -231,7 +231,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية (مع معالجة الروابط)
+// 5. وظيفة الرفع الرئيسية (تم تعديلها لإصلاح مشكلة المسافات والرموز)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -263,28 +263,28 @@ async function executeUpload(chatId) {
             } catch (e) {}
         };
 
-        // 1. تحميل الملف (مع معالجة الرموز في الرابط)
+        // -------------------------------------------------------
+        // 1. تحميل الملف (تم التعديل هنا)
+        // -------------------------------------------------------
         updateText("⏳ Downloading From Telegram...");
         
         try {
-            // الحصول على الرابط الخام من تليجرام
+            // الحصول على رابط الملف من تليجرام
             const rawFileLink = await bot.getFileLink(state.file.id);
             
-            // تشفير الرابط لضمان التعامل مع الرموز بشكل صحيح
-            const encodedFileLink = encodeURI(rawFileLink);
+            // ⚠️ ملاحظة: لا نستخدم encodeURI هنا لأن الرابط جاهز ومشفر مسبقاً
+            // إعادة التشفير ستدمر الرابط وتمنع التحميل
+            console.log(`[Download] Link: ${rawFileLink}`);
             
-            console.log(`[Download] Link: ${encodedFileLink}`);
-            
-            // إنشاء مسار الملف المؤقت
-            // استبدال الرموز غير المرغوبة في اسم الملف المحلي لتجنب أخطاء نظام الملفات
-            const safeFileName = state.file.name.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
-            tempFilePath = path.join('/tmp', `upload_${Date.now()}_${safeFileName}`);
+            // تنظيف الاسم للاستخدام المحلي فقط
+            const safeLocalName = state.file.name.replace(/[^a-zA-Z0-9.\-_\u0600-\u06FF]/g, "_");
+            tempFilePath = path.join('/tmp', `upload_${Date.now()}_${safeLocalName}`);
             
             const writer = fs.createWriteStream(tempFilePath);
             
-            // تحميل الملف باستخدام الرابط المشفر
+            // تحميل الملف باستخدام الرابط الأصلي
             const tgStream = await axios({ 
-                url: encodedFileLink, 
+                url: rawFileLink, 
                 responseType: 'stream',
                 timeout: 60000 
             });
@@ -322,6 +322,7 @@ async function executeUpload(chatId) {
         // 4. رفع الملف مع Timeout
         console.log(`[Upload] Initiating Drive upload...`);
         
+        // نستخدم الاسم الأصلي للرفع
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
         const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error("Upload Timeout (5 mins)")), 300000)
@@ -344,9 +345,8 @@ async function executeUpload(chatId) {
 
         await saveDatabase(db);
 
-        // decodeURI لعرض الاسم بشكل صحيح في الرسالة النهائية
-        const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
-        const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${displayName}*\n🔗 ${driveResult.link}`;
+        // 6. رسالة النجاح
+        const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${state.file.name}*\n🔗 ${driveResult.link}`;
         await updateText(finalText);
 
     } catch (error) {
@@ -414,7 +414,7 @@ async function handleFile(msg) {
     const subjects = Object.keys(API.database);
     const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
     
-    bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
+    bot.sendMessage(chatId, `📂 File: *${fileName}*\n\n Select Subject :`, {
         reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
     });
 }
@@ -456,7 +456,7 @@ bot.on('message', async (msg) => {
         const subjects = Object.keys(data.database);
         const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
         
-        bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
+        bot.sendMessage(chatId, `📝  New Message: "${text}"\n\nSelect Subject :`, {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
     }
@@ -483,7 +483,7 @@ bot.on('callback_query', async (query) => {
             const doctors = Object.keys(db.database[subjectName] || {});
             const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
             
-            await bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
+            await bot.editMessageText(`Subject : *${subjectName}*\n\n Select Doctor :`, {
                 chat_id: chatId, message_id: query.message.message_id,
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
             });
@@ -500,7 +500,7 @@ bot.on('callback_query', async (query) => {
                 const sections = Object.keys(db.database[state.subject][state.doctor] || {});
                 const keyboard = sections.map(sec => [{ text: sec, callback_data: `sec_${sec}` }]);
                 
-                await bot.editMessageText(`Doctor : *${doctorName}*\n\ Select Section :`, {
+                await bot.editMessageText(`Doctor : *${doctorName}*\n\n Select Section :`, {
                     chat_id: chatId, message_id: query.message.message_id,
                     reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
                 });
@@ -516,7 +516,7 @@ bot.on('callback_query', async (query) => {
                 [{ text: "✏️ Rename", callback_data: 'act_rename' }]
             ];
 
-            await bot.editMessageText(`📂 Section: *${sectionName}*\n\n📝  Current File Name :\n\`${state.file.name}\`\n\ Choose An Action :`, {
+            await bot.editMessageText(`📂 Section: *${sectionName}*\n\n📝  Current File Name :\n\`${state.file.name}\`\n\n Choose An Action :`, {
                 chat_id: chatId, 
                 message_id: query.message.message_id,
                 reply_markup: { inline_keyboard: nameKeyboard }, 
