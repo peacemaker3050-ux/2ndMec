@@ -1,15 +1,3 @@
-المشكلة الآن مختلفة. لما وقف عند "Downloading From Telegram"، هذا يعني أن البوت حاول تحميل الملف من تليجرام ولكنه **فشل** وحدث خطأ (Error) لكن الكود لم يكن يظهر لك رسالة الخطأ بوضوح، فظننت أنه توقف فقط.
-
-أكثر سبب محتمل هو أن **`lastFileUploads`** لم يحفظ بيانات الملف بشكل صحيح (مثلاً احتفظ بالاسم القديم لكن `file_id` تغير أو ضاع بسبب Retry).
-
-**الحل النهائي:**
-سأقوم بتعديل دالة `executeUpload` لتكون "ذكية":
-1. إذا فشل تحميل الملف من تليجرام (بسبب أن الـ ID قديم)، سيقوم الكود **آلياً** بالبحث في آخر رسالة وصلت لك ويعيد استخراج الـ ID الصحيح.
-2. سأضيف رسائل تتبع (Logs) واضحة في الكونسول لتعرف بالضبط أين المشكلة.
-
-إليك الكود المصحح بالكامل (يرجى نسخه واستبدال القديم):
-
-```javascript
 // ==========================================
 // 1. استيراد المكتبات
 // ==========================================
@@ -229,7 +217,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية (تم التعديل للإصلاح)
+// 5. وظيفة الرفع الرئيسية (تم الإصلاح)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -249,7 +237,7 @@ async function executeUpload(chatId) {
     let statusMsg = null;
 
     try {
-        console.log(`[Upload] Starting upload for file: ${state.file.name} (ID: ${state.file.id})`);
+        console.log(`[Upload] Starting upload for file: ${state.file.name}`);
 
         statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
         const statusMsgId = statusMsg.message_id;
@@ -262,12 +250,10 @@ async function executeUpload(chatId) {
                     parse_mode: 'Markdown',
                     disable_web_page_preview: true 
                 });
-            } catch (e) {
-                // تجاهل خطأ التعديل
-            }
+            } catch (e) {}
         };
 
-        // 1. تحميل الملف مع محاولة إصلاح الخطأ تلقائياً
+        // 1. تحميل الملف مع معالجة الأخطاء
         updateText("⏳ Downloading From Telegram...");
         
         try {
@@ -281,22 +267,21 @@ async function executeUpload(chatId) {
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
             
-            // محاولة استرداد الـ ID من lastFileUploads إذا فشل التحميل
-            console.log(`[Recovery] Attempting to recover file ID from recent uploads...`);
+            // محاولة استرداد الـ ID
+            console.log(`[Recovery] Attempting to recover file ID...`);
             const lastUpload = lastFileUploads[chatId];
             
             if (lastUpload && lastUpload.fileId) {
-                console.log(`[Recovery] Found recent file: ${lastUpload.fileName}, retrying download...`);
-                // تحديث الـ ID في الحالة الحالية
+                console.log(`[Recovery] Found recent file, retrying...`);
                 state.file.id = lastUpload.fileId;
-                // إعادة محاولة التحميل
+                
                 const fileLink = await bot.getFileLink(state.file.id);
                 tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
                 const writer = fs.createWriteStream(tempFilePath);
                 const tgStream = await axios({ url: fileLink, responseType: 'stream' });
                 await pipeline(tgStream.data, writer);
             } else {
-                throw downloadError; // إذا لم نجد بديل، نرمي الخطأ الأصلي
+                throw downloadError;
             }
         }
 
@@ -337,7 +322,6 @@ async function executeUpload(chatId) {
 
     } catch (error) {
         console.error('[Upload Fatal Error]', error);
-        // إظهار الخطأ للمستخدم
         bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}\n\nPlease try sending the file again.`);
     } finally {
         if (tempFilePath && fs.existsSync(tempFilePath)) {
@@ -373,7 +357,6 @@ bot.onText(/\/start/, (msg) => {
     bot.sendMessage(chatId, "👋 Peace Maker Welcomes You\n\n ✨ We're Glad To Have You Here\n📄 Send File OR Text To Begin", { parse_mode: 'Markdown' });
 });
 
-// معالجة الملفات والصور
 bot.on('document', async (msg) => handleFile(msg));
 bot.on('photo', async (msg) => {
     const photo = msg.photo[msg.photo.length - 1];
@@ -387,7 +370,6 @@ async function handleFile(msg) {
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
     const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
 
-    // حفظ آخر ملف تم رفعه
     lastFileUploads[chatId] = {
         fileId: fileId,
         fileName: fileName,
@@ -409,7 +391,6 @@ async function handleFile(msg) {
     });
 }
 
-// المستمع العام للرسائل النصية
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
@@ -420,7 +401,6 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // 1. الحالة الطبيعية: المستخدم يكتب اسم ملف جديد
     if (state && state.step === 'waiting_for_new_name') {
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
@@ -428,13 +408,9 @@ bot.on('message', async (msg) => {
         return;
     }
 
-    // 2. حالة الطوارئ (Retry): لا توجد حالة، لكن يوجد ملف حديث
     if (!state && lastFileUploads[chatId] && (Date.now() - lastFileUploads[chatId].timestamp < 120000)) {
         const lastUpload = lastFileUploads[chatId];
         
-        console.log(`[Recovery] Recovering state from recent upload for renaming: ${lastUpload.fileName}`);
-        
-        // استعادة الحالة كاملة
         userStates[chatId] = {
             step: 'waiting_for_new_name',
             type: 'file',
@@ -444,14 +420,12 @@ bot.on('message', async (msg) => {
             section: null
         };
 
-        // تطبيق الاسم الجديد وتنفيذ الرفع
         userStates[chatId].file.name = text.trim();
         userStates[chatId].step = 'ready_to_upload';
         executeUpload(chatId);
         return;
     }
 
-    // 3. رسالة نصية عادية (إشعار)
     if (!state) {
         userStates[chatId] = {
             step: 'select_subject',
@@ -514,7 +488,7 @@ bot.on('callback_query', async (query) => {
                 });
             }
         }
-        else failed if (state.step === 'select_section' && data.startsWith('sec_')) {
+        else if (state.step === 'select_section' && data.startsWith('sec_')) {
             const sectionName = data.replace('sec_', '');
             state.section = sectionName;
             state.step = 'confirm_name'; 
@@ -573,4 +547,3 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
 });
-```
