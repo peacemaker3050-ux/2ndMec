@@ -1,19 +1,20 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-const fs = require('fs'); 
+const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
 const express = require('express');
 const bodyParser = require('body-parser');
+const { pipeline } = require('stream/promises');
 
 // ==========================================
-// 1. التهيئة
+// 1. التهيئة والإعدادات
 // ==========================================
 
-const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4'; 
+const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
 
 const AUTHORIZED_USERS = [
-    5605597142, 
+    5605597142,
     5797320196,
     6732616473,
 ];
@@ -21,29 +22,19 @@ const AUTHORIZED_USERS = [
 const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-// ==========================================
-// إعدادات Google Drive (بياناتك المحفوظة)
-// ==========================================
-
-const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';         
+// إعدادات Google Drive
+const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
 const CLIENT_SECRET = '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';
-const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U'; 
+const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U';
+const REDIRECT_URI = 'http://localhost';
 
-const REDIRECT_URI = 'http://localhost'; 
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+oAuth2Client.setCredentials({ refresh_token: DRIVE_REFRESH_TOKEN });
 
-const oAuth2Client = new google.auth.OAuth2(
-    CLIENT_ID,
-    CLIENT_SECRET,
-    REDIRECT_URI
-);
-
-oAuth2Client.setCredentials({
-    refresh_token: DRIVE_REFRESH_TOKEN
-});
-
+// تحديث التوكن تلقائياً عند الحاجة
 oAuth2Client.on('tokens', (tokens) => {
     if (tokens.refresh_token) {
-        console.log('Refresh Token updated.');
+        console.log('Google Refresh Token updated.');
     }
 });
 
@@ -53,16 +44,60 @@ const bot = new TelegramBot(token, { polling: true });
 const app = express();
 app.use(bodyParser.json());
 
-const userStates = {}; 
+const userStates = {};
+// إضافة ذاكرة تخزين مؤقت (Cache) لتسريع القوائم
+let dbCache = null;
+let lastCacheTime = 0;
+const CACHE_DURATION = 60000; // تحديث الذاكرة كل دقيقة
 
-// ==========================================
-// إعدادات المنفذ (Port) لـ Railway
-// ==========================================
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 2. دوال Google Drive
+// 2. دوال Google Drive (محسنة)
 // ==========================================
+
+// تم تغيير اسم المجلد هنا
+const DRIVE_ROOT_FOLDER_NAME = '2nd MEC 2026';
+let ROOT_FOLDER_ID = null;
+
+async function getRootFolderId() {
+    if (ROOT_FOLDER_ID) return ROOT_FOLDER_ID;
+
+    try {
+        const res = await drive.files.list({
+            q: `mimeType='application/vnd.google-apps.folder' and name='${DRIVE_ROOT_FOLDER_NAME}' and trashed=false`,
+            fields: 'files(id, name)',
+            spaces: 'drive'
+        });
+
+        if (res.data.files.length > 0) {
+            ROOT_FOLDER_ID = res.data.files[0].id;
+            console.log(`[Drive] Found Root Folder: ${DRIVE_ROOT_FOLDER_NAME}`);
+        } else {
+            console.log(`[Drive] Creating Root Folder: ${DRIVE_ROOT_FOLDER_NAME}...`);
+            const folder = await drive.files.create({
+                resource: { 'name': DRIVE_ROOT_FOLDER_NAME, 'mimeType': 'application/vnd.google-apps.folder' },
+                fields: 'id'
+            });
+            ROOT_FOLDER_ID = folder.data.id;
+            console.log(`[Drive] Root Folder Created with ID: ${ROOT_FOLDER_ID}`);
+        }
+        return ROOT_FOLDER_ID;
+    } catch (error) {
+        console.error('[Drive] Root Folder Error:', error.message);
+        throw error;
+    }
+}
+
+// دالة مساعدة لضمان صلاحية التوكن
+async function ensureValidToken() {
+    try {
+        await oAuth2Client.getAccessToken();
+    } catch (e) {
+        const { credentials } = await oAuth2Client.refreshAccessToken();
+        oAuth2Client.setCredentials(credentials);
+    }
+}
 
 async function findOrCreateFolder(folderName, parentId) {
     try {
@@ -87,24 +122,28 @@ async function findOrCreateFolder(folderName, parentId) {
         });
         return folder.data.id;
     } catch (error) {
-        console.error('[Drive] Error:', error.message);
-        if (error.message.includes('invalid')) {
-            console.log("Attempting to refresh token...");
-            const { credentials } = await oAuth2Client.refreshAccessToken();
-            oAuth2Client.setCredentials(credentials);
-        }
+        console.error('[Drive] Folder Error:', error.message);
         throw error;
     }
 }
 
 async function uploadFileToDrive(filePath, fileName, folderId) {
     try {
+        await ensureValidToken();
+
         const fileMetadata = {
             'name': fileName,
             'parents': [folderId]
         };
+        
+        // محاولة كشف نوع الملف بشكل أفضل إذا أمكن، أو الافتراضي
+        let mimeType = 'application/pdf';
+        if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) mimeType = 'image/jpeg';
+        else if (fileName.endsWith('.png')) mimeType = 'image/png';
+        else if (fileName.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        
         const media = {
-            mimeType: 'application/pdf', 
+            mimeType: mimeType,
             body: fs.createReadStream(filePath)
         };
 
@@ -114,7 +153,7 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             fields: 'id, webViewLink'
         });
 
-        // جعل الملف عاماً (Public)
+        // جعل الملف عاماً
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
@@ -123,16 +162,12 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             }
         });
 
-        // إصلاح الرابط: التأكد من وجود usp=sharing
         let finalLink = file.data.webViewLink;
         if (!finalLink.includes('usp=sharing')) {
             finalLink += '&usp=sharing';
         }
 
-        return {
-            link: finalLink,
-            id: file.data.id
-        };
+        return { link: finalLink, id: file.data.id };
     } catch (error) {
         console.error('[Drive] Upload Error:', error.message);
         throw error;
@@ -140,62 +175,49 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
 }
 
 async function deleteFileFromDrive(fileId) {
+    if (!fileId) return;
     try {
-        if (!fileId) return;
         await drive.files.delete({ fileId: fileId });
-        console.log(`[Drive] Deleted file ID: ${fileId}`);
+        console.log(`[Drive] Deleted: ${fileId}`);
     } catch (error) {
         console.error('[Drive] Delete Error:', error.message);
     }
 }
 
-let ROOT_FOLDER_ID = null;
-
-async function getRootFolderId() {
-    if (ROOT_FOLDER_ID) return ROOT_FOLDER_ID;
-    
-    const res = await drive.files.list({
-        q: "mimeType='application/vnd.google-apps.folder' and name='UniBot Files' and trashed=false",
-        fields: 'files(id, name)',
-        spaces: 'drive'
-    });
-
-    if (res.data.files.length > 0) {
-        ROOT_FOLDER_ID = res.data.files[0].id;
-    } else {
-        console.warn("[Drive] Creating Root Folder...");
-        const folder = await drive.files.create({
-            resource: { 'name': 'UniBot Files', 'mimeType': 'application/vnd.google-apps.folder' },
-            fields: 'id'
-        });
-        ROOT_FOLDER_ID = folder.data.id;
-    }
-    return ROOT_FOLDER_ID;
-}
-
 // ==========================================
-// 3. دوال قاعدة البيانات
+// 3. دوال قاعدة البيانات (مع Caching)
 // ==========================================
 
 async function getDatabase() {
+    const now = Date.now();
+    if (dbCache && (now - lastCacheTime < CACHE_DURATION)) {
+        return dbCache;
+    }
+
     try {
         const response = await axios.get(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
             headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' }
         });
-        return response.data;
+        dbCache = response.data;
+        lastCacheTime = now;
+        return dbCache;
     } catch (error) {
-        console.error("  Error Fetching Data :", error.message);
-        return null;
+        console.error("DB Fetch Error:", error.message);
+        if (dbCache) return dbCache;
+        throw error;
     }
 }
 
 async function saveDatabase(data) {
     try {
+        dbCache = data;
+        lastCacheTime = Date.now();
+        
         await axios.put(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, data, {
             headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }
         });
     } catch (error) {
-        console.error("  Error Saving Data :", error.message);
+        console.error("DB Save Error:", error.message);
         throw error;
     }
 }
@@ -204,71 +226,83 @@ async function saveDatabase(data) {
 // 4. وظيفة الرفع الرئيسية
 // ==========================================
 async function performUpload(state, chatId, editMessageId = null) {
+    let statusMsgId = editMessageId;
+    let tempFilePath = null;
+
     try {
-        // تحديد رسالة الحالة
-        let statusMsgId;
-        if (editMessageId) {
-            await bot.editMessageText("⏳ Uploading File To Drive...", { 
-                chat_id: chatId, message_id: editMessageId 
-            });
-        } else {
-            const msg = await bot.sendMessage(chatId, "⏳ Uploading File To Drive...");
-            statusMsgId = msg.message_id;
-        }
+        const updateStatus = (text) => {
+            if (statusMsgId) {
+                bot.editMessageText(text, { chat_id: chatId, message_id: statusMsgId }).catch(e => {});
+            } else {
+                bot.sendMessage(chatId, text).then(msg => statusMsgId = msg.message_id).catch(e => {});
+            }
+        };
 
-        // 1. تحميل الملف مؤقتاً
+        updateStatus("⏳ Initializing...");
+
+        // 1. تحميل الملف من تليجرام
         const fileLink = await bot.getFileLink(state.file.id);
-        const tempFilePath = path.join('/tmp', state.file.name);
+        tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
         
-        const response = await axios({ url: fileLink, responseType: 'stream' });
         const writer = fs.createWriteStream(tempFilePath);
-        response.data.pipe(writer);
-
-        await new Promise((resolve) => writer.on('finish', resolve));
-
-        // 2. التحضير للرفع على Drive
-        const rootId = await getRootFolderId();
-        const subjectFolderId = await findOrCreateFolder(state.subject, rootId);
-        const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
-        const sectionFolderId = await findOrCreateFolder(state.section, doctorFolderId);
-
-        // 3. الرفع
-        const driveResult = await uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
+        const tgStream = await axios({ url: fileLink, responseType: 'stream' });
         
-        // تنظيف
-        fs.unlink(tempFilePath, (err) => { if(err) console.error(err); });
+        updateStatus("⏳ Downloading From Telegram...");
+        await pipeline(tgStream.data, writer);
 
-        // 4. الحفظ في قاعدة البيانات
-        const db = await getDatabase();
+        // 2. تجهيز الهيكلية في Drive وجلب البيانات بشكل متوازي
+        updateStatus("⏳ Preparing Drive Structure...");
+        
+        const [rootId, db] = await Promise.all([
+            getRootFolderId(),
+            getDatabase()
+        ]);
+
+        // التأكد من وجود المسار في الذاكرة قبل الحفظ
+        if (!db.database[state.subject]) db.database[state.subject] = {};
+        if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
         if (!db.database[state.subject][state.doctor][state.section]) {
             db.database[state.subject][state.doctor][state.section] = [];
         }
 
-        db.database[state.subject][state.doctor][state.section].push({ 
-            name: state.file.name, 
-            link: driveResult.link, 
-            driveId: driveResult.id 
+        // 3. إنشاء المجلدات بالتتابع السريع
+        updateStatus("⏳ Uploading To Drive...");
+        const subjectFolderId = await findOrCreateFolder(state.subject, rootId);
+        const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
+        const sectionFolderId = await findOrCreateFolder(state.section, doctorFolderId);
+
+        // 4. رفع الملف
+        const driveResult = await uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
+
+        // 5. الحفظ في قاعدة البيانات
+        db.database[state.subject][state.doctor][state.section].push({
+            name: state.file.name,
+            link: driveResult.link,
+            driveId: driveResult.id
         });
-        
+
         await saveDatabase(db);
-        
+
+        // النهاية
         const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${state.file.name}*\n🔗 ${driveResult.link}`;
+        updateStatus(finalText);
         
-        if (editMessageId) {
-            bot.editMessageText(finalText, { 
-                chat_id: chatId, message_id: editMessageId, 
-                parse_mode: 'Markdown', disable_web_page_preview: true 
-            });
-        } else {
-            bot.sendMessage(chatId, finalText, { 
-                parse_mode: 'Markdown', disable_web_page_preview: true 
-            });
+        if (statusMsgId) {
+            bot.editMessageText(finalText, {
+                chat_id: chatId,
+                message_id: statusMsgId,
+                parse_mode: 'Markdown',
+                disable_web_page_preview: true
+            }).catch(e => {});
         }
-        
-        delete userStates[chatId];
+
     } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, `❌ Upload Failed ${error.message}`);
+        console.error('[Upload Error]', error);
+        bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
+    } finally {
+        if (tempFilePath && fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+        }
         delete userStates[chatId];
     }
 }
@@ -319,6 +353,7 @@ async function handleFile(msg) {
     const API = await getDatabase();
     const subjects = Object.keys(API.database);
     const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+    
     bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
         reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
     });
@@ -330,8 +365,9 @@ bot.on('message', async (msg) => {
     
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
-    // 1. منطق تغيير اسم الملف
     const state = userStates[chatId];
+
+    // 1. منطق تغيير اسم الملف
     if (state && state.step === 'waiting_for_new_name') {
         if (!text || text.startsWith('/')) return; 
         
@@ -373,9 +409,11 @@ bot.on('callback_query', async (query) => {
     if (state.step === 'select_subject' && data.startsWith('sub_')) {
         const subjectName = data.replace('sub_', '');
         state.subject = subjectName; state.step = 'select_doctor';
+        
         const db = await getDatabase();
-        const doctors = db.database[subjectName]?.doctors || [];
+        const doctors = Object.keys(db.database[subjectName] || {});
         const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
+        
         bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
             chat_id: chatId, message_id: query.message.message_id,
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
@@ -390,17 +428,15 @@ bot.on('callback_query', async (query) => {
         } else {
             state.step = 'select_section';
             const db = await getDatabase();
-            const sections = db.database[state.subject][state.doctor]?.sections || [];
+            const sections = Object.keys(db.database[state.subject][state.doctor] || {});
             const keyboard = sections.map(sec => [{ text: sec, callback_data: `sec_${sec}` }]);
+            
             bot.editMessageText(`Doctor : *${doctorName}*\n\ Select Section :`, {
                 chat_id: chatId, message_id: query.message.message_id,
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
             });
         }
     }
-    // -----------------------------------------------------------
-    // اختيار القسم -> تأكيد الاسم
-    // -----------------------------------------------------------
     else if (state.step === 'select_section' && data.startsWith('sec_')) {
         const sectionName = data.replace('sec_', '');
         state.section = sectionName;
@@ -418,9 +454,6 @@ bot.on('callback_query', async (query) => {
             parse_mode: 'Markdown'
         });
     }
-    // -----------------------------------------------------------
-    // التعامل مع أزرار Same Name / Rename
-    // -----------------------------------------------------------
     else if (state.step === 'confirm_name') {
         if (data === 'act_same') {
             performUpload(state, chatId, query.message.message_id);
@@ -433,8 +466,11 @@ bot.on('callback_query', async (query) => {
 
 async function processTextNotification(chatId, state, messageId) {
     const db = await getDatabase();
-    const docData = db.database[state.subject][state.doctor];
     
+    if (!db.database[state.subject]) db.database[state.subject] = {};
+    if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
+    
+    const docData = db.database[state.subject][state.doctor];
     if (!docData["🔔 Notifications"]) docData["🔔 Notifications"] = [];
     
     docData["🔔 Notifications"].unshift({
