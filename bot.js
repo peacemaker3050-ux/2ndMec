@@ -68,7 +68,8 @@ async function getRootFolderId() {
         const res = await drive.files.list({
             q: `mimeType='application/vnd.google-apps.folder' and name='${DRIVE_ROOT_FOLDER_NAME}' and trashed=false`,
             fields: 'files(id, name)',
-            spaces: 'drive'
+            spaces: 'drive',
+            supportsAllDrives: true
         });
 
         if (res.data.files.length > 0) {
@@ -76,7 +77,8 @@ async function getRootFolderId() {
         } else {
             const folder = await drive.files.create({
                 resource: { 'name': DRIVE_ROOT_FOLDER_NAME, 'mimeType': 'application/vnd.google-apps.folder' },
-                fields: 'id'
+                fields: 'id',
+                supportsAllDrives: true
             });
             ROOT_FOLDER_ID = folder.data.id;
         }
@@ -101,7 +103,8 @@ async function findOrCreateFolder(folderName, parentId) {
         const res = await drive.files.list({
             q: `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false and '${parentId}' in parents`,
             fields: 'files(id, name)',
-            spaces: 'drive'
+            spaces: 'drive',
+            supportsAllDrives: true
         });
 
         if (res.data.files.length > 0) {
@@ -115,7 +118,8 @@ async function findOrCreateFolder(folderName, parentId) {
         };
         const folder = await drive.files.create({
             resource: fileMetadata,
-            fields: 'id'
+            fields: 'id',
+            supportsAllDrives: true
         });
         return folder.data.id;
     } catch (error) {
@@ -143,7 +147,7 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             body: fs.createReadStream(filePath)
         };
 
-        console.log(`[Drive] Uploading ${fileName} to Drive...`);
+        console.log(`[Drive] Uploading ${fileName}...`);
 
         const file = await drive.files.create({
             resource: fileMetadata,
@@ -153,7 +157,7 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             supportsTeamDrives: true
         });
 
-        console.log(`[Drive] Upload successful for ${fileName}. ID: ${file.data.id}`);
+        console.log(`[Drive] Upload successful. ID: ${file.data.id}`);
 
         await drive.permissions.create({
             fileId: file.data.id,
@@ -179,7 +183,10 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
 async function deleteFileFromDrive(fileId) {
     if (!fileId) return;
     try {
-        await drive.files.delete({ fileId: fileId });
+        await drive.files.delete({ 
+            fileId: fileId,
+            supportsAllDrives: true
+        });
     } catch (error) {
         console.error('[Drive] Delete Error:', error.message);
     }
@@ -224,19 +231,15 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية
+// 5. وظيفة الرفع الرئيسية (مع معالجة الروابط)
 // ==========================================
 
 async function executeUpload(chatId) {
     const state = userStates[chatId];
     
-    if (!state) {
-        console.error(`[Critical] State missing for chatId: ${chatId}`);
-        return;
-    }
-
-    if (!state.file) {
-        console.error(`[Critical] File data missing for chatId: ${chatId}`);
+    if (!state || !state.file) {
+        console.error(`[Critical] State/File missing for chatId: ${chatId}`);
+        delete userStates[chatId];
         return;
     }
 
@@ -245,7 +248,6 @@ async function executeUpload(chatId) {
 
     try {
         console.log(`[Upload] Starting upload for file: ${state.file.name}`);
-        console.log(`[Upload] Using File ID: ${state.file.id}`);
 
         statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
         const statusMsgId = statusMsg.message_id;
@@ -261,31 +263,37 @@ async function executeUpload(chatId) {
             } catch (e) {}
         };
 
-        // 1. تحميل الملف
+        // 1. تحميل الملف (مع معالجة الرموز في الرابط)
         updateText("⏳ Downloading From Telegram...");
         
-        let fileIdToUse = state.file.id;
-
         try {
-            if (!fileIdToUse || typeof fileIdToUse !== 'string') {
-                throw new Error("Invalid File ID in state");
-            }
-
-            const fileLink = await bot.getFileLink(fileIdToUse);
-            tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
+            // الحصول على الرابط الخام من تليجرام
+            const rawFileLink = await bot.getFileLink(state.file.id);
+            
+            // تشفير الرابط لضمان التعامل مع الرموز بشكل صحيح
+            const encodedFileLink = encodeURI(rawFileLink);
+            
+            console.log(`[Download] Link: ${encodedFileLink}`);
+            
+            // إنشاء مسار الملف المؤقت
+            // استبدال الرموز غير المرغوبة في اسم الملف المحلي لتجنب أخطاء نظام الملفات
+            const safeFileName = state.file.name.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
+            tempFilePath = path.join('/tmp', `upload_${Date.now()}_${safeFileName}`);
             
             const writer = fs.createWriteStream(tempFilePath);
+            
+            // تحميل الملف باستخدام الرابط المشفر
             const tgStream = await axios({ 
-                url: fileLink, 
+                url: encodedFileLink, 
                 responseType: 'stream',
                 timeout: 60000 
             });
             
             await pipeline(tgStream.data, writer);
-            console.log(`[Upload] File downloaded to: ${tempFilePath}`);
+            console.log(`[Download] File saved to: ${tempFilePath}`);
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
-            throw new Error("Failed to download file. Please try again.");
+            throw new Error("Failed to download file. Please check the file name and try again.");
         }
 
         // تأخير بسيط لضمان إغلاق الملف
@@ -306,17 +314,17 @@ async function executeUpload(chatId) {
         }
 
         // 3. إنشاء المجلدات
-        updateText("⏳ Uploading To Drive...");
+        updateText("⏳ Creating Folders & Uploading...");
         const subjectFolderId = await findOrCreateFolder(state.subject, rootId);
         const doctorFolderId = await findOrCreateFolder(state.doctor, subjectFolderId);
         const sectionFolderId = await findOrCreateFolder(state.section, doctorFolderId);
 
         // 4. رفع الملف مع Timeout
-        console.log(`[Upload] Initiating Drive upload for ${state.file.name}...`);
+        console.log(`[Upload] Initiating Drive upload...`);
         
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, sectionFolderId);
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Upload Timeout (5 mins)")), 300000) // 5 دقائق
+            setTimeout(() => reject(new Error("Upload Timeout (5 mins)")), 300000)
         );
 
         let driveResult;
@@ -336,7 +344,9 @@ async function executeUpload(chatId) {
 
         await saveDatabase(db);
 
-        const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${state.file.name}*\n🔗 ${driveResult.link}`;
+        // decodeURI لعرض الاسم بشكل صحيح في الرسالة النهائية
+        const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
+        const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${displayName}*\n🔗 ${driveResult.link}`;
         await updateText(finalText);
 
     } catch (error) {
@@ -346,7 +356,6 @@ async function executeUpload(chatId) {
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
-        // نحذف الحالة فقط بعد الانتهاء الكامل
         delete userStates[chatId];
         console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
@@ -367,7 +376,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 7. معالجة الرسائل والأوامر (الإصلاح النهائي)
+// 7. معالجة الرسائل والأوامر
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -420,34 +429,20 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // ==========================================
-    // الإصلاح: حماية الحالة النشطة
-    // ==========================================
-
-    // إذا كان هناك أي حالة نشطة (حتى لو كانت جاري الرفع)، لا نفعل شيئاً
-    // هذا يمنع تداخل الرسائل أثناء عملية الرفع أو تغيير الاسم
+    // حماية الحالة النشطة
     if (state) {
-        
-        // الحالة الوحيدة المسموح فيها للنص هو طلب تغيير الاسم
         if (state.step === 'waiting_for_new_name') {
             console.log(`[Action] User sent new name: "${text}"`);
-            
-            // تحديث الاسم والحالة فوراً
             state.file.name = text.trim();
-            state.step = 'uploading'; // تغيير الحالة لـ uploading لمنع تكرار الاستقبال
-            
-            // استدعاء الرفع
+            state.step = 'uploading'; 
             executeUpload(chatId);
         } else {
-            // إذا كان البوت مشغول برفع ملف آخر أو في خطوة أخرى، نتجاهل الرسالة
             console.log(`[Ignored] User sent text while busy in step: ${state.step}`);
         }
-        return; // خروج فوري إذا كانت هناك حالة
+        return; 
     }
 
-    // ==========================================
-    // حالة: لا توجد حالة (بداية إشعار جديد)
-    // ==========================================
+    // حالة: لا توجد حالة (إشعار جديد)
     if (!state) {
         console.log(`[Action] New Notification started`);
         
