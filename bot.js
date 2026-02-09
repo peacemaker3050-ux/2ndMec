@@ -1,3 +1,6 @@
+// ==========================================
+// 1. استيراد المكتبات (تم ترتيبها لتجنب الأخطاء)
+// ==========================================
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const fs = require('fs');
@@ -8,7 +11,7 @@ const bodyParser = require('body-parser');
 const { pipeline } = require('stream/promises');
 
 // ==========================================
-// 1. التهيئة والإعدادات
+// 2. الإعدادات والتهيئة
 // ==========================================
 
 const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
@@ -28,6 +31,7 @@ const CLIENT_SECRET = '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';
 const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U';
 const REDIRECT_URI = 'http://localhost';
 
+// إنشاء عميل OAuth
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 oAuth2Client.setCredentials({ refresh_token: DRIVE_REFRESH_TOKEN });
 
@@ -39,12 +43,12 @@ oAuth2Client.on('tokens', (tokens) => {
 
 const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
+// إعداد البوت والخادم
 const bot = new TelegramBot(token, { polling: true });
 const app = express();
 app.use(bodyParser.json());
 
 const userStates = {};
-// إضافة ذاكرة تخزين مؤقت (Cache) لتسريع القوائم
 let dbCache = null;
 let lastCacheTime = 0;
 const CACHE_DURATION = 60000; 
@@ -52,7 +56,7 @@ const CACHE_DURATION = 60000;
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 2. دوال Google Drive
+// 3. دوال Google Drive
 // ==========================================
 
 const DRIVE_ROOT_FOLDER_NAME = '2nd MEC 2026';
@@ -176,7 +180,7 @@ async function deleteFileFromDrive(fileId) {
 }
 
 // ==========================================
-// 3. دوال قاعدة البيانات
+// 4. دوال قاعدة البيانات
 // ==========================================
 
 async function getDatabase() {
@@ -214,14 +218,12 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 4. وظيفة الرفع الرئيسية (إصلاح نهائي)
+// 5. وظيفة الرفع الرئيسية
 // ==========================================
 
 async function executeUpload(chatId) {
-    // استرجاع الحالة من الذاكرة
     const state = userStates[chatId];
     
-    // التحقق من وجود الحالة (إصلاح التوقف)
     if (!state) {
         console.error(`[Critical] State missing for chatId: ${chatId}`);
         return;
@@ -238,11 +240,9 @@ async function executeUpload(chatId) {
     try {
         console.log(`[Upload] Starting upload for file: ${state.file.name}`);
 
-        // إرسال رسالة حالة جديدة
         statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
         const statusMsgId = statusMsg.message_id;
 
-        // دالة مساعدة لتحديث رسالة الحالة
         const updateText = async (text) => {
             try {
                 await bot.editMessageText(text, { 
@@ -252,7 +252,7 @@ async function executeUpload(chatId) {
                     disable_web_page_preview: true 
                 });
             } catch (e) {
-                // تجاهل أخطاء التعديل إذا كانت الرسالة غير موجودة
+                // Silent fail if message deleted
             }
         };
 
@@ -274,7 +274,6 @@ async function executeUpload(chatId) {
             getDatabase()
         ]);
 
-        // التأكد من وجود المسار في الذاكرة
         if (!db.database[state.subject]) db.database[state.subject] = {};
         if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
         if (!db.database[state.subject][state.doctor][state.section]) {
@@ -299,7 +298,6 @@ async function executeUpload(chatId) {
 
         await saveDatabase(db);
 
-        // النتيجة النهائية
         const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${state.file.name}*\n🔗 ${driveResult.link}`;
         await updateText(finalText);
 
@@ -307,18 +305,16 @@ async function executeUpload(chatId) {
         console.error('[Upload Error]', error);
         bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
     } finally {
-        // تنظيف الملف
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
-        // تنظيف الحالة فقط بعد الانتهاء
         delete userStates[chatId];
         console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
 }
 
 // ==========================================
-// 5. API للحذف
+// 6. API للحذف
 // ==========================================
 
 app.post('/delete-drive-file', async (req, res) => {
@@ -332,7 +328,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 6. أوامر تليجرام
+// 7. معالجة الرسائل والأوامر (الإصلاح النهائي)
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -341,6 +337,7 @@ bot.onText(/\/start/, (msg) => {
     bot.sendMessage(chatId, "👋 Peace Maker Welcomes You\n\n ✨ We're Glad To Have You Here\n📄 Send File OR Text To Begin", { parse_mode: 'Markdown' });
 });
 
+// معالجة الملفات والصور
 bot.on('document', async (msg) => handleFile(msg));
 bot.on('photo', async (msg) => {
     const photo = msg.photo[msg.photo.length - 1];
@@ -369,29 +366,33 @@ async function handleFile(msg) {
     });
 }
 
+// المستمع العام للرسائل النصية
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
     
+    // 1. تجاهل الأوامر (تبدأ بـ /)
+    if (!text || text.startsWith('/')) return;
+    
+    // 2. تجاهل الملفات والصور (لأن لها مستمعين خاصين)
+    if (msg.document || msg.photo) return;
+    
+    // 3. التحقق من الصلاحية
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     const state = userStates[chatId];
 
-    // 1. منطق تغيير اسم الملف (تم التعديل لمنع التوقف)
+    // --- الحالة أ: المستخدم يكتب اسم ملف جديد ---
     if (state && state.step === 'waiting_for_new_name') {
-        if (!text || text.startsWith('/')) return; 
-        
-        // نحذف الحالة فقط هنا إذا كان هناك خطأ منطقي، لكننا سنحتفظ بها للرفع
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
-        
-        // استدعاء دالة الرفع الموحدة
         executeUpload(chatId);
-        return;
+        return; // التوقف هنا لمنع تنفيذ باقي الكود
     }
 
-    // 2. منطق إرسال الإشعار النصي
-    if (text && !text.startsWith('/') && !msg.document && !msg.photo) {
+    // --- الحالة ب: المستخدم يرسل رسالة نصية عادية (إشعار) ---
+    // نفذ هذا فقط إذا لم يكن المستخدم في عملية رفع حالية
+    if (!state) {
         userStates[chatId] = {
             step: 'select_subject',
             type: 'text',
@@ -401,6 +402,7 @@ bot.on('message', async (msg) => {
         const data = await getDatabase();
         const subjects = Object.keys(data.database);
         const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+        
         bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
@@ -408,7 +410,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 7. معالجة الأزرار (Callback Query)
+// 8. معالجة الأزرار (Callback Query)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -419,61 +421,66 @@ bot.on('callback_query', async (query) => {
     if (!AUTHORIZED_USERS.includes(chatId)) return;
     if (!state) return;
 
-    if (state.step === 'select_subject' && data.startsWith('sub_')) {
-        const subjectName = data.replace('sub_', '');
-        state.subject = subjectName; state.step = 'select_doctor';
-        
-        const db = await getDatabase();
-        const doctors = Object.keys(db.database[subjectName] || {});
-        const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
-        
-        bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
-            chat_id: chatId, message_id: query.message.message_id,
-            reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
-        });
-    }
-    else if (state.step === 'select_doctor' && data.startsWith('doc_')) {
-        const doctorName = data.replace('doc_', '');
-        state.doctor = doctorName;
-
-        if (state.type === 'text') {
-            await processTextNotification(chatId, state, query.message.message_id);
-        } else {
-            state.step = 'select_section';
-            const db = await getDatabase();
-            const sections = Object.keys(db.database[state.subject][state.doctor] || {});
-            const keyboard = sections.map(sec => [{ text: sec, callback_data: `sec_${sec}` }]);
+    try {
+        if (state.step === 'select_subject' && data.startsWith('sub_')) {
+            const subjectName = data.replace('sub_', '');
+            state.subject = subjectName; 
+            state.step = 'select_doctor';
             
-            bot.editMessageText(`Doctor : *${doctorName}*\n\ Select Section :`, {
+            const db = await getDatabase();
+            const doctors = Object.keys(db.database[subjectName] || {});
+            const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
+            
+            await bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
                 chat_id: chatId, message_id: query.message.message_id,
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
             });
         }
-    }
-    else if (state.step === 'select_section' && data.startsWith('sec_')) {
-        const sectionName = data.replace('sec_', '');
-        state.section = sectionName;
-        state.step = 'confirm_name'; 
+        else if (state.step === 'select_doctor' && data.startsWith('doc_')) {
+            const doctorName = data.replace('doc_', '');
+            state.doctor = doctorName;
 
-        const nameKeyboard = [
-            [{ text: "✅ Same Name", callback_data: 'act_same' }],
-            [{ text: "✏️ Rename", callback_data: 'act_rename' }]
-        ];
-
-        bot.editMessageText(`📂 Section: *${sectionName}*\n\n📝  Current File Name :\n\`${state.file.name}\`\n\ Choose An Action :`, {
-            chat_id: chatId, 
-            message_id: query.message.message_id,
-            reply_markup: { inline_keyboard: nameKeyboard }, 
-            parse_mode: 'Markdown'
-        });
-    }
-    else if (state.step === 'confirm_name') {
-        if (data === 'act_same') {
-            executeUpload(chatId);
-        } else if (data === 'act_rename') {
-            state.step = 'waiting_for_new_name';
-            bot.sendMessage(chatId, "✏️ Enter The New File Name :");
+            if (state.type === 'text') {
+                await processTextNotification(chatId, state, query.message.message_id);
+            } else {
+                state.step = 'select_section';
+                const db = await getDatabase();
+                const sections = Object.keys(db.database[state.subject][state.doctor] || {});
+                const keyboard = sections.map(sec => [{ text: sec, callback_data: `sec_${sec}` }]);
+                
+                await bot.editMessageText(`Doctor : *${doctorName}*\n\ Select Section :`, {
+                    chat_id: chatId, message_id: query.message.message_id,
+                    reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+                });
+            }
         }
+        else if (state.step === 'select_section' && data.startsWith('sec_')) {
+            const sectionName = data.replace('sec_', '');
+            state.section = sectionName;
+            state.step = 'confirm_name'; 
+
+            const nameKeyboard = [
+                [{ text: "✅ Same Name", callback_data: 'act_same' }],
+                [{ text: "✏️ Rename", callback_data: 'act_rename' }]
+            ];
+
+            await bot.editMessageText(`📂 Section: *${sectionName}*\n\n📝  Current File Name :\n\`${state.file.name}\`\n\ Choose An Action :`, {
+                chat_id: chatId, 
+                message_id: query.message.message_id,
+                reply_markup: { inline_keyboard: nameKeyboard }, 
+                parse_mode: 'Markdown'
+            });
+        }
+        else if (state.step === 'confirm_name') {
+            if (data === 'act_same') {
+                executeUpload(chatId);
+            } else if (data === 'act_rename') {
+                state.step = 'waiting_for_new_name';
+                await bot.sendMessage(chatId, "✏️ Enter The New File Name :");
+            }
+        }
+    } catch (error) {
+        console.error('[Callback Error]', error);
     }
 });
 
@@ -494,13 +501,15 @@ async function processTextNotification(chatId, state, messageId) {
 
     try {
         await saveDatabase(db);
-        bot.editMessageText(`✅ Notification Send Succefully`, { chat_id: chatId, message_id: messageId });
+        await bot.editMessageText(`✅ Notification Send Succefully`, { chat_id: chatId, message_id: messageId });
         delete userStates[chatId];
     } catch (err) {
-        bot.sendMessage(chatId, "❌ Failed To Save Notification");
+        console.error("Save Notif Error:", err);
+        await bot.sendMessage(chatId, "❌ Failed To Save Notification");
     }
 }
 
+// بدء الخادم
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
