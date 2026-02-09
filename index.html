@@ -371,7 +371,7 @@
     <div id="loading-screen">
         <div class="spinner-container">
             <div class="spinner"></div>
-            <div class="loading-text">Syncing from Cloud... <br><small>University Bot Pro</small></div>
+            <div class="loading-text">Syncing from Cloud... <br><small>You Will Never Walk Alone</small></div>
         </div>
     </div>
 
@@ -1063,11 +1063,11 @@
                 if (localData) {
                     CONFIG = localData;
                     applyConfig(CONFIG);
-                    showToast("📱 أنت الآن في وضع عدم الاتصال (آخر تحديث محفوظ)", "info");
+                    showToast("📡 No Internet Connection", "info");
                 } else {
                     CONFIG = { ...defaultConfig };
                     applyConfig(CONFIG);
-                    showToast("⚠️ لا توجد بيانات محفوظة", "error");
+                    showToast("⚠️ No Saved Data Available", "error");
                 }
             }
         }
@@ -1468,7 +1468,7 @@
                 const email = user.email;
                 if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-owner'); }
                 else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; loginBtn.classList.add('is-admin'); }
-                else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🚪"; loginBtn.classList.remove('is-owner', 'is-admin'); }
+                else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🔓"; loginBtn.classList.remove('is-owner', 'is-admin'); }
             } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; loginBtn.classList.remove('is-owner', 'is-admin'); }
         }
 
@@ -1518,20 +1518,20 @@
                 CONFIG = localData;
                 database = CONFIG.database; // التأكد من ربط قاعدة البيانات
                 applyConfig(CONFIG);
-                showToast("📱 تم تحميل البيانات المحفوظة", "success");
+                showToast("💾 Saved Data Loaded Successfully", "success");
             }
 
             // 3. محاولة المزامنة مع السحابة
             // ملاحظة: حتى لو فشلت هذه الخطوة (لعدم وجود نت)، الموقع سيظل شغالًا لأننا عرضنا البيانات المحفوظة بالأعلى
             fetchConfig().then(() => {
-                if (localData) showToast("🔄 تم تحديث البيانات من السحابة", "success");
+                if (localData) showToast("☁️ Data Updated From Cloud", "success");
                 else showToast("🎉 Synced with Cloud", "success");
             }).catch(err => { 
                 console.error("Cloud Sync Failed", err); 
                 // لا نظهر خطأ فادح هنا لأننا بالفعل عرضنا النسخة الأوفلاين
                 if (!localData) {
                     // حالة نادرة جداً: لا يوجد نت ولا يوجد بيانات محفوظة مسبقاً
-                    showToast("⚠️ لا توجد بيانات محفوظة", "error");
+                    showToast("⚠️ No Saved Data Found", "error");
                 }
             });
 

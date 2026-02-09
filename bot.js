@@ -184,7 +184,7 @@ async function getDatabase() {
         });
         return response.data;
     } catch (error) {
-        console.error("خطأ في جلب البيانات:", error.message);
+        console.error("  Error Fetching Data :", error.message);
         return null;
     }
 }
@@ -195,7 +195,7 @@ async function saveDatabase(data) {
             headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }
         });
     } catch (error) {
-        console.error("خطأ في حفظ البيانات:", error.message);
+        console.error("  Error Saving Data :", error.message);
         throw error;
     }
 }
@@ -208,11 +208,11 @@ async function performUpload(state, chatId, editMessageId = null) {
         // تحديد رسالة الحالة
         let statusMsgId;
         if (editMessageId) {
-            await bot.editMessageText("⏳ جاري الرفع على Drive...", { 
+            await bot.editMessageText("⏳ Uploading File To Drive...", { 
                 chat_id: chatId, message_id: editMessageId 
             });
         } else {
-            const msg = await bot.sendMessage(chatId, "⏳ جاري الرفع على Drive...");
+            const msg = await bot.sendMessage(chatId, "⏳ Uploading File To Drive...");
             statusMsgId = msg.message_id;
         }
 
@@ -252,7 +252,7 @@ async function performUpload(state, chatId, editMessageId = null) {
         
         await saveDatabase(db);
         
-        const finalText = `✅ تم الرفع بنجاح!\n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 الاسم: *${state.file.name}*\n🔗 ${driveResult.link}`;
+        const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor} / ${state.section}\n📝 Name: *${state.file.name}*\n🔗 ${driveResult.link}`;
         
         if (editMessageId) {
             bot.editMessageText(finalText, { 
@@ -268,7 +268,7 @@ async function performUpload(state, chatId, editMessageId = null) {
         delete userStates[chatId];
     } catch (error) {
         console.error(error);
-        bot.sendMessage(chatId, `❌ خطأ في الرفع: ${error.message}`);
+        bot.sendMessage(chatId, `❌ Upload Failed ${error.message}`);
         delete userStates[chatId];
     }
 }
@@ -294,7 +294,7 @@ app.post('/delete-drive-file', async (req, res) => {
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
-    bot.sendMessage(chatId, "👋 أهلاً بك في نظام MecWeb (Drive Free Mode).\n\n✨ تم ربط البوت بـ Google Drive بدون رسوم.\n📄 أرسل ملفاً للبدء.", { parse_mode: 'Markdown' });
+    bot.sendMessage(chatId, "👋 Peace Maker Welcomes You\n\n ✨ We're Glad To Have You Here\n📄 Send File OR Text To Begin", { parse_mode: 'Markdown' });
 });
 
 bot.on('document', async (msg) => handleFile(msg));
@@ -319,7 +319,7 @@ async function handleFile(msg) {
     const API = await getDatabase();
     const subjects = Object.keys(API.database);
     const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-    bot.sendMessage(chatId, `📂 الملف: *${fileName}*\n\nاختر المادة:`, {
+    bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
         reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
     });
 }
@@ -352,7 +352,7 @@ bot.on('message', async (msg) => {
         const data = await getDatabase();
         const subjects = Object.keys(data.database);
         const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-        bot.sendMessage(chatId, `📝 رسالة جديدة: "${text}"\n\nاختر المادة:`, {
+        bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
     }
@@ -376,7 +376,7 @@ bot.on('callback_query', async (query) => {
         const db = await getDatabase();
         const doctors = db.database[subjectName]?.doctors || [];
         const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
-        bot.editMessageText(`المادة: *${subjectName}*\n\nاختر الدكتور:`, {
+        bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
             chat_id: chatId, message_id: query.message.message_id,
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
@@ -392,7 +392,7 @@ bot.on('callback_query', async (query) => {
             const db = await getDatabase();
             const sections = db.database[state.subject][state.doctor]?.sections || [];
             const keyboard = sections.map(sec => [{ text: sec, callback_data: `sec_${sec}` }]);
-            bot.editMessageText(`الدكتور: *${doctorName}*\n\nاختر القسم:`, {
+            bot.editMessageText(`Doctor : *${doctorName}*\n\ Select Section :`, {
                 chat_id: chatId, message_id: query.message.message_id,
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
             });
@@ -411,7 +411,7 @@ bot.on('callback_query', async (query) => {
             [{ text: "✏️ Rename", callback_data: 'act_rename' }]
         ];
 
-        bot.editMessageText(`📂 القسم: *${sectionName}*\n\n📝 الاسم الحالي:\n\`${state.file.name}\`\n\nاختر إجراء:`, {
+        bot.editMessageText(`📂 Section: *${sectionName}*\n\n📝  Current File Name :\n\`${state.file.name}\`\n\ Choose An Action :`, {
             chat_id: chatId, 
             message_id: query.message.message_id,
             reply_markup: { inline_keyboard: nameKeyboard }, 
@@ -426,7 +426,7 @@ bot.on('callback_query', async (query) => {
             performUpload(state, chatId, query.message.message_id);
         } else if (data === 'act_rename') {
             state.step = 'waiting_for_new_name';
-            bot.sendMessage(chatId, "✏️ أرسل الاسم الجديد للملف:");
+            bot.sendMessage(chatId, "✏️ Enter The New File Name :");
         }
     }
 });
@@ -445,10 +445,10 @@ async function processTextNotification(chatId, state, messageId) {
 
     try {
         await saveDatabase(db);
-        bot.editMessageText(`✅ تم إرسال الإشعار بنجاح!`, { chat_id: chatId, message_id: messageId });
+        bot.editMessageText(`✅ Notification Send Succefully`, { chat_id: chatId, message_id: messageId });
         delete userStates[chatId];
     } catch (err) {
-        bot.sendMessage(chatId, "❌ فشل حفظ الإشعار.");
+        bot.sendMessage(chatId, "❌ Failed To Save Notification");
     }
 }
 
