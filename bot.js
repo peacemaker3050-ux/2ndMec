@@ -217,7 +217,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية (تم تحسين معالجة الأخطاء والوقت)
+// 5. وظيفة الرفع الرئيسية
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -254,14 +254,12 @@ async function executeUpload(chatId) {
             } catch (e) {}
         };
 
-        // 1. تحميل الملف مع معالجة الأخطاء و Timeout
+        // 1. تحميل الملف
         updateText("⏳ Downloading From Telegram...");
         
         let fileIdToUse = state.file.id;
-        let retryAttempt = false;
 
         try {
-            // التحقق من صحة الـ ID
             if (!fileIdToUse || typeof fileIdToUse !== 'string') {
                 throw new Error("Invalid File ID in state");
             }
@@ -270,46 +268,16 @@ async function executeUpload(chatId) {
             tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
             
             const writer = fs.createWriteStream(tempFilePath);
-            
-            // إضافة timeout لمنع التوقف الدائم
             const tgStream = await axios({ 
                 url: fileLink, 
                 responseType: 'stream',
-                timeout: 60000 // 60 ثانية كحد أقصى للتحميل
+                timeout: 60000 
             });
             
             await pipeline(tgStream.data, writer);
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
-            
-            // محاولة الاسترداد من آخر ملف تم رفعه
-            const lastUpload = lastFileUploads[chatId];
-            
-            if (lastUpload && lastUpload.fileId && lastUpload.fileId !== fileIdToUse) {
-                console.log(`[Recovery] Retrying with cached File ID: ${lastUpload.fileId}`);
-                updateText("⏳ Retrying Download...");
-                
-                // تحديث الـ ID في الحالة الحالية
-                state.file.id = lastUpload.fileId;
-                fileIdToUse = lastUpload.fileId;
-
-                try {
-                    const fileLink = await bot.getFileLink(fileIdToUse);
-                    tempFilePath = path.join('/tmp', `upload_${Date.now()}_${state.file.name}`);
-                    const writer = fs.createWriteStream(tempFilePath);
-                    const tgStream = await axios({ 
-                        url: fileLink, 
-                        responseType: 'stream',
-                        timeout: 60000 
-                    });
-                    await pipeline(tgStream.data, writer);
-                } catch (retryError) {
-                    console.error('[Retry Error]', retryError.message);
-                    throw new Error("Failed to download file after retry.");
-                }
-            } else {
-                throw downloadError;
-            }
+            throw new Error("Failed to download file. Please try again.");
         }
 
         // 2. تجهيز البيانات والمجلدات
@@ -355,7 +323,6 @@ async function executeUpload(chatId) {
             fs.unlinkSync(tempFilePath);
         }
         delete userStates[chatId];
-        // نحتفظ بـ lastFileUploads لفترة أطول قليلاً في حال كان هناك خطأ متكرر، لكن يتم حذفه عند رفع ملف جديد
         console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
 }
@@ -375,7 +342,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 7. معالجة الرسائل والأوامر
+// 7. معالجة الرسائل والأوامر (منطق مبسط ومصحح)
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -397,12 +364,14 @@ async function handleFile(msg) {
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
     const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
 
+    // حفظ الملف الأخير للاستعادة عند الحاجة (احتياطي)
     lastFileUploads[chatId] = {
         fileId: fileId,
         fileName: fileName,
         timestamp: Date.now()
     };
 
+    // تعيين الحالة الجديدة (مسح أي حالة سابقة)
     userStates[chatId] = {
         step: 'select_subject',
         type: 'file',
@@ -422,6 +391,7 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
     
+    // فلترة الرسائل غير النصية والأوامر
     if (!text || text.startsWith('/')) return;
     if (msg.document || msg.photo) return;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
@@ -429,37 +399,24 @@ bot.on('message', async (msg) => {
     const state = userStates[chatId];
 
     // ==========================================
-    // الأولوية: تغيير اسم الملف
+    // الحالة 1: المستخدم يرسل اسم الملف الجديد
     // ==========================================
-    
     if (state && state.step === 'waiting_for_new_name') {
+        console.log(`[Action] User sent new name: ${text}`);
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
         executeUpload(chatId);
-        return; 
+        return; // وقف التنفيذ
     }
 
-    // التعامل مع الملف السابق (إذا لم يكن هناك حالة نشطة وتم إرسال نص سريع)
-    if (!state && lastFileUploads[chatId] && (Date.now() - lastFileUploads[chatId].timestamp < 120000)) {
-        const lastUpload = lastFileUploads[chatId];
-        
-        userStates[chatId] = {
-            step: 'waiting_for_new_name',
-            type: 'file',
-            file: { id: lastUpload.fileId, name: lastUpload.fileName },
-            subject: null,
-            doctor: null,
-            section: null
-        };
-
-        userStates[chatId].file.name = text.trim();
-        userStates[chatId].step = 'ready_to_upload';
-        executeUpload(chatId);
-        return;
-    }
-
-    // رسالة نصية جديدة (إشعار)
+    // ==========================================
+    // الحالة 2: لا توجد حالة نشطة (State Null)
+    // ==========================================
     if (!state) {
+        // إذا لم تكن هناك حالة، فهذا يعني إما أن المستخدم بدأ محادثة جديدة
+        // أو تم عمل reset للبوت. نعتبرها رسالة نصية (إشعار).
+        console.log(`[Action] New Notification started`);
+        
         userStates[chatId] = {
             step: 'select_subject',
             type: 'text',
@@ -473,7 +430,15 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
+        return;
     }
+
+    // ==========================================
+    // الحالة 3: يوجد حالة نشطة ولكن ليست "انتظار اسم"
+    // (مثلاً المستخدم يرسل نصاً أثناء اختيار المادة)
+    // في هذه الحالة نتجاهل الرسالة أو نعتبرها خطأ
+    // ==========================================
+    console.log(`[Ignored] User sent text while in step: ${state.step}`);
 });
 
 // ==========================================
@@ -486,10 +451,11 @@ bot.on('callback_query', async (query) => {
     const state = userStates[chatId];
 
     if (!AUTHORIZED_USERS.includes(chatId)) return;
-    if (!state) return;
+    // ملاحظة: لا نتحقق من وجود state هنا لأن بعض العمليات قد تحتاج لبدء جديد
+    // ولكن في هذا الكود نعتمد على وجود state
 
     try {
-        if (state.step === 'select_subject' && data.startsWith('sub_')) {
+        if (state && state.step === 'select_subject' && data.startsWith('sub_')) {
             const subjectName = data.replace('sub_', '');
             state.subject = subjectName; 
             state.step = 'select_doctor';
@@ -503,7 +469,7 @@ bot.on('callback_query', async (query) => {
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
             });
         }
-        else if (state.step === 'select_doctor' && data.startsWith('doc_')) {
+        else if (state && state.step === 'select_doctor' && data.startsWith('doc_')) {
             const doctorName = data.replace('doc_', '');
             state.doctor = doctorName;
 
@@ -521,7 +487,7 @@ bot.on('callback_query', async (query) => {
                 });
             }
         }
-        else if (state.step === 'select_section' && data.startsWith('sec_')) {
+        else if (state && state.step === 'select_section' && data.startsWith('sec_')) {
             const sectionName = data.replace('sec_', '');
             state.section = sectionName;
             state.step = 'confirm_name'; 
@@ -538,10 +504,11 @@ bot.on('callback_query', async (query) => {
                 parse_mode: 'Markdown'
             });
         }
-        else if (state.step === 'confirm_name') {
+        else if (state && state.step === 'confirm_name') {
             if (data === 'act_same') {
                 executeUpload(chatId);
             } else if (data === 'act_rename') {
+                // تغيير الحالة إلى انتظار اسم جديد
                 state.step = 'waiting_for_new_name';
                 await bot.sendMessage(chatId, "✏️ Send the *new file name* now.", { parse_mode: 'Markdown' });
             }
