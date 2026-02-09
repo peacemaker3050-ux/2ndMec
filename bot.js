@@ -217,7 +217,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية (تم الإصلاح)
+// 5. وظيفة الرفع الرئيسية
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -348,7 +348,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 7. معالجة الرسائل والأوامر
+// 7. معالجة الرسائل والأوامر (تم التعديل)
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -401,11 +401,15 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
+    // ==========================================
+    // تعديل هام: التحقق من تغيير الاسم أولاً
+    // ==========================================
+    
     if (state && state.step === 'waiting_for_new_name') {
         state.file.name = text.trim();
         state.step = 'ready_to_upload'; 
         executeUpload(chatId);
-        return;
+        return; // إنهاء التنفيذ هنا لمنع الوصول لكود الإشعارات
     }
 
     if (!state && lastFileUploads[chatId] && (Date.now() - lastFileUploads[chatId].timestamp < 120000)) {
