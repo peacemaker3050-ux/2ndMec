@@ -140,6 +140,7 @@
             width: 8px; height: 8px; background-color: #4ade80; border-radius: 50%;
             box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); animation: pulse-green 2s infinite;
         }
+        .sync-dot.offline { background-color: #f87171; animation: none; }
         @keyframes pulse-green { 
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); } 
             70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); } 
@@ -552,7 +553,7 @@
                     <h2 id="header-name">University Bot</h2>
                     <!-- Lower Row Wrapper -->
                     <div class="bot-status-row">
-                        <span class="bot-status" id="header-status"><div class="sync-dot"></div> Online</span>
+                        <span class="bot-status" id="header-status"><div class="sync-dot" id="connection-dot"></div> <span id="status-text">Online</span></span>
                         
                         <!-- NEW: Permanent Search Bar -->
                         <div class="search-bar">
@@ -822,6 +823,68 @@
     </div>
 
     <script>
+        // --- INLINE SERVICE WORKER GENERATOR ---
+        // Creates a service worker from within the main HTML to ensure offline capability without external files.
+        function createInlineServiceWorker() {
+            const swCode = `
+                const CACHE_NAME = 'uni-bot-v1';
+                
+                self.addEventListener('install', (event) => {
+                    self.skipWaiting();
+                });
+
+                self.addEventListener('activate', (event) => {
+                    event.waitUntil(clients.claim());
+                });
+
+                self.addEventListener('fetch', (event) => {
+                    // Network-First strategy for API calls
+                    if (event.request.url.includes('jsonbin.io')) {
+                        event.respondWith(
+                            fetch(event.request)
+                                .then((response) => {
+                                    // Cache the API response
+                                    if (response && response.status === 200) {
+                                        const responseClone = response.clone();
+                                        caches.open(CACHE_NAME).then((cache) => {
+                                            cache.put(event.request, responseClone);
+                                        });
+                                    }
+                                    return response;
+                                })
+                                .catch(() => {
+                                    // If network fails, try to return cached API data
+                                    return caches.match(event.request);
+                                })
+                        );
+                    } else {
+                        // Cache-First strategy for static assets (HTML, CSS, JS, Images)
+                        event.respondWith(
+                            caches.match(event.request).then((cachedResponse) => {
+                                return cachedResponse || fetch(event.request).then((response) => {
+                                    if (response && response.status === 200) {
+                                        const responseClone = response.clone();
+                                        caches.open(CACHE_NAME).then((cache) => {
+                                            cache.put(event.request, responseClone);
+                                        });
+                                    }
+                                    return response;
+                                });
+                            })
+                        );
+                    }
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('SW Registered (Inline)'))
+                    .catch(err => console.log('SW Registration Failed', err));
+            }
+        }
+
         /**
          * University Bot Pro - Advanced Smart Search Implementation
          * 
@@ -993,61 +1056,90 @@
             return btn; 
         }
 
-        // --- SMART SEARCH LOGIC ---
+        // --- SMART SEARCH LOGIC (UPDATED) ---
 
-        // Enhanced Transliteration Map
+        // 1. Numbers Mapping (1-10)
+        const numberMap = {
+            'واحد': '1', '1': '1', 'one': '1',
+            'ثاني': '2', 'اثنين': '2', '2': '2', 'two': '2',
+            'ثالث': '3', '3': '3', 'three': '3',
+            'رابع': '4', '4': '4', 'four': '4',
+            'خامس': '5', '5': '5', 'five': '5',
+            'سادس': '6', '6': '6', 'six': '6',
+            'سابع': '7', '7': '7', 'seven': '7',
+            'ثامن': '8', '8': '8', 'eight': '8',
+            'تاسع': '9', '9': '9', 'nine': '9',
+            'عاشر': '10', '10': '10', 'ten': '10'
+        };
+
+        // 2. Enhanced Transliteration Map
         const transliterationMap = {
-            // Fluids & Materials
-            'فلويد': 'fluid', 'فل': 'fluid', 'هيدروليك': 'hydraulics', 'هيدروليك': 'hydraulics',
-            'ديزاين': 'design', 'دزاين': 'design', 'ماشين': 'machine', 'ماشينس': 'machines',
-            'هات': 'heat', 'هات': 'heat', 'ترانسفر': 'transfer', 'ترانسفر': 'transfer',
-            'سيركويت': 'circuit', 'سيجنال': 'signal', 'ساينس': 'science', 'لايكتشر': 'lecture', 'لايكشر': 'lecture',
+            // --- SUBJECTS & ACRONYMS ---
+            'كترك': 'electric', 'كتريك': 'electric', 'الكترك': 'electric machines', 'electric': 'electric machines',
+            'ماشين': 'machine', 'machines': 'machines', 'ماشينس': 'machines',
+            'فلويد': 'fluid', 'فل': 'fluid', 'fluids': 'fluid',
+            'هيدروليك': 'hydraulics',
+            'ديزاين': 'design', 'دزاين': 'design',
+            'هات': 'heat', 'heat': 'heat transfer',
+            'ترانسفر': 'transfer',
+            'سيركويت': 'circuit', 'circuits': 'circuit',
+            'سيجنال': 'signal',
+            'ساينس': 'science',
+            'ميكانيكا': 'mechanics', 'ميكانيك': 'mechanics',
+            'ترمودايناميك': 'thermodynamics',
+            'ترموداينامكس': 'thermodynamics',
+            'دايناميك': 'dynamics',
+            'استاتيك': 'statics',
+            'فزياء': 'physics',
+            'كيمياء': 'chemistry',
+            'رياضيات': 'mathematics',
+            'رسم': 'drawing', 'جرافيك': 'graphic',
+            'جيومتري': 'geometry',
+            'بروبابيلتي': 'probability',
+            'بروبرمجشن': 'programming',
+
+            // --- FILE TYPES & CONTEXT ---
+            'محاضره': 'lec', 'محاضرة': 'lec', 'محاضرات': 'lec',
+            'لايكتشر': 'lec', 'lecture': 'lec', 'lectures': 'lec',
             
-            // Mechanics & Physics
-            'ميكانيكا': 'mechanics', 'ميكانيك': 'mechanics', 'ميكانيزم': 'mechanism',
-            'ترمودايناميك': 'thermodynamics', 'ترموداينامكس': 'thermodynamics', 'تيرمودايناميك': 'thermodynamics',
-            'دايناميك': 'dynamics', 'داينامكس': 'dynamics', 'استاتيك': 'statics', 'استاتكس': 'statics',
-            'فزياء': 'physics', 'فيزياء': 'physics',
+            'شيت': 'sheet', 'شيتات': 'sheet', 'sheets': 'sheet',
             
-            // Exams & Terms
-            'شيت': 'sheet','عشره': '10','تسعه': '9','تمانيه': '8','سبعه': '7','سته': '6','خمسه': '5','اربعه': '4','واحد': '1','اتنين': '2','تلاته': '3','المحاضره': 'lec','التامنه': '8','حل': 'sol','الثانيه': '2','الاولي': '1','التانيه': '2','التالته': '3', 'شيتات': 'sheets', 'سكتور': 'section', 'سيد': 'section',
-            'فاينل': 'final','الرابعه': '4','الخامسه': '5','السادسه': '6', 'فاينلز': 'finals', 'ميد': 'midterm', 'ميدتيرم': 'midterm',
-            'اسايمنت': 'assignment','العاشره': '10','التاسعه': '9','الثامنه': '8','السابعه': '7', 'اسايمنتس': 'assignments', 'اسايمنت': 'assignment',
-            'كويز': 'quiz', 'كويزات': 'quizzes', 'كيز': 'quiz', 'كوبيت': 'copybook',
-            'لاب': 'lab', 'لابس': 'labs', 'براكتيكال': 'practical', 'براكتيكال': 'practical',
+            'حل': 'sol', 'حلول': 'sol', 'solution': 'sol', 'solutions': 'sol',
             
-            // Files & Formats
-            'بوربوينت': 'ppt', 'باوربوينت': 'powerpoint', 'سلايد': 'slide',
-            'ورد': 'word', 'وورد': 'word', 'اكسل': 'excel', 'اكسل': 'excel',
-            'سكان': 'scan', 'سكانير': 'scanner', 'صور': 'images', 'صورة': 'image',
-            'فديو': 'video', 'فيلم': 'movie', 'اوثاري': 'theory', 'ثيوري': 'theory',
+            'كويز': 'quiz', 'quizzes': 'quiz',
+            'اسايمنت': 'assignment', 'assignments': 'assignment',
+            'لاب': 'lab', 'labs': 'lab', 'laboratory': 'lab',
+            'فاينل': 'final', 'finals': 'final', 'ميد': 'midterm',
             
-            // Math
-            'الجبر': 'algebra', 'كالكولاس': 'calculus', 'انجليزي': 'english',
-            'رسم': 'drawing', 'جرافيك': 'graphic', 'جيومتري': 'geometry',
-            'بروبابيلتي': 'probability', 'بروبابلتي': 'probability',
-            'بروبرمجشن': 'programming', 'كود': 'code', 'كودنج': 'coding'
+            'بوربوينت': 'ppt', 'powerpoint': 'ppt', 'slide': 'slide',
+            'ورد': 'word', 'اكسل': 'excel', 'pdf': 'pdf',
+            'سكان': 'scan', 'صور': 'images', 'صورة': 'image',
+            'فديو': 'video', 'نوت': 'notes', 'summary': 'summary'
         };
 
         function normalizeText(text) {
             if (!text) return "";
             
-            // Step 1: Remove spaces, convert to lowercase
-            let cleaned = text.toLowerCase().replace(/\s+/g, '');
+            // Step 1: Remove spaces, convert to lowercase for processing
+            // We keep spaces for display but for matching logic we often strip them
+            // However, Fuse.js handles spaces well. We will do replacements first.
             
-            // Step 2: Apply transliteration map
-            // Logic: If user types "فلويد" (fluid), we expand the search query 
-            // to "فلويد fluid". This allows Fuse.js to match the item even if the 
-            // database name is purely English "Fluid".
-            let expanded = cleaned;
-            Object.keys(transliterationMap).forEach(key => {
-                if (cleaned.includes(key)) {
-                    // Append the English term to the search query
-                    expanded += " " + transliterationMap[key];
-                }
+            let processed = text.toLowerCase();
+            
+            // Step 2: Replace Arabic/English Numbers (1-10) with Digits
+            Object.keys(numberMap).forEach(key => {
+                // Regex to match whole word only to avoid replacing "12" with "1" "2" unexpectedly
+                const regex = new RegExp(`\\b${key}\\b`, 'gi');
+                processed = processed.replace(regex, numberMap[key]);
             });
 
-            return expanded;
+            // Step 3: Replace Arabic Terms and Common Keywords
+            Object.keys(transliterationMap).forEach(key => {
+                const regex = new RegExp(`\\b${key}\\b`, 'gi');
+                processed = processed.replace(regex, transliterationMap[key]);
+            });
+
+            return processed;
         }
 
         // Recursively flatten database tree into a list for searching
@@ -1124,10 +1216,10 @@
             if (!query || !fuseSearchEngine) return [];
             
             // Normalize query for fuzzy matching + transliteration
-            const expandedQuery = normalizeText(query);
+            const normalizedQuery = normalizeText(query);
             
             // Search
-            const results = fuseSearchEngine.search(expandedQuery);
+            const results = fuseSearchEngine.search(normalizedQuery);
             return results.map(r => r.item);
         }
 
@@ -1605,11 +1697,23 @@
                 saveToLocalStorage(CONFIG);
                 applyConfig(CONFIG);
                 initSearchEngine(); // Initialize search engine after loading DB
+                updateOnlineStatus(true);
             } catch (error) {
                 console.error("Cloud Sync Failed", error);
+                updateOnlineStatus(false);
                 const localData = loadFromLocalStorage();
-                if (localData) { CONFIG = localData; applyConfig(CONFIG); showToast("📡 Offline Mode", "info"); initSearchEngine(); }
-                else { CONFIG = { ...defaultConfig }; applyConfig(CONFIG); showToast("⚠️ No Data", "error"); initSearchEngine(); }
+                if (localData) { 
+                    CONFIG = localData; 
+                    applyConfig(CONFIG); 
+                    showToast("📡 Offline Mode: Last update loaded", "info"); 
+                    initSearchEngine(); 
+                }
+                else { 
+                    CONFIG = { ...defaultConfig }; 
+                    applyConfig(CONFIG); 
+                    showToast("⚠️ No Data: Check Internet", "error"); 
+                    initSearchEngine(); 
+                }
             }
         }
         
@@ -1644,11 +1748,34 @@
                 if(btnSave) btnSave.innerText = originalText; 
             });
         }
+
+        function updateOnlineStatus(isOnline) {
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('status-text');
+            if (isOnline) {
+                dot.classList.remove('offline');
+                text.innerText = "Online";
+            } else {
+                dot.classList.add('offline');
+                text.innerText = "Offline";
+            }
+        }
         
         function applyConfig(newConfig) {
             CONFIG = newConfig; database = CONFIG.database; 
             document.getElementById('header-name').innerText = CONFIG.botName; 
-            document.getElementById('header-status').innerHTML = `<div class="sync-dot"></div> ${CONFIG.botStatus}`; 
+            document.getElementById('header-status').innerHTML = `<div class="sync-dot" id="connection-dot"></div> <span id="status-text">${CONFIG.botStatus}</span>`; 
+            // Re-apply online status to dot
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('status-text');
+            if(navigator.onLine) {
+                dot.classList.remove('offline');
+                text.innerText = "Online";
+            } else {
+                dot.classList.add('offline');
+                text.innerText = "Offline";
+            }
+
             const avatarEl = document.getElementById('header-avatar');
             if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } 
             else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
@@ -1984,6 +2111,9 @@
             appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
         }
 
+        window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
+        window.addEventListener('offline', () => { updateOnlineStatus(false); });
+
         window.onload = () => {
             if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch(e){} }
             const currentUrl = window.location.href;
@@ -1993,16 +2123,26 @@
                 return; 
             }
 
+            // 1. Load Local Data Immediately (Speed)
             const localData = loadFromLocalStorage();
             if (localData) {
                 CONFIG = localData;
                 database = CONFIG.database; 
                 applyConfig(CONFIG);
+                initSearchEngine();
             }
 
+            // 2. Register Service Worker for Offline Support
+            createInlineServiceWorker();
+
+            // 3. Fetch Cloud Data
             fetchConfig().then(() => { }).catch(err => { console.error("Cloud Sync Failed", err); });
 
-            if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').then(reg => console.log("SW Registered", reg)).catch(err => console.error("SW Fail:", err)); }
+            if ('serviceWorker' in navigator) { 
+                // Attempt to register the external one if it exists, fallback handled by inline above
+                navigator.serviceWorker.register('sw.js').then(reg => console.log("External SW Registered", reg)).catch(err => console.log("External SW Fail (Using Inline)", err)); 
+            }
+            
             initFirebaseAuth(); 
             
             const loadingScreen = document.getElementById('loading-screen');
@@ -2016,4 +2156,4 @@
         };
     </script>
 </body>
-</html>
+</html>س
