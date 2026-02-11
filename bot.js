@@ -482,7 +482,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 8. معالجة الأزرار (Callback Query) - المعدل ذكياً لمنع السلوك الخاطئ مع الملفات
+// 8. معالجة الأزرار (Callback Query) - النسخة النهائية (خيارات ثابتة في كل قائمة)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -534,7 +534,7 @@ bot.on('callback_query', async (query) => {
                 });
             }
         }
-        // --- التنقل داخل الأقسام (المنطق الذكي) ---
+        // --- التنقل داخل الأقسام (المنطق الموحد) ---
         else if (state && state.step === 'browse_section' && data.startsWith('nav_')) {
             const targetName = data.replace('nav_', '');
             
@@ -554,14 +554,11 @@ bot.on('callback_query', async (query) => {
                 }
             }
 
-            // البحث عن الهدف
-            let targetItem = null;
-            
-            // البحث داخل المصفوفة الحالية (للمستويات المتداخلة)
+            // البحث عن الهدف (يدعم المجلدات المتداخلة)
             const dataArray = Array.isArray(currentLevelData) ? currentLevelData : [];
-            targetItem = dataArray.find(item => item.name === targetName);
+            let targetItem = dataArray.find(item => item.name === targetName);
 
-            // إذا لم نجده في المصفوفة (مستوى أول)، قد يكون مفتاحاً مباشراً
+            // إذا لم يجد في المصفوفة (مستوى أول)، قد يكون مفتاحاً مباشراً (قسم رئيسي)
             if (!targetItem && currentLevelData[targetName] && Array.isArray(currentLevelData[targetName])) {
                  targetItem = { name: targetName, content: currentLevelData[targetName] };
             }
@@ -586,9 +583,8 @@ bot.on('callback_query', async (query) => {
                         keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
                     });
 
-                    // دائماً أضف زر رفع في الأسفل
+                    // إضافة الخيارات الثابتة: رفع و رجوع (دائماً في الأسفل)
                     keyboard.push([{ text: "📤 Upload Here", callback_data: 'act_upload_here' }]);
-                    // إضافة زر رجوع
                     keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
 
                     await bot.editMessageText(`📂 *${targetName}*\n\nSelect Sub-Section or Action:`, {
@@ -599,13 +595,12 @@ bot.on('callback_query', async (query) => {
                     });
 
                 } else {
-                    // --- ب. العنصر هو ملف (لنعرض الرابط فقط ولنسمح الرفع فيه) ---
-                    
-                    // نقوم بعرض رسالة تحتوي على الرابط ولا نغير حالة الرفع إلا إذا اختار المستخدم زر "Upload Here" الجديد
+                    // --- ب. العنصر ملف ---
+                    // نعرض الرابط وأزرار التحكم
                     if (targetItem.link) {
                          const linkText = `📎 *${targetItem.name}*\n\n${targetItem.link}`;
                          
-                         // أزرار التحكم: رفع ملف في نفس المكان أو رجوع
+                         // خيارات: رفع في نفس المكان، رجوع
                          const controlKeyboard = [
                              [{ text: "📤 Upload Here", callback_data: 'act_upload_here' }],
                              [{ text: "🔙 Back", callback_data: 'act_back' }]
@@ -619,8 +614,7 @@ bot.on('callback_query', async (query) => {
                              disable_web_page_preview: true
                          });
                     } else {
-                        // ملف بدون لينك (نادر الحدوث)
-                         await bot.answerCallbackQuery(query.id, { text: "This file has no link yet.", show_alert: true });
+                        await bot.answerCallbackQuery(query.id, { text: "This file has no link.", show_alert: true });
                     }
                 }
             } else {
@@ -683,7 +677,7 @@ bot.on('callback_query', async (query) => {
                     keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
                 });
 
-                // إضافة أزرار التحكم في الأسفل
+                // الخيارات الثابتة في الأسفل
                 keyboard.push([{ text: "📤 Upload Here", callback_data: 'act_upload_here' }]);
                 keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
 
@@ -692,7 +686,7 @@ bot.on('callback_query', async (query) => {
                     chat_id: chatId, 
                     message_id: query.message.message_id,
                     reply_markup: { inline_keyboard: keyboard }, 
-                    parse_mode: 'Markdown'
+                    parse_mode: 'markdown' // استخدام markdown عادي لضمان عرض النصوص بشكل صحيح
                 });
             } else {
                 await bot.answerCallbackQuery(query.id, { text: "Already at root.", show_alert: true });
