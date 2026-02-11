@@ -482,7 +482,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 8. معالجة الأزرار (Callback Query) - الواجهة التفاعلية
+// 8. معالجة الأزرار (Callback Query) - المعدل ذكياً لمنع السلوك الخاطئ مع الملفات
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -534,7 +534,7 @@ bot.on('callback_query', async (query) => {
                 });
             }
         }
-        // --- التنقل داخل الأقسام ---
+        // --- التنقل داخل الأقسام (المنطق الذكي) ---
         else if (state && state.step === 'browse_section' && data.startsWith('nav_')) {
             const targetName = data.replace('nav_', '');
             
@@ -557,18 +557,18 @@ bot.on('callback_query', async (query) => {
             // البحث عن الهدف
             let targetItem = null;
             
-            // الحالة أ: الهدف مفتاح رئيسي
-            if (currentLevelData[targetName] && Array.isArray(currentLevelData[targetName])) {
-                targetItem = { name: targetName, content: currentLevelData[targetName], isMainKey: true };
-            } 
-            // الحالة ب: الهدف عنصر داخل مصفوفة
-            else {
-                const dataArray = Array.isArray(currentLevelData) ? currentLevelData : [];
-                targetItem = dataArray.find(item => item.name === targetName);
+            // البحث داخل المصفوفة الحالية (للمستويات المتداخلة)
+            const dataArray = Array.isArray(currentLevelData) ? currentLevelData : [];
+            targetItem = dataArray.find(item => item.name === targetName);
+
+            // إذا لم نجده في المصفوفة (مستوى أول)، قد يكون مفتاحاً مباشراً
+            if (!targetItem && currentLevelData[targetName] && Array.isArray(currentLevelData[targetName])) {
+                 targetItem = { name: targetName, content: currentLevelData[targetName] };
             }
 
             if (targetItem) {
-                // التحقق هل هو مجلد؟
+                // التحقق هل هو مجلد (قسم)؟
+                // المجلد: لديه خاصية content وهي مصفوفة
                 const isFolder = (targetItem.content && Array.isArray(targetItem.content));
 
                 if (isFolder) {
@@ -579,18 +579,15 @@ bot.on('callback_query', async (query) => {
                     let nextLevelData = targetItem.content;
                     const keyboard = [];
                     
-                    // إذا كان المجلد فارغاً، نعرض زر رفع مباشر
-                    if (nextLevelData.length === 0) {
-                        keyboard.push([{ text: "📤 Upload Here", callback_data: 'act_upload_here' }]);
-                    } else {
-                        // عرض العناصر الداخلية
-                        nextLevelData.forEach(item => {
-                            const isSubFolder = (item.content && Array.isArray(item.content));
-                            const icon = isSubFolder ? '📁 ' : '📄 ';
-                            keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
-                        });
-                    }
+                    // عرض العناصر الداخلية
+                    nextLevelData.forEach(item => {
+                        const isSubFolder = (item.content && Array.isArray(item.content));
+                        const icon = isSubFolder ? '📁 ' : '📄 ';
+                        keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
+                    });
 
+                    // دائماً أضف زر رفع في الأسفل
+                    keyboard.push([{ text: "📤 Upload Here", callback_data: 'act_upload_here' }]);
                     // إضافة زر رجوع
                     keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
 
@@ -602,31 +599,35 @@ bot.on('callback_query', async (query) => {
                     });
 
                 } else {
-                    // --- ب. الهدف ليس مجلد -> تأكيد الرفع ---
-                    if (!targetItem.isMainKey) {
-                        state.path.push(targetName);
+                    // --- ب. العنصر هو ملف (لنعرض الرابط فقط ولنسمح الرفع فيه) ---
+                    
+                    // نقوم بعرض رسالة تحتوي على الرابط ولا نغير حالة الرفع إلا إذا اختار المستخدم زر "Upload Here" الجديد
+                    if (targetItem.link) {
+                         const linkText = `📎 *${targetItem.name}*\n\n${targetItem.link}`;
+                         
+                         // أزرار التحكم: رفع ملف في نفس المكان أو رجوع
+                         const controlKeyboard = [
+                             [{ text: "📤 Upload Here", callback_data: 'act_upload_here' }],
+                             [{ text: "🔙 Back", callback_data: 'act_back' }]
+                         ];
+
+                         await bot.editMessageText(linkText, {
+                             chat_id: chatId, 
+                             message_id: query.message.message_id,
+                             reply_markup: { inline_keyboard: controlKeyboard }, 
+                             parse_mode: 'Markdown',
+                             disable_web_page_preview: true
+                         });
+                    } else {
+                        // ملف بدون لينك (نادر الحدوث)
+                         await bot.answerCallbackQuery(query.id, { text: "This file has no link yet.", show_alert: true });
                     }
-                    state.currentSection = targetName;
-                    state.step = 'confirm_name';
-                    
-                    const nameKeyboard = [
-                        [{ text: "✅ Same Name", callback_data: 'act_same' }],
-                        [{ text: "✏️ Rename", callback_data: 'act_rename' }]
-                    ];
-                    
-                    const pathString = state.path.join(' / ');
-                    await bot.editMessageText(`📂 Location: *${pathString}*\n\n📝 File Name:\n\`${state.file.name}\`\n\nChoose Action:`, {
-                        chat_id: chatId, 
-                        message_id: query.message.message_id,
-                        reply_markup: { inline_keyboard: nameKeyboard }, 
-                        parse_mode: 'Markdown'
-                    });
                 }
             } else {
                 await bot.answerCallbackQuery(query.id, { text: "Error: Section not found.", show_alert: true });
             }
         }
-        // --- زر رفع مباشر (عندما يكون القسم فارغاً) ---
+        // --- زر رفع مباشر ---
         else if (state && state.step === 'browse_section' && data === 'act_upload_here') {
             // الانتقال لتأكيد الاسم
             state.step = 'confirm_name';
@@ -682,11 +683,8 @@ bot.on('callback_query', async (query) => {
                     keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
                 });
 
-                // إذا كان القسم الحالي فارغاً، نظهر زر الرفع المباشر
-                if (currentLevelData.length === 0) {
-                     keyboard.push([{ text: "📤 Upload Here", callback_data: 'act_upload_here' }]);
-                }
-
+                // إضافة أزرار التحكم في الأسفل
+                keyboard.push([{ text: "📤 Upload Here", callback_data: 'act_upload_here' }]);
                 keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
 
                 const currentTitle = state.path[state.path.length - 1] || state.doctor;
