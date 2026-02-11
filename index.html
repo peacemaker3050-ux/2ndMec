@@ -21,6 +21,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <!-- Removed Storage SDK as requested -->
 
     <style>
         :root {
@@ -644,8 +645,8 @@
 
     <script>
         /**
-         * University Bot Pro - Fixed Image Quality
-         * Fix: High quality background uploads, small icons remain compressed for speed.
+         * University Bot Pro - Optimized Base64 Compression
+         * Fix: Aggressive compression for background to ensure it fits in JSONBin limits.
          */
 
         // --- Configuration & Constants ---
@@ -661,7 +662,6 @@
         const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
         const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-        // Default Database
         const defaultDatabase = {
             "Physics": { 
                 "doctors": ["Dr. Ahmed"], 
@@ -691,7 +691,8 @@
 
         let CONFIG = { ...defaultConfig };
         let database = CONFIG.database;
-        let auth, isAuthInitialized = false;
+        let auth;
+        let isAuthInitialized = false;
         let deferredPrompt;
         let refreshInterval = null;
         
@@ -907,6 +908,87 @@
         };
 
         // ==========================================
+        // IMAGE COMPRESSION & HANDLING
+        // ==========================================
+
+        function compressImage(file, maxWidth, quality, callback) {
+            const reader = new FileReader(); 
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image(); 
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width; 
+                    let height = img.height;
+                    
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    
+                    const canvas = document.createElement('canvas'); 
+                    canvas.width = width; 
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d'); 
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    callback(canvas.toDataURL('image/jpeg', quality));
+                };
+            };
+        }
+
+        // 1. Handle Bot Icon Upload (Small size)
+        document.getElementById('admin-icon-upload').addEventListener('change', function(e) { 
+            const file = e.target.files[0]; 
+            if(file) { 
+                compressImage(file, 150, 0.7, (base64String) => {
+                    CONFIG.botImage = base64String; 
+                    applyConfig(CONFIG); 
+                    document.getElementById('admin-icon-remove').style.display = 'inline-block'; 
+                }); 
+            } 
+        });
+        window.removeBotIcon = function() { CONFIG.botImage = ""; applyConfig(CONFIG); document.getElementById('admin-icon-upload').value = ""; document.getElementById('admin-icon-remove').style.display = 'none'; };
+
+        // 2. Handle Chat Background Upload (FIXED)
+        document.getElementById('admin-bg-upload').addEventListener('change', function(e) { 
+            const file = e.target.files[0]; 
+            if(file) { 
+                // FIX: Use 1080px width and 70% quality to ensure size < 300KB
+                compressImage(file, 1080, 0.70, (base64String) => {
+                    // Calculate size
+                    const sizeInBytes = (base64String.length * 3) / 4;
+                    const sizeInKB = sizeInBytes / 1024;
+                    
+                    if(sizeInKB > 500) { // Hard limit check
+                        showToast(`Image is too large (${sizeInKB.toFixed(0)}KB). Try a smaller image.`, "error");
+                        return;
+                    }
+
+                    CONFIG.chatBgImage = base64String; 
+                    applyConfig(CONFIG); 
+                    document.getElementById('admin-bg-remove').style.display = 'inline-block';
+                    showToast(`Background ready (${sizeInKB.toFixed(0)}KB). Click Save Settings!`, "success");
+                }); 
+            } 
+        });
+        window.removeChatBg = function() { CONFIG.chatBgImage = ""; applyConfig(CONFIG); document.getElementById('admin-bg-upload').value = ""; document.getElementById('admin-bg-remove').style.display = 'none'; };
+
+        // 3. Handle App Icon Upload
+        document.getElementById('manifest-icon-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0]; 
+            if(file) { 
+                compressImage(file, 512, 0.8, (base64String) => {
+                    CONFIG.appIcon = base64String;
+                    updateAppIconPreview(base64String);
+                    document.getElementById('manifest-icon-remove').style.display = 'inline-block';
+                    showToast("App icon uploaded", "success");
+                });
+            }
+        });
+        window.removeAppIcon = function() { CONFIG.appIcon = ""; updateAppIconPreview(""); document.getElementById('manifest-icon-upload').value = ""; document.getElementById('manifest-icon-remove').style.display = 'none'; };
+        
+        // ==========================================
         // ADMIN PANEL LOGIC
         // ==========================================
         
@@ -1094,11 +1176,46 @@
         }
         
         function saveConfigToBin(newConfig) {
-            const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving...";
+            const btnSave = document.querySelector('.btn-save'); 
+            const originalText = btnSave ? btnSave.innerText : "Saving...";
             if(btnSave) btnSave.innerText = "Saving...";
-            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
-            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = newConfig.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; })
-            .catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; });
+            
+            // Check size before sending
+            const stringData = JSON.stringify(newConfig);
+            const sizeInBytes = new Blob([stringData]).size;
+            const sizeInMB = sizeInBytes / (1024 * 1024);
+            
+            if(sizeInMB > 1.5) { // JSONBin limit is small for free tier
+                showToast(`Data is too large (${sizeInMB.toFixed(2)} MB). Remove large images.`, "error");
+                if(btnSave) btnSave.innerText = originalText;
+                return;
+            }
+
+            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, 
+                body: stringData
+            })
+            .then(res => { 
+                if (!res.ok) {
+                    // Try to read error message from JSONBin
+                    return res.json().then(errData => {
+                        throw new Error(errData.message || "Save failed");
+                    });
+                }
+                return res.json();
+            })
+            .then(() => { 
+                showToast("✅ Saved Successfully", "success"); 
+                database = newConfig.database; 
+                CONFIG.database = newConfig.database; 
+                saveToLocalStorage(newConfig); 
+                if(btnSave) btnSave.innerText = originalText; 
+            })
+            .catch(err => { 
+                showToast("❌ Error: " + err.message, "error"); 
+                if(btnSave) btnSave.innerText = originalText; 
+            });
         }
         
         function applyConfig(newConfig) {
@@ -1261,81 +1378,6 @@
             CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
         }
 
-        // ==========================================
-        // FIX: HIGH QUALITY IMAGE COMPRESSION
-        // ==========================================
-        
-        // 1. Small Icon Compressor (Avatar, App Icon) - Small size, medium quality
-        document.getElementById('admin-icon-upload').addEventListener('change', function(e) { 
-            const file = e.target.files[0]; 
-            if(file) { 
-                compressImage(file, 150, 0.7, (base64String) => { // 150px, 70% quality
-                    CONFIG.botImage = base64String; 
-                    applyConfig(CONFIG); 
-                    document.getElementById('admin-icon-remove').style.display = 'inline-block'; 
-                }); 
-            } 
-        });
-        window.removeBotIcon = function() { CONFIG.botImage = ""; applyConfig(CONFIG); document.getElementById('admin-icon-upload').value = ""; document.getElementById('admin-icon-remove').style.display = 'none'; };
-
-        // 2. Background Compressor (High Quality) - Large size, high quality
-        document.getElementById('admin-bg-upload').addEventListener('change', function(e) { 
-            const file = e.target.files[0]; 
-            if(file) { 
-                compressImage(file, 1920, 0.9, (base64String) => { // 1920px width, 90% quality
-                    CONFIG.chatBgImage = base64String; 
-                    applyConfig(CONFIG); 
-                    document.getElementById('admin-bg-remove').style.display = 'inline-block'; 
-                }); 
-            } 
-        });
-        window.removeChatBg = function() { CONFIG.chatBgImage = ""; applyConfig(CONFIG); document.getElementById('admin-bg-upload').value = ""; document.getElementById('admin-bg-remove').style.display = 'none'; };
-
-        // Updated Helper Function: Now accepts maxWidth and quality params
-        function compressImage(file, maxWidth, quality, callback) {
-            const reader = new FileReader(); 
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image(); 
-                img.src = event.target.result;
-                img.onload = () => {
-                    let width = img.width; 
-                    let height = img.height;
-                    
-                    // Resize logic
-                    if (width > maxWidth) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    }
-                    
-                    const canvas = document.createElement('canvas'); 
-                    canvas.width = width; 
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d'); 
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // Use provided quality
-                    callback(canvas.toDataURL('image/jpeg', quality));
-                };
-            };
-        }
-
-        // 3. App Icon Compressor (High Quality Square)
-        function resizeAppIcon(file, callback) {
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image(); img.src = event.target.result;
-                img.onload = () => {
-                    const SIZE = 512; const canvas = document.createElement('canvas'); canvas.width = SIZE; canvas.height = SIZE;
-                    const ctx = canvas.getContext('2d');
-                    let sWidth = img.width, sHeight = img.height, sx = 0, sy = 0;
-                    if (sWidth > sHeight) { sx = (sWidth - sHeight) / 2; sWidth = sHeight; } else { sy = (sHeight - sWidth) / 2; sHeight = sWidth; }
-                    ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, SIZE, SIZE);
-                    callback(canvas.toDataURL('image/jpeg', 0.9)); // 90% quality for app icon
-                };
-            };
-        }
-        
         function renderAdminList() {
             const container = document.getElementById('admin-list-container'); container.innerHTML = ''; 
             if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; }
@@ -1418,14 +1460,13 @@
             });
         }
 
-        document.getElementById('manifest-icon-upload').addEventListener('change', function(e) {
-            const file = e.target.files[0]; if(file) { resizeAppIcon(file, (base64String) => { CONFIG.appIcon = base64String; updateAppIconPreview(base64String); document.getElementById('manifest-icon-remove').style.display = 'inline-block'; }); }
-        });
-        window.removeAppIcon = function() { CONFIG.appIcon = ""; updateAppIconPreview(""); document.getElementById('manifest-icon-upload').value = ""; document.getElementById('manifest-icon-remove').style.display = 'none'; };
         function updateAppIconPreview(base64) {
             const preview = document.getElementById('manifest-icon-preview'); preview.innerHTML = '';
-            if(base64 && base64.length > 10) { const img = document.createElement('img'); img.src = base64; preview.appendChild(img); } else { preview.innerHTML = '<span>📲</span>'; }
+            if(base64 && base64.length > 10) { 
+                const img = document.createElement('img'); img.src = base64; preview.appendChild(img); 
+            } else { preview.innerHTML = '<span>📲</span>'; }
         }
+
         window.saveAppManifest = function() {
             const name = document.getElementById('manifest-app-name').value.trim(); if(!name) return showToast("App name cannot be empty", "error");
             CONFIG.appVersion = (CONFIG.appVersion || 1) + 1;
