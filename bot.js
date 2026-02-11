@@ -231,7 +231,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. وظيفة الرفع الرئيسية (تم التعديل لتدعم المسارات المتداخلة)
+// 5. وظيفة الرفع الرئيسية (Recursive Support)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -298,26 +298,19 @@ async function executeUpload(chatId) {
             getDatabase()
         ]);
 
-        // 3. حساب مسار المجلدات في الدرايف بناءً على المسار في الويب
-        // المسار سيكون: Subject -> Doctor -> [section path...]
+        // 3. حساب مسار المجلدات في الدرايف
         let currentFolderId = rootId;
-        
-        // A. Subject Folder
         currentFolderId = await findOrCreateFolder(state.subject, currentFolderId);
-        
-        // B. Doctor Folder
         currentFolderId = await findOrCreateFolder(state.doctor, currentFolderId);
 
-        // C. Sections & Sub-Sections Loop
-        // state.path يحتوي على مصفوفة بأسماء الأقسام من الجذر إلى الحالي
-        // مثال: ["Lectures", "Chapter 1", "Part A"]
+        // تنفيذ الحلقة عبر الأقسام الفرعية (state.path)
         if (state.path && Array.isArray(state.path)) {
             for (const sectionName of state.path) {
                 currentFolderId = await findOrCreateFolder(sectionName, currentFolderId);
             }
         }
 
-        // 4. رفع الملف مع Timeout
+        // 4. رفع الملف
         console.log(`[Upload] Initiating Drive upload to folder: ${currentFolderId}...`);
         
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, currentFolderId);
@@ -334,34 +327,25 @@ async function executeUpload(chatId) {
         }
 
         // 5. الحفظ في قاعدة البيانات
-        // يجب الوصول للمصفوفة الصحيحة داخل قاعدة البيانات
         const dbRef = db.database[state.subject][state.doctor];
         let targetArray = null;
 
-        // إذا كان المسار فارغاً (في حالة بداية رفع ملف مباشرة بعد اختيار القسم الرئيسي)
         if (!state.path || state.path.length === 0) {
-             // هذا السيناريو قد لا يحدث في هذا الكود الجديد لأننا ندخل دائماً لأقسام
-             // لكن للسلامة:
-             targetArray = dbRef[state.currentSection] || []; // تحقق من التسمية
+             targetArray = dbRef[state.currentSection] || [];
         } else {
-            // التنقل داخل قاعدة البيانات للوصول للمصفوفة الأخيرة
             targetArray = dbRef;
             for (const key of state.path) {
-                // البحث عن القسم بالاسم داخل المصفوفة الحالية
                 const sectionObj = targetArray.find(item => item.name === key);
                 if (sectionObj && sectionObj.content) {
                     targetArray = sectionObj.content;
                 } else {
-                    // خطأ: المسار غير موجود، نلجأ للقسم الحالي
-                    targetArray = dbRef[state.currentSection]; 
+                    targetArray = dbRef[state.currentSection];
                     break;
                 }
             }
         }
 
-        // إذا فشل الوصول، نحاول حفظه في القسم الحالي المخزن في الـ State
         if (!targetArray || !Array.isArray(targetArray)) {
-             // محاولة الوصول عبر المفتاح المباشر (للموافقة مع الهيكل القديم)
              targetArray = dbRef[state.currentSection];
         }
 
@@ -441,8 +425,8 @@ async function handleFile(msg) {
         step: 'select_subject',
         type: 'file',
         file: { id: fileId, name: fileName },
-        path: [], // مسار فارغ في البداية
-        currentSection: null // القسم الذي يوجد فيه المستخدم حالياً (للحفظ)
+        path: [],
+        currentSection: null
     };
 
     const API = await getDatabase();
@@ -464,7 +448,6 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // حماية الحالة النشطة
     if (state) {
         if (state.step === 'waiting_for_new_name') {
             console.log(`[Action] User sent new name: "${text}"`);
@@ -477,7 +460,6 @@ bot.on('message', async (msg) => {
         return; 
     }
 
-    // حالة: لا توجد حالة (إشعار جديد)
     if (!state) {
         console.log(`[Action] New Notification started`);
         
@@ -500,7 +482,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 8. معالجة الأزرار (Callback Query) - معدل لدعم التداخل
+// 8. معالجة الأزرار (Callback Query) - نسخة مصححة بالكامل
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -518,8 +500,8 @@ bot.on('callback_query', async (query) => {
             state.step = 'select_doctor';
             
             const db = await getDatabase();
-            const doctors = Object.keys(db.database[subjectName] || {});
-            const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
+            const docList = db.database[subjectName]?.doctors || [];
+            const keyboard = docList.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
             
             await bot.editMessageText(`Subject : *${subjectName}*\n\n Select Doctor :`, {
                 chat_id: chatId, message_id: query.message.message_id,
@@ -534,141 +516,162 @@ bot.on('callback_query', async (query) => {
             if (state.type === 'text') {
                 await processTextNotification(chatId, state, query.message.message_id);
             } else {
-                state.step = 'browse_section'; // تغيير الخطوة إلى استعراض
+                state.step = 'browse_section'; 
                 const db = await getDatabase();
-                // الحصول على الأقسام الرئيسية
-                const sections = Object.keys(db.database[state.subject][state.doctor] || {}).filter(k => k !== 'doctors');
-                const keyboard = sections.map(sec => [{ text: sec, callback_data: `nav_${sec}` }]);
+                const docData = db.database[state.subject][state.doctor];
+                const keyboard = [];
                 
-                await bot.editMessageText(`Doctor : *${doctorName}*\n\n Select Section :`, {
+                // عرض الأقسام الرئيسية
+                if (docData && docData.sections) {
+                    docData.sections.forEach(secName => {
+                        keyboard.push([{ text: `📂 ${secName}`, callback_data: `nav_${secName}` }]);
+                    });
+                }
+
+                await bot.editMessageText(`Doctor : *${doctorName}*\n\n Select Section to Upload In:`, {
                     chat_id: chatId, message_id: query.message.message_id,
                     reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
                 });
             }
         }
-        // --- التنقل داخل الأقسام (Navigation) ---
+        // --- التنقل داخل الأقسام ---
         else if (state && state.step === 'browse_section' && data.startsWith('nav_')) {
             const targetName = data.replace('nav_', '');
             
-            // 1. حدد الهدف (قسم فرعي أو ملف)
             const db = await getDatabase();
             let currentLevelData = db.database[state.subject][state.doctor];
+
+            // إعادة بناء المسار
+            if (state.path && state.path.length > 0) {
+                for (const p of state.path) {
+                    const found = currentLevelData.find(item => item.name === p);
+                    if (found && found.content && Array.isArray(found.content)) {
+                        currentLevelData = found.content;
+                    } 
+                    else if (currentLevelData[p]) {
+                        currentLevelData = currentLevelData[p];
+                    }
+                }
+            }
+
+            // البحث عن الهدف
+            let targetItem = null;
             
-            // التنقل عبر المسار المخزن للوصول للمستوى الحالي
-            for (const p of state.path) {
-                const found = currentLevelData.find(item => item.name === p);
-                if (found && found.content) currentLevelData = found.content;
-                else if (currentLevelData[p]) currentLevelData = currentLevelData[p]; // للمستويات العليا
-                else return console.error("Path Error: Cannot find " + p);
-            }
-
-            // البحث عن الهدف في المستوى الحالي
-            const targetItem = currentLevelData.find(item => item.name === targetName);
-
-            // 2. إذا كان الهدف مجلد (Folder)
-            if (targetItem && targetItem.content && Array.isArray(targetItem.content)) {
-                // الدخول داخل المجلد
-                state.path.push(targetName);
-                state.currentSection = targetName; // تحديث القسم الحالي
-                
-                // تجهيز محتويات المجلد الجديد
-                const nextLevelData = targetItem.content;
-                const keyboard = [];
-                
-                // عرض المجلدات والملفات
-                nextLevelData.forEach(item => {
-                    const isFolder = item.content && Array.isArray(item.content);
-                    const icon = isFolder ? '📁 ' : '📄 ';
-                    keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
-                });
-
-                // إضافة زر رجوع
-                keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
-
-                await bot.editMessageText(`📂 *${targetName}*`, {
-                    chat_id: chatId, 
-                    message_id: query.message.message_id,
-                    reply_markup: { inline_keyboard: keyboard }, 
-                    parse_mode: 'Markdown'
-                });
-            }
-            // 3. إذا كان الهدف ملف (File) - لا يحدث في هذا السياق عادة، لكن للتنبيه
+            // الحالة أ: الهدف مفتاح رئيسي
+            if (currentLevelData[targetName] && Array.isArray(currentLevelData[targetName])) {
+                targetItem = { name: targetName, content: currentLevelData[targetName], isMainKey: true };
+            } 
+            // الحالة ب: الهدف عنصر داخل مصفوفة
             else {
-                // إذا ضغط على ملف هنا (مثلاً للعرض)
-                // لكن في سياق الرفع، نحن نختار الأقسام فقط
-                await bot.answerCallbackQuery(query.id, { text: "This is a file, select a folder to upload into.", show_alert: true });
+                const dataArray = Array.isArray(currentLevelData) ? currentLevelData : [];
+                targetItem = dataArray.find(item => item.name === targetName);
+            }
+
+            if (targetItem) {
+                // التحقق هل هو مجلد؟
+                const isFolder = (targetItem.content && Array.isArray(targetItem.content)) || (Array.isArray(targetItem) && targetItem.length > 0 && targetItem[0].content);
+
+                if (isFolder) {
+                    // --- الدخول داخل المجلد ---
+                    state.path.push(targetName);
+                    state.currentSection = targetName;
+                    
+                    let nextLevelData = targetItem.content;
+                    const keyboard = [];
+                    
+                    nextLevelData.forEach(item => {
+                        const isSubFolder = (item.content && Array.isArray(item.content));
+                        const icon = isSubFolder ? '📁 ' : '📄 ';
+                        keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
+                    });
+
+                    keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
+
+                    await bot.editMessageText(`📂 *${targetName}*\n\nSelect Sub-Section or Upload Here:`, {
+                        chat_id: chatId, 
+                        message_id: query.message.message_id,
+                        reply_markup: { inline_keyboard: keyboard }, 
+                        parse_mode: 'Markdown'
+                    });
+
+                } else {
+                    // --- الهدف ليس مجلد -> تأكيد الرفع ---
+                    if (!targetItem.isMainKey) {
+                        state.path.push(targetName);
+                    }
+                    state.currentSection = targetName;
+                    state.step = 'confirm_name';
+                    
+                    const nameKeyboard = [
+                        [{ text: "✅ Same Name", callback_data: 'act_same' }],
+                        [{ text: "✏️ Rename", callback_data: 'act_rename' }]
+                    ];
+                    
+                    const pathString = state.path.join(' / ');
+                    await bot.editMessageText(`📂 Location: *${pathString}*\n\n📝 File Name:\n\`${state.file.name}\`\n\nChoose Action:`, {
+                        chat_id: chatId, 
+                        message_id: query.message.message_id,
+                        reply_markup: { inline_keyboard: nameKeyboard }, 
+                        parse_mode: 'Markdown'
+                    });
+                }
+            } else {
+                await bot.answerCallbackQuery(query.id, { text: "Error: Section not found.", show_alert: true });
             }
         }
         // --- زر الرجوع ---
         else if (state && state.step === 'browse_section' && data === 'act_back') {
-            if (state.path.length > 0) {
-                state.path.pop(); // حذف آخر قسم
+            if (state.path && state.path.length > 0) {
+                state.path.pop();
                 
-                // إعادة رسم المستوى السابق
+                const db = await getDatabase();
                 let currentLevelData = db.database[state.subject][state.doctor];
-                // التنقل عبر المسار المتبقي
-                for (const p of state.path) {
-                    const found = currentLevelData.find(item => item.name === p);
-                    if (found && found.content) currentLevelData = found.content;
-                    else if (currentLevelData[p]) currentLevelData = currentLevelData[p];
+
+                if (state.path.length > 0) {
+                    for (const p of state.path) {
+                        const found = currentLevelData.find(item => item.name === p);
+                        if (found && found.content) currentLevelData = found.content;
+                        else if (currentLevelData[p]) currentLevelData = currentLevelData[p];
+                    }
                 }
 
                 const keyboard = [];
-                currentLevelData.forEach(item => {
-                    const isFolder = item.content && Array.isArray(item.content);
-                    const icon = isFolder ? '📁 ' : '📄 ';
-                    keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
-                });
                 
-                // عنوان الرسالة
-                const currentTitle = state.path.length > 0 ? state.path[state.path.length - 1] : state.doctor;
-                // إضافة زر رجوع إذا لم نكون في المستوى الأول للأقسام
-                if (state.path.length > 0) {
-                    keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
-                } else {
-                    // إذا عدنا للمستوى الأول (الدكتور)، نعيد عرض الأقسام الرئيسية بطريقة مختلفة قليلاً لكي لا نخربط
-                    // في هذه الحالة نعيد العرض للقسم الأول
-                    const sections = Object.keys(currentLevelData).filter(k => k !== 'doctors');
-                    // إعادة رسم القائمة الرئيسية للدكتور
-                     const mainKeyboard = sections.map(sec => [{ text: sec, callback_data: `nav_${sec}` }]);
-                     await bot.editMessageText(`Doctor : *${state.doctor}*\n\n Select Section :`, {
+                // العودة للجذر
+                if (state.path.length === 0) {
+                     if (currentLevelData.sections) {
+                        currentLevelData.sections.forEach(secName => {
+                            keyboard.push([{ text: `📂 ${secName}`, callback_data: `nav_${secName}` }]);
+                        });
+                     }
+                     await bot.editMessageText(`Doctor : *${state.doctor}*\n\n Select Section:`, {
                         chat_id: chatId, message_id: query.message.message_id,
-                        reply_markup: { inline_keyboard: mainKeyboard }, parse_mode: 'Markdown'
+                        reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
                     });
-                    return; // الخروج لأن قمنا بالرسم
+                    return;
                 }
 
+                // عرض المحتويات الحالية
+                currentLevelData.forEach(item => {
+                    const isSubFolder = (item.content && Array.isArray(item.content));
+                    const icon = isSubFolder ? '📁 ' : '📄 ';
+                    keyboard.push([{ text: `${icon}${item.name}`, callback_data: `nav_${item.name}` }]);
+                });
+
+                keyboard.push([{ text: "🔙 Back", callback_data: 'act_back' }]);
+
+                const currentTitle = state.path[state.path.length - 1] || state.doctor;
                 await bot.editMessageText(`📂 *${currentTitle}*`, {
                     chat_id: chatId, 
                     message_id: query.message.message_id,
                     reply_markup: { inline_keyboard: keyboard }, 
                     parse_mode: 'Markdown'
                 });
-
             } else {
-                // إذا كان المسار فارغاً (لا يوجد رجوع) - لا يحدث منطقياً
                 await bot.answerCallbackQuery(query.id, { text: "Already at root.", show_alert: true });
             }
         }
-        // --- تأكيد الاسم (يحدث فقط عند اختيار ملف للعرض، أو نحتاج لتعديل سير العمل للرفع) ---
-        // ملاحظة: في هذا النظام الجديد، المستخدم يتنقل داخل المجلدات.
-        // لكي يرفع ملفاً، يجب أن يضغط "رفع" أو يرسل الملف وهو داخل مجلد.
-        // الكود الحالي يفترض أن الإرسال يتم بعد اختيار المجلد.
-        
-        else if (state && state.step === 'browse_section' && data === 'act_confirm_upload') {
-            // هذا حدث وهمي لزيادة الوضوح، الرفع يحدث عند استقبال الملف
-            state.step = 'confirm_name';
-            const nameKeyboard = [
-                [{ text: "✅ Same Name", callback_data: 'act_same' }],
-                [{ text: "✏️ Rename", callback_data: 'act_rename' }]
-            ];
-             await bot.editMessageText(`Current Folder: *${state.currentSection}*\n\n📝 File Name:\n\`${state.file.name}\`\n\nChoose Action:`, {
-                chat_id: chatId, 
-                message_id: query.message.message_id,
-                reply_markup: { inline_keyboard: nameKeyboard }, 
-                parse_mode: 'Markdown'
-            });
-        }
+        // --- تأكيد الاسم ---
         else if (state && state.step === 'confirm_name') {
             if (data === 'act_same') {
                 executeUpload(chatId);
@@ -680,13 +683,9 @@ bot.on('callback_query', async (query) => {
 
     } catch (error) {
         console.error('[Callback Error]', error);
+        bot.sendMessage(chatId, "⚠️ An error occurred. Please try /start.").catch(e => {});
     }
 });
-
-// تعديل بسيط: عند استقبال ملف، إذا كان المستخدم داخل مجلد (browse_section)
-// ننتقل مباشرة لتأكيد الاسم بدلاً من البدء من الصفر (اختياري لتحسين التجربة)
-// لكن للحفاظ على الاستقرار كما طلبت "لا تبوظ حاجة"، سأبقي منطق البدء من الصفر آمناً.
-// المستخدم يختار المسار ثم يرسل الملف.
 
 async function processTextNotification(chatId, state, messageId) {
     const db = await getDatabase();
