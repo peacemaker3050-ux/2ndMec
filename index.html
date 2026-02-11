@@ -21,7 +21,6 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <!-- Removed Storage SDK as requested -->
 
     <style>
         :root {
@@ -545,11 +544,7 @@
                     <input type="file" id="admin-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
                     <button class="btn-sm btn-del" id="admin-icon-remove" onclick="window.removeBotIcon()" style="display:inline-block; width:auto; margin-top:8px;">Remove Icon</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Chat Background (Upload Image)</label>
-                    <input type="file" id="admin-bg-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
-                    <button class="btn-sm btn-del" id="admin-bg-remove" onclick="window.removeChatBg()" style="display:inline-block; width:auto; margin-top:8px;">Remove BG</button>
-                </div>
+                <!-- Background Upload Removed -->
                 <div class="form-group"><label class="form-label">Welcome Message</label><textarea id="admin-msg-welcome" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Subject Select Text</label><textarea id="admin-msg-subject" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Doctor Select Text</label><textarea id="admin-msg-doctor" class="form-textarea"></textarea></div>
@@ -645,11 +640,16 @@
 
     <script>
         /**
-         * University Bot Pro - Optimized Base64 Compression
-         * Fix: Aggressive compression for background to ensure it fits in JSONBin limits.
+         * University Bot Pro - Hardcoded Background
+         * Background image is now set via code constant. Upload removed from Admin Panel.
          */
 
         // --- Configuration & Constants ---
+        
+        // ⬇️ CHANGE THIS URL TO CHANGE YOUR BACKGROUND IMAGE ⬇️
+        // You can use a direct image link (e.g., from Imgur) or a GitHub raw link.
+        const DEFAULT_BG_URL = "https://images.unsplash.com/photo-1557682250-33bd709cbe9c?q=80&w=2029&auto=format&fit=crop"; 
+
         const firebaseConfig = {
           apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
           authDomain: "libirary-b2424.firebaseapp.com",
@@ -677,7 +677,7 @@
         };
 
         const defaultConfig = {
-            botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", chatBgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], 
+            botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], 
             generalBroadcast: { active: false, title: "", body: "", timestamp: 0 },
             englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif",
             appName: "UniBot Pro", appIcon: "", appVersion: 1,
@@ -908,7 +908,7 @@
         };
 
         // ==========================================
-        // IMAGE COMPRESSION & HANDLING
+        // IMAGE HANDLING (ICON ONLY)
         // ==========================================
 
         function compressImage(file, maxWidth, quality, callback) {
@@ -950,43 +950,7 @@
         });
         window.removeBotIcon = function() { CONFIG.botImage = ""; applyConfig(CONFIG); document.getElementById('admin-icon-upload').value = ""; document.getElementById('admin-icon-remove').style.display = 'none'; };
 
-        // 2. Handle Chat Background Upload (FIXED)
-        document.getElementById('admin-bg-upload').addEventListener('change', function(e) { 
-            const file = e.target.files[0]; 
-            if(file) { 
-                // FIX: Use 1080px width and 70% quality to ensure size < 300KB
-                compressImage(file, 1080, 0.70, (base64String) => {
-                    // Calculate size
-                    const sizeInBytes = (base64String.length * 3) / 4;
-                    const sizeInKB = sizeInBytes / 1024;
-                    
-                    if(sizeInKB > 500) { // Hard limit check
-                        showToast(`Image is too large (${sizeInKB.toFixed(0)}KB). Try a smaller image.`, "error");
-                        return;
-                    }
-
-                    CONFIG.chatBgImage = base64String; 
-                    applyConfig(CONFIG); 
-                    document.getElementById('admin-bg-remove').style.display = 'inline-block';
-                    showToast(`Background ready (${sizeInKB.toFixed(0)}KB). Click Save Settings!`, "success");
-                }); 
-            } 
-        });
-        window.removeChatBg = function() { CONFIG.chatBgImage = ""; applyConfig(CONFIG); document.getElementById('admin-bg-upload').value = ""; document.getElementById('admin-bg-remove').style.display = 'none'; };
-
-        // 3. Handle App Icon Upload
-        document.getElementById('manifest-icon-upload').addEventListener('change', function(e) {
-            const file = e.target.files[0]; 
-            if(file) { 
-                compressImage(file, 512, 0.8, (base64String) => {
-                    CONFIG.appIcon = base64String;
-                    updateAppIconPreview(base64String);
-                    document.getElementById('manifest-icon-remove').style.display = 'inline-block';
-                    showToast("App icon uploaded", "success");
-                });
-            }
-        });
-        window.removeAppIcon = function() { CONFIG.appIcon = ""; updateAppIconPreview(""); document.getElementById('manifest-icon-upload').value = ""; document.getElementById('manifest-icon-remove').style.display = 'none'; };
+        // Background Upload Removed completely.
         
         // ==========================================
         // ADMIN PANEL LOGIC
@@ -1180,25 +1144,13 @@
             const originalText = btnSave ? btnSave.innerText : "Saving...";
             if(btnSave) btnSave.innerText = "Saving...";
             
-            // Check size before sending
-            const stringData = JSON.stringify(newConfig);
-            const sizeInBytes = new Blob([stringData]).size;
-            const sizeInMB = sizeInBytes / (1024 * 1024);
-            
-            if(sizeInMB > 1.5) { // JSONBin limit is small for free tier
-                showToast(`Data is too large (${sizeInMB.toFixed(2)} MB). Remove large images.`, "error");
-                if(btnSave) btnSave.innerText = originalText;
-                return;
-            }
-
             fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { 
                 method: 'PUT', 
                 headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, 
-                body: stringData
+                body: JSON.stringify(newConfig)
             })
             .then(res => { 
                 if (!res.ok) {
-                    // Try to read error message from JSONBin
                     return res.json().then(errData => {
                         throw new Error(errData.message || "Save failed");
                     });
@@ -1225,12 +1177,15 @@
             const avatarEl = document.getElementById('header-avatar');
             if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } 
             else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
+            
             const chatArea = document.getElementById('chat-area');
-            if (CONFIG.chatBgImage && CONFIG.chatBgImage.trim().length > 50) { 
-                chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`; 
-            } else { 
-                chatArea.style.backgroundImage = "none"; 
+            // Apply Hardcoded Background from Code
+            if (DEFAULT_BG_URL) {
+                chatArea.style.backgroundImage = `url('${DEFAULT_BG_URL}')`;
+            } else {
+                chatArea.style.backgroundImage = "none";
             }
+
             document.documentElement.style.setProperty('--font-en', CONFIG.englishFont || "'Inter', sans-serif");
             document.documentElement.style.setProperty('--font-ar', CONFIG.arabicFont || "'Cairo', sans-serif");
             const primaryHex = CONFIG.themeColor || "#3b82f6";
@@ -1299,7 +1254,6 @@
             document.getElementById('admin-bot-name').value = CONFIG.botName; 
             document.getElementById('admin-bot-status').value = CONFIG.botStatus;
             document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none';
-            document.getElementById('admin-bg-remove').style.display = CONFIG.chatBgImage ? 'inline-block' : 'none';
             document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; 
             document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt;
             document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; 
@@ -1360,7 +1314,7 @@
             const newConfig = {
                 botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, 
                 botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, 
-                botImage: CONFIG.botImage, chatBgImage: CONFIG.chatBgImage, 
+                botImage: CONFIG.botImage, // Only Icon is saved
                 welcomeMessage: document.getElementById('admin-msg-welcome').value, 
                 subjectPrompt: document.getElementById('admin-msg-subject').value, 
                 doctorPrompt: document.getElementById('admin-msg-doctor').value, 
