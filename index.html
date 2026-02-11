@@ -49,6 +49,7 @@
         html, body {
             height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden;
             background-color: var(--bg-dark);
+            /* Default gradient background (will be overridden by image) */
             background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.15) 0px, transparent 50%);
             background-attachment: fixed;
             font-family: var(--font-en), var(--font-ar), sans-serif;
@@ -402,6 +403,10 @@
             <div class="menu-dropdown" id="menu-dropdown">
                 <div class="menu-item install-btn" id="pwa-install-btn" style="display:none;" onclick="window.installApp()">
                     <span>📲</span> <span>Install App</span>
+                </div>
+                <!-- NEW BUTTON -->
+                <div class="menu-item notif-toggle" onclick="window.hardRefresh()">
+                    <span>🧹</span> <span>Clear Cache & Refresh</span>
                 </div>
                 <div class="menu-item" onclick="window.showInstallGuide()">
                     <span>📱</span> <span>How to Install (iOS/Android)</span>
@@ -1200,6 +1205,28 @@
             });
         };
 
+        // NEW: Hard Refresh to Clear Cache
+        window.hardRefresh = function() {
+            menuDropdown.classList.remove('active');
+            showConfirmModal("Clear Cache", "This will reload the app and clear old images/data. Continue?", (confirmed) => {
+                if (confirmed) {
+                    saveToLocalStorage(CONFIG);
+                    // Clear Service Worker Caches if possible
+                    if ('caches' in window) {
+                        caches.keys().then(names => {
+                            for (let name of names) {
+                                caches.delete(name);
+                            }
+                        });
+                    }
+                    // Force reload with a unique timestamp
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('v', Date.now());
+                    window.location.href = currentUrl.toString();
+                }
+            });
+        }
+
         function saveToLocalStorage(data) {
             try { localStorage.setItem('uniBot_db', JSON.stringify(data)); } catch (e) {}
         }
@@ -1256,10 +1283,24 @@
             document.getElementById('header-name').innerText = CONFIG.botName; 
             document.getElementById('header-status').innerHTML = `<div class="sync-dot"></div> ${CONFIG.botStatus}`; 
             const avatarEl = document.getElementById('header-avatar');
-            if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } 
+            if (CONFIG.botImage && CONFIG.botImage.trim().length > 10) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } 
             else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
             const chatArea = document.getElementById('chat-area');
-            if (CONFIG.chatBgImage && CONFIG.chatBgImage.trim().length > 50) { chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`; chatArea.style.backgroundSize = "cover"; } else { chatArea.style.backgroundImage = "none"; }
+            
+            // --- FORCE BACKGROUND UPDATE LOGIC ---
+            // If chatBgImage exists and is not empty, use it. Otherwise use default gradient.
+            if (CONFIG.chatBgImage && CONFIG.chatBgImage.trim().length > 10) {
+                chatArea.style.backgroundImage = `url('${CONFIG.chatBgImage}')`;
+                chatArea.style.backgroundSize = "cover";
+                chatArea.style.backgroundPosition = "center";
+                chatArea.style.backgroundRepeat = "no-repeat";
+                chatArea.style.backgroundColor = "transparent";
+            } else {
+                chatArea.style.backgroundImage = "none";
+                chatArea.style.backgroundColor = "transparent";
+            }
+            // --------------------------------------
+
             document.documentElement.style.setProperty('--font-en', CONFIG.englishFont || "'Inter', sans-serif");
             document.documentElement.style.setProperty('--font-ar', CONFIG.arabicFont || "'Cairo', sans-serif");
             const primaryHex = CONFIG.themeColor || "#3b82f6";
