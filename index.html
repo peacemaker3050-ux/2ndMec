@@ -119,9 +119,26 @@
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
         #chat-area {
-            flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
-            scroll-behavior: smooth; background-color: transparent; direction: ltr;
-            background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;
+            flex: 1;
+            padding: 20px 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+            direction: ltr;
+
+            /* --- BACKGROUND IMAGE LOGIC --- */
+            /* Width fits exactly 100% of container, Height is proportional (auto) */
+            background-size: 100% auto;
+            /* Anchored to top center */
+            background-position: top center;
+            /* No tiling */
+            background-repeat: no-repeat;
+            /* Attached to the element's scroll box */
+            background-attachment: scroll;
+            /* Fallback color */
+            background-color: transparent;
         }
 
         .message {
@@ -512,7 +529,21 @@
                             <input type="color" id="color-bot-input" value="#ffffff">
                         </div>
                     </div>
+                    
+                    <!-- NEW: Background Settings -->
+                    <div class="admin-section-title" style="color: #fbbf24;">Chat Background (Owner Only)</div>
+                    <div class="form-group">
+                        <label class="form-label">Upload Background Image (Compressed)</label>
+                        <input type="file" id="admin-bg-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+                        <div style="font-size:11px; color:#94a3b8; margin-top:5px;">Images will be compressed to fit storage limits.</div>
+                        <button class="btn-sm btn-del" id="admin-bg-remove" onclick="window.removeBotBg()" style="display:inline-block; width:auto; margin-top:8px;">Remove Background</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Or Paste Image URL (Link)</label>
+                        <input type="text" id="admin-bg-url" class="form-input" placeholder="https://example.com/image.jpg">
+                    </div>
                 </div>
+
                 <div id="owner-typography-section" style="display: none;">
                     <div class="admin-section-title" style="color: #fbbf24;">Typography (Owner Only)</div>
                     <div class="form-group">
@@ -544,7 +575,6 @@
                     <input type="file" id="admin-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
                     <button class="btn-sm btn-del" id="admin-icon-remove" onclick="window.removeBotIcon()" style="display:inline-block; width:auto; margin-top:8px;">Remove Icon</button>
                 </div>
-                <!-- Background Upload Removed -->
                 <div class="form-group"><label class="form-label">Welcome Message</label><textarea id="admin-msg-welcome" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Subject Select Text</label><textarea id="admin-msg-subject" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Doctor Select Text</label><textarea id="admin-msg-doctor" class="form-textarea"></textarea></div>
@@ -640,15 +670,14 @@
 
     <script>
         /**
-         * University Bot Pro - Hardcoded Background
+         * University Bot Pro - Dynamic Background Feature
          * Background image is now set via code constant. Upload removed from Admin Panel.
+         * Updated to use '100% auto' for full width coverage with proportional height.
          */
 
         // --- Configuration & Constants ---
         
-        // ⬇️ CHANGE THIS URL TO CHANGE YOUR BACKGROUND IMAGE ⬇️
-        // You can use a direct image link (e.g., from Imgur) or a GitHub raw link.
-        const DEFAULT_BG_URL = "https://images.unsplash.com/photo-1557682250-33bd709cbe9c?q=80&w=2029&auto=format&fit=crop"; 
+        const DEFAULT_BG_URL = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/110.jpeg"; 
 
         const firebaseConfig = {
           apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
@@ -677,7 +706,7 @@
         };
 
         const defaultConfig = {
-            botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], 
+            botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], 
             generalBroadcast: { active: false, title: "", body: "", timestamp: 0 },
             englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif",
             appName: "UniBot Pro", appIcon: "", appVersion: 1,
@@ -908,7 +937,7 @@
         };
 
         // ==========================================
-        // IMAGE HANDLING (ICON ONLY)
+        // IMAGE HANDLING (ICON & BACKGROUND)
         // ==========================================
 
         function compressImage(file, maxWidth, quality, callback) {
@@ -937,7 +966,7 @@
             };
         }
 
-        // 1. Handle Bot Icon Upload (Small size)
+        // 1. Handle Bot Icon Upload
         document.getElementById('admin-icon-upload').addEventListener('change', function(e) { 
             const file = e.target.files[0]; 
             if(file) { 
@@ -950,8 +979,40 @@
         });
         window.removeBotIcon = function() { CONFIG.botImage = ""; applyConfig(CONFIG); document.getElementById('admin-icon-upload').value = ""; document.getElementById('admin-icon-remove').style.display = 'none'; };
 
-        // Background Upload Removed completely.
+        // 2. Handle Background Upload (NEW)
+        document.getElementById('admin-bg-upload').addEventListener('change', function(e) { 
+            const file = e.target.files[0]; 
+            if(file) { 
+                showToast("Compressing image...", "info");
+                // Heavier compression for background: Max width 1200, Quality 0.5
+                compressImage(file, 1200, 0.5, (base64String) => {
+                    // Size check (approx 500KB limit to be safe for JSONBin)
+                    if (base64String.length > 700000) {
+                        showToast("⚠️ Image too large even after compression. Try a smaller image or use a URL.", "error");
+                        return;
+                    }
+                    CONFIG.bgImage = base64String; 
+                    document.getElementById('admin-bg-url').value = ""; // Clear URL if uploading
+                    applyConfig(CONFIG); 
+                    document.getElementById('admin-bg-remove').style.display = 'inline-block'; 
+                    showToast("Background loaded! Save to apply for everyone.", "success");
+                }); 
+            } 
+        });
+        window.removeBotBg = function() { 
+            CONFIG.bgImage = ""; 
+            document.getElementById('admin-bg-url').value = ""; 
+            applyConfig(CONFIG); 
+            document.getElementById('admin-bg-upload').value = ""; 
+            document.getElementById('admin-bg-remove').style.display = 'none'; 
+        };
         
+        // Handle Background URL Input
+        document.getElementById('admin-bg-url').addEventListener('input', function(e) {
+            CONFIG.bgImage = e.target.value;
+            applyConfig(CONFIG);
+        });
+
         // ==========================================
         // ADMIN PANEL LOGIC
         // ==========================================
@@ -1179,8 +1240,10 @@
             else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
             
             const chatArea = document.getElementById('chat-area');
-            // Apply Hardcoded Background from Code
-            if (DEFAULT_BG_URL) {
+            // Background Logic: Prefer CONFIG.bgImage (Cloud), fall back to DEFAULT_BG_URL (Code)
+            if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) {
+                chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`;
+            } else if (DEFAULT_BG_URL) {
                 chatArea.style.backgroundImage = `url('${DEFAULT_BG_URL}')`;
             } else {
                 chatArea.style.backgroundImage = "none";
@@ -1254,6 +1317,11 @@
             document.getElementById('admin-bot-name').value = CONFIG.botName; 
             document.getElementById('admin-bot-status').value = CONFIG.botStatus;
             document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none';
+            
+            // Load Background Settings
+            document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : "";
+            document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none';
+
             document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; 
             document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt;
             document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; 
@@ -1314,7 +1382,8 @@
             const newConfig = {
                 botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, 
                 botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, 
-                botImage: CONFIG.botImage, // Only Icon is saved
+                botImage: CONFIG.botImage, 
+                bgImage: CONFIG.bgImage, // Save background
                 welcomeMessage: document.getElementById('admin-msg-welcome').value, 
                 subjectPrompt: document.getElementById('admin-msg-subject').value, 
                 doctorPrompt: document.getElementById('admin-msg-doctor').value, 
