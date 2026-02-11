@@ -21,13 +21,16 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Fuse.js for Fuzzy Search (Free, Open Source) -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
 
     <style>
         :root {
             /* Default Color Palette */
             --bg-dark: #0f172a;
             --bg-glass: rgba(15, 23, 42, 0.85);
-            --bg-glass-heavy: rgba(15, 23, 42, 0.95);
+            --bg-glass-heavy: rgba(15, 23, 42, 0.98);
             --accent-primary: #3b82f6;
             --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             --msg-bot-bg: rgba(255, 255, 255, 0.1);
@@ -62,26 +65,75 @@
         }
 
         header {
-            padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
-            background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-color);
-            z-index: 20; flex-shrink: 0; user-select: none; position: sticky; top: 0;
+            padding: 0 16px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.75); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px); 
+            border-bottom: 1px solid var(--border-color);
+            z-index: 20; 
+            user-select: none; 
+            position: relative; /* Context for absolute search dropdown */
+            min-height: 70px; /* Ensure enough vertical space */
         }
 
-        .header-info { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; }
+        .header-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            cursor: pointer; 
+            flex: 1; 
+            overflow: hidden; /* Prevent overflow if text is long */
+        }
         
         .bot-avatar {
             width: 45px; height: 45px; border-radius: var(--radius-full); background: var(--accent-gradient);
             display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0;
-            background-size: cover; background-position: center; border: 2px solid rgba(255, 255, 255, 0.2);
+            background-size: cover; background-position: center; border: 2px solid rgba(255,255,255, 0.2);
             box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4); color: #fff; text-align: center; overflow: hidden;
         }
 
-        .bot-name h2 { font-size: 17px; margin: 0; font-weight: 700; color: #fff; letter-spacing: 0.3px; line-height: 1.2; }
+        .bot-name {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+            min-width: 0; /* Flexbox truncation fix */
+        }
+
+        .bot-name h2 { 
+            font-size: 17px; 
+            margin: 0; 
+            font-weight: 700; 
+            color: #fff; 
+            letter-spacing: 0.3px; 
+            line-height: 1.2; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         
+        /* Lower Row Container */
+        .bot-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+            width: 100%;
+            gap: 8px; /* Spacing between elements */
+        }
+
         .bot-status {
-            font-size: 12px; color: #e2e8f0; margin-top: 4px; display: block; font-weight: 600;
-            letter-spacing: 0.2px; display: flex; align-items: center; gap: 6px;
+            font-size: 12px; 
+            color: #e2e8f0; 
+            font-weight: 600; 
+            letter-spacing: 0.2px; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px;
+            flex-shrink: 0; /* Prevent status from shrinking */
         }
 
         .sync-dot {
@@ -94,8 +146,107 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } 
         }
 
-        .header-actions { color: var(--text-secondary); font-size: 26px; cursor: pointer; padding: 5px; transition: color 0.2s; }
+        .header-actions { 
+            color: var(--text-secondary); 
+            font-size: 26px; 
+            cursor: pointer; 
+            padding: 5px; 
+            transition: color 0.2s; 
+            /* Vertically centered across full header height due to flex parent align-items: center */
+            align-self: stretch; 
+            display: flex;
+            align-items: center;
+        }
         .header-actions:hover { color: #fff; }
+
+        /* --- UPDATED SEARCH BAR STYLES --- */
+        
+        .search-bar {
+            flex: 1; /* Takes up all remaining horizontal space */
+            position: relative;
+            height: 30px; /* Fixed height to prevent layout shift */
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255,255,255, 0.1);
+            border-radius: 15px; /* Slightly rounded */
+            color: #fff;
+            padding: 0 12px; /* Left/Right padding */
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+            /* Ensure text doesn't overflow visually */
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+        }
+
+        .search-input:focus {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* --- END UPDATED SEARCH BAR STYLES --- */
+
+        /* Search Dropdown Results */
+        .search-dropdown {
+            position: absolute;
+            top: 100%; /* Right below header */
+            left: 0;
+            width: 100%;
+            max-height: 60vh;
+            overflow-y: auto;
+            background: var(--bg-glass-heavy);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            z-index: 90; /* Below menu (100), above chat */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        }
+        
+        .search-dropdown.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .search-result-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: background 0.2s;
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-item:hover { background: rgba(255,255,255,0.05); }
+        
+        .sr-title { font-weight: 600; color: #fff; font-size: 14px; }
+        .sr-path { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+        .sr-path span { opacity: 0.7; }
+        .sr-badge { 
+            font-size: 10px; padding: 2px 6px; border-radius: 4px; 
+            background: rgba(59, 130, 246, 0.2); color: #60a5fa; 
+            width: fit-content;
+        }
+        .search-empty { padding: 20px; text-align: center; color: #64748b; font-size: 13px; }
 
         .menu-dropdown {
             position: absolute; top: 70px; width: 280px; background: rgba(15, 23, 42, 0.95);
@@ -119,26 +270,14 @@
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
         #chat-area {
-            flex: 1;
-            padding: 20px 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            scroll-behavior: smooth;
-            direction: ltr;
-
-            /* --- BACKGROUND IMAGE LOGIC --- */
-            /* Width fits exactly 100% of container, Height is proportional (auto) */
+            flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+            scroll-behavior: smooth; direction: ltr;
             background-size: 100% auto;
-            /* Anchored to top center */
             background-position: top center;
-            /* No tiling */
             background-repeat: no-repeat;
-            /* Attached to the element's scroll box */
             background-attachment: scroll;
-            /* Fallback color */
-            background-color: transparent;
+            position: relative;
+            z-index: 5;
         }
 
         .message {
@@ -388,7 +527,7 @@
         
         .radio-group { display: flex; gap: 10px; margin-bottom: 10px; }
         .radio-label { 
-            flex: 1; padding: 8px; text-align: center; background: rgba(255,255,255,0.05); 
+            flex:1; padding: 8px; text-align: center; background: rgba(255,255,255,0.05); 
             border-radius: 6px; cursor: pointer; border: 1px solid transparent; font-size: 13px; color: #94a3b8;
         }
         .radio-label.active { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #fff; }
@@ -411,10 +550,24 @@
                 <div class="bot-avatar" id="header-avatar">🎓</div>
                 <div class="bot-name">
                     <h2 id="header-name">University Bot</h2>
-                    <span class="bot-status" id="header-status"><div class="sync-dot"></div> Online</span>
+                    <!-- Lower Row Wrapper -->
+                    <div class="bot-status-row">
+                        <span class="bot-status" id="header-status"><div class="sync-dot"></div> Online</span>
+                        
+                        <!-- NEW: Permanent Search Bar -->
+                        <div class="search-bar">
+                            <input type="text" id="search-input" class="search-input" placeholder="Search files..." autocomplete="off">
+                        </div>
+                        <!-- End Permanent Search Bar -->
+
+                    </div>
                 </div>
             </div>
             <div class="header-actions" id="menu-btn">⋮</div>
+            
+            <!-- Search Results Dropdown -->
+            <div id="search-dropdown" class="search-dropdown"></div>
+
             <!-- Dropdown Menu -->
             <div class="menu-dropdown" id="menu-dropdown">
                 <div class="menu-item install-btn" id="pwa-install-btn" style="display:none;" onclick="window.installApp()">
@@ -670,13 +823,21 @@
 
     <script>
         /**
-         * University Bot Pro - Dynamic Background Feature
-         * Background image is now set via code constant. Upload removed from Admin Panel.
-         * Updated to use '100% auto' for full width coverage with proportional height.
+         * University Bot Pro - Advanced Smart Search Implementation
+         * 
+         * Final Result Behavior:
+         * - Clicking or pressing Enter on a search result produces a "Final Message".
+         * - This message includes the file name and a direct "Open in Google Drive" button.
+         * - The button opens the URL immediately.
+         * - No internal navigation simulation.
+         * 
+         * Search Result Behavior:
+         * - The search index includes folders internally.
+         * - The UI filters results to display ONLY files (type === 'file').
+         * - Folders, subjects, and doctors are excluded from the suggestions dropdown.
          */
 
         // --- Configuration & Constants ---
-        
         const DEFAULT_BG_URL = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/110.jpeg"; 
 
         const firebaseConfig = {
@@ -724,6 +885,7 @@
         let isAuthInitialized = false;
         let deferredPrompt;
         let refreshInterval = null;
+        let fuseSearchEngine = null; // Will hold Fuse.js instance
         
         let botNavStack = [];
         let adminNavStack = [];
@@ -739,6 +901,10 @@
         const typingIndicator = document.getElementById('typing');
         const menuBtn = document.getElementById('menu-btn');
         const menuDropdown = document.getElementById('menu-dropdown');
+
+        // Search Elements (Updated ID to match new HTML structure)
+        const searchInput = document.getElementById('search-input');
+        const searchDropdown = document.getElementById('search-dropdown');
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
@@ -826,6 +992,248 @@
             btn.onclick = onClick; 
             return btn; 
         }
+
+        // --- SMART SEARCH LOGIC ---
+
+        // Enhanced Transliteration Map
+        const transliterationMap = {
+            // Fluids & Materials
+            'فلويد': 'fluid', 'فل': 'fluid', 'هيدروليك': 'hydraulics', 'هيدروليك': 'hydraulics',
+            'ديزاين': 'design', 'دزاين': 'design', 'ماشين': 'machine', 'ماشينس': 'machines',
+            'هات': 'heat', 'هات': 'heat', 'ترانسفر': 'transfer', 'ترانسفر': 'transfer',
+            'سيركويت': 'circuit', 'سيجنال': 'signal', 'ساينس': 'science', 'لايكتشر': 'lecture', 'لايكشر': 'lecture',
+            
+            // Mechanics & Physics
+            'ميكانيكا': 'mechanics', 'ميكانيك': 'mechanics', 'ميكانيزم': 'mechanism',
+            'ترمودايناميك': 'thermodynamics', 'ترموداينامكس': 'thermodynamics', 'تيرمودايناميك': 'thermodynamics',
+            'دايناميك': 'dynamics', 'داينامكس': 'dynamics', 'استاتيك': 'statics', 'استاتكس': 'statics',
+            'فزياء': 'physics', 'فيزياء': 'physics',
+            
+            // Exams & Terms
+            'شيت': 'sheet','عشره': '10','تسعه': '9','تمانيه': '8','سبعه': '7','سته': '6','خمسه': '5','اربعه': '4','واحد': '1','اتنين': '2','تلاته': '3','المحاضره': 'lec','التامنه': '8','حل': 'sol','الثانيه': '2','الاولي': '1','التانيه': '2','التالته': '3', 'شيتات': 'sheets', 'سكتور': 'section', 'سيد': 'section',
+            'فاينل': 'final','الرابعه': '4','الخامسه': '5','السادسه': '6', 'فاينلز': 'finals', 'ميد': 'midterm', 'ميدتيرم': 'midterm',
+            'اسايمنت': 'assignment','العاشره': '10','التاسعه': '9','الثامنه': '8','السابعه': '7', 'اسايمنتس': 'assignments', 'اسايمنت': 'assignment',
+            'كويز': 'quiz', 'كويزات': 'quizzes', 'كيز': 'quiz', 'كوبيت': 'copybook',
+            'لاب': 'lab', 'لابس': 'labs', 'براكتيكال': 'practical', 'براكتيكال': 'practical',
+            
+            // Files & Formats
+            'بوربوينت': 'ppt', 'باوربوينت': 'powerpoint', 'سلايد': 'slide',
+            'ورد': 'word', 'وورد': 'word', 'اكسل': 'excel', 'اكسل': 'excel',
+            'سكان': 'scan', 'سكانير': 'scanner', 'صور': 'images', 'صورة': 'image',
+            'فديو': 'video', 'فيلم': 'movie', 'اوثاري': 'theory', 'ثيوري': 'theory',
+            
+            // Math
+            'الجبر': 'algebra', 'كالكولاس': 'calculus', 'انجليزي': 'english',
+            'رسم': 'drawing', 'جرافيك': 'graphic', 'جيومتري': 'geometry',
+            'بروبابيلتي': 'probability', 'بروبابلتي': 'probability',
+            'بروبرمجشن': 'programming', 'كود': 'code', 'كودنج': 'coding'
+        };
+
+        function normalizeText(text) {
+            if (!text) return "";
+            
+            // Step 1: Remove spaces, convert to lowercase
+            let cleaned = text.toLowerCase().replace(/\s+/g, '');
+            
+            // Step 2: Apply transliteration map
+            // Logic: If user types "فلويد" (fluid), we expand the search query 
+            // to "فلويد fluid". This allows Fuse.js to match the item even if the 
+            // database name is purely English "Fluid".
+            let expanded = cleaned;
+            Object.keys(transliterationMap).forEach(key => {
+                if (cleaned.includes(key)) {
+                    // Append the English term to the search query
+                    expanded += " " + transliterationMap[key];
+                }
+            });
+
+            return expanded;
+        }
+
+        // Recursively flatten database tree into a list for searching
+        function flattenDatabase(db) {
+            const list = [];
+            Object.keys(db).forEach(subject => {
+                // Add Subject itself
+                list.push({
+                    type: 'subject',
+                    name: subject,
+                    path: [subject],
+                    id: subject
+                });
+                const subjectData = db[subject];
+                if (subjectData.doctors) {
+                    subjectData.doctors.forEach(doctor => {
+                        // Add Doctor
+                        list.push({
+                            type: 'doctor',
+                            name: doctor,
+                            path: [subject, doctor],
+                            id: `${subject}-${doctor}`
+                        });
+                        
+                        // Recurse into files/folders
+                        const doctorData = subjectData[doctor];
+                        if (doctorData && doctorData.root) {
+                            traverseFolder(doctorData.root, [subject, doctor], list);
+                        }
+                    });
+                }
+            });
+            return list;
+        }
+
+        function traverseFolder(items, currentPath, list) {
+            if (!items) return;
+            items.forEach(item => {
+                const fullPath = [...currentPath, item.name];
+                list.push({
+                    type: item.type,
+                    name: item.name,
+                    path: fullPath,
+                    id: item.id,
+                    link: item.link // Preserve link for immediate access
+                });
+                if (item.type === 'folder' && item.children) {
+                    traverseFolder(item.children, fullPath, list);
+                }
+            });
+        }
+
+        function initSearchEngine() {
+            if (typeof Fuse === 'undefined') {
+                console.error("Fuse.js not loaded");
+                return;
+            }
+            const flatData = flattenDatabase(database);
+            
+            fuseSearchEngine = new Fuse(flatData, {
+                keys: [
+                    { name: 'name', weight: 1 },       // High priority to name
+                    { name: 'path', weight: 0.5 },     // Lower priority to path
+                    { name: 'id', weight: 0.1 }
+                ],
+                threshold: 0.4, // Fuzzy tolerance (0.0 perfect, 1.0 match anything)
+                ignoreLocation: true,
+                minMatchCharLength: 1,
+                includeScore: true
+            });
+        }
+
+        function performSearch(query) {
+            if (!query || !fuseSearchEngine) return [];
+            
+            // Normalize query for fuzzy matching + transliteration
+            const expandedQuery = normalizeText(query);
+            
+            // Search
+            const results = fuseSearchEngine.search(expandedQuery);
+            return results.map(r => r.item);
+        }
+
+        function renderSearchResults(results, query) {
+            searchDropdown.innerHTML = '';
+            
+            if (query.length < 2) return;
+            
+            // FILTER: Display Files Only
+            const fileResults = results.filter(item => item.type === 'file');
+            
+            if (fileResults.length === 0) {
+                searchDropdown.innerHTML = '<div class="search-empty">No files found</div>';
+            } else {
+                fileResults.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    
+                    // Icon is always 📄 for files
+                    div.innerHTML = `
+                        <div class="sr-title">📄 ${item.name}</div>
+                        <div class="sr-path">
+                            ${item.path.map(p => `<span>${p}</span>`).join('<span> > </span>')}
+                        </div>
+                    `;
+                    div.onclick = () => handleSearchResultClick(item);
+                    searchDropdown.appendChild(div);
+                });
+            }
+            searchDropdown.classList.add('show');
+        }
+
+        function handleSearchResultClick(item) {
+            // Close the dropdown manually since the icon toggle logic is gone
+            searchDropdown.classList.remove('show');
+            searchInput.value = '';
+            
+            // Final Result Behavior Requirement:
+            // 1. Display a final message containing the file name.
+            // 2. Include a visible button labeled "Open in Google Drive".
+            // 3. Button must be directly linked to the file's Google Drive URL.
+            // 4. Do not simulate internal folder navigation.
+
+            // Since we filter at the UI level, we expect file objects here, 
+            // but check for safety.
+            if (item.type === 'file' && item.link && item.link !== '#') {
+                const fileName = item.name;
+                const fileLink = item.link;
+                
+                // HTML for the final message
+                const finalMessageHTML = `
+                    <div style="margin-bottom:5px;">📎 <b>${fileName}</b></div>
+                    <div class="file-link-btn" onclick="window.open('${fileLink}', '_blank')">
+                        <span>🔗</span><span>Open in Google Drive</span>
+                    </div>
+                `;
+                
+                // Add the message
+                addMessage(finalMessageHTML, 'bot', true);
+                scrollToBottom();
+            }
+        }
+
+        // --- ENTER KEY LOGIC FOR BEST MATCH ---
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = searchInput.value.trim();
+                if (query.length < 2) return;
+                
+                clearTimeout(searchTimeout); // Clear any pending debounce
+                const results = performSearch(query);
+                
+                if (results.length > 0) {
+                    // Filter files only for best match
+                    const fileResults = results.filter(item => item.type === 'file');
+                    if (fileResults.length > 0) {
+                        const bestMatch = fileResults[0];
+                        // Trigger the Final Message behavior
+                        handleSearchResultClick(bestMatch);
+                    }
+                }
+            }
+        });
+
+        // Debounce search to improve performance (for typing)
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const results = performSearch(query);
+                renderSearchResults(results, query);
+            }, 200);
+        });
+
+        // Close search when clicking outside
+        document.addEventListener('click', (e) => {
+            // Check if click is inside search input or dropdown
+            const isClickInsideSearch = searchInput.contains(e.target) || searchDropdown.contains(e.target);
+            if (!isClickInsideSearch) {
+                searchDropdown.classList.remove('show');
+            }
+            // Menu close logic
+            if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active');
+        });
 
         // --- Bot Navigation ---
         function renderKeyboard() {
@@ -1145,6 +1553,8 @@
             renderAdminDataView();
             nameInput.value = '';
             linkInput.value = '';
+            // Update search index when data changes
+            initSearchEngine();
         }
         
         function deleteAdminDataItem(index) {
@@ -1164,6 +1574,8 @@
                 }
                 saveConfigToBin(CONFIG);
                 renderAdminDataView();
+                // Update search index
+                initSearchEngine();
             });
         }
 
@@ -1192,11 +1604,12 @@
                 else CONFIG.database = defaultDatabase; 
                 saveToLocalStorage(CONFIG);
                 applyConfig(CONFIG);
+                initSearchEngine(); // Initialize search engine after loading DB
             } catch (error) {
                 console.error("Cloud Sync Failed", error);
                 const localData = loadFromLocalStorage();
-                if (localData) { CONFIG = localData; applyConfig(CONFIG); showToast("📡 Offline Mode", "info"); }
-                else { CONFIG = { ...defaultConfig }; applyConfig(CONFIG); showToast("⚠️ No Data", "error"); }
+                if (localData) { CONFIG = localData; applyConfig(CONFIG); showToast("📡 Offline Mode", "info"); initSearchEngine(); }
+                else { CONFIG = { ...defaultConfig }; applyConfig(CONFIG); showToast("⚠️ No Data", "error"); initSearchEngine(); }
             }
         }
         
@@ -1223,7 +1636,8 @@
                 database = newConfig.database; 
                 CONFIG.database = newConfig.database; 
                 saveToLocalStorage(newConfig); 
-                if(btnSave) btnSave.innerText = originalText; 
+                if(btnSave) btnSave.innerText = originalText;
+                initSearchEngine(); // Re-init search engine with new data
             })
             .catch(err => { 
                 showToast("❌ Error: " + err.message, "error"); 
@@ -1479,7 +1893,7 @@
                 document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = "";
                 fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
                 .then(res => { if (!res.ok) throw new Error("Delete failed"); showToast("✅ Deleted Successfully", "success"); const existing = document.getElementById('app-broadcast-msg'); if(existing) existing.remove(); })
-                .catch(err => showToast("❌ Error: " + err.message, "error"));
+                .catch(err => showToast("❌ Error: " + err.message, " error"));
             });
         }
 
