@@ -539,16 +539,21 @@
                 <div class="admin-section-title">Appearance & Messages</div>
                 <div class="form-group"><label class="form-label">Bot Name</label><input type="text" id="admin-bot-name" class="form-input"></div>
                 <div class="form-group"><label class="form-label">Status</label><input type="text" id="admin-bot-status" class="form-input"></div>
+                
+                <!-- MODIFIED: URL Input for Bot Icon -->
                 <div class="form-group">
-                    <label class="form-label">Bot Icon (Upload Image)</label>
-                    <input type="file" id="admin-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+                    <label class="form-label">Bot Icon (Direct Image Link)</label>
+                    <input type="text" id="admin-icon-upload" class="form-input" placeholder="Paste image link here...">
                     <button class="btn-sm btn-del" id="admin-icon-remove" onclick="window.removeBotIcon()" style="display:inline-block; width:auto; margin-top:8px;">Remove Icon</button>
                 </div>
+
+                <!-- MODIFIED: URL Input for Chat Background -->
                 <div class="form-group">
-                    <label class="form-label">Chat Background (Upload Image)</label>
-                    <input type="file" id="admin-bg-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+                    <label class="form-label">Chat Background (Direct Image Link)</label>
+                    <input type="text" id="admin-bg-upload" class="form-input" placeholder="Paste image link here...">
                     <button class="btn-sm btn-del" id="admin-bg-remove" onclick="window.removeChatBg()" style="display:inline-block; width:auto; margin-top:8px;">Remove BG</button>
                 </div>
+
                 <div class="form-group"><label class="form-label">Welcome Message</label><textarea id="admin-msg-welcome" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Subject Select Text</label><textarea id="admin-msg-subject" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Doctor Select Text</label><textarea id="admin-msg-doctor" class="form-textarea"></textarea></div>
@@ -1181,7 +1186,7 @@
             });
         }
 
-        // ... (Keep existing Helper functions for modal, toast, etc. but truncated for brevity in thought process, will include in final output) ...
+        // ... (Helper functions for modal, toast, etc. included in logic below) ...
         
         window.forceReload = function() {
             document.getElementById('menu-dropdown').classList.remove('active');
@@ -1306,9 +1311,7 @@
             });
         };
 
-        // ... [Admin Settings, Notifications, Broadcast, App Manifest functions remain largely the same, omitted for brevity but must be included in final file] ...
-        
-        // Placeholder for skipped functions to keep code block valid
+        // Helper color functions
         function hexToRgb(hex) {
             var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
             return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
@@ -1336,6 +1339,10 @@
             const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; 
             document.getElementById('admin-msg-backs').value = backs.join(' | ');
             
+            // Set Inputs Values for Images (New Logic)
+            document.getElementById('admin-icon-upload').value = CONFIG.botImage || "";
+            document.getElementById('admin-bg-upload').value = CONFIG.chatBgImage || "";
+
             const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL);
             document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none';
             document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none';
@@ -1391,7 +1398,8 @@
             const newConfig = {
                 botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, 
                 botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, 
-                botImage: CONFIG.botImage, chatBgImage: CONFIG.chatBgImage, 
+                botImage: document.getElementById('admin-icon-upload').value.trim(), // Save Input Text Value
+                chatBgImage: document.getElementById('admin-bg-upload').value.trim(), // Save Input Text Value
                 welcomeMessage: document.getElementById('admin-msg-welcome').value, 
                 subjectPrompt: document.getElementById('admin-msg-subject').value, 
                 doctorPrompt: document.getElementById('admin-msg-doctor').value, 
@@ -1409,15 +1417,41 @@
             CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
         }
 
-        // Re-attaching event listeners for inputs
-        document.getElementById('admin-icon-upload').addEventListener('change', function(e) { 
-            const file = e.target.files[0]; if(file) { compressImage(file, (base64String) => { CONFIG.botImage = base64String; applyConfig(CONFIG); document.getElementById('admin-icon-remove').style.display = 'inline-block'; }); } 
+        // --- NEW LOGIC FOR URL INPUTS ---
+        
+        // Bot Icon Logic
+        document.getElementById('admin-icon-upload').addEventListener('input', function(e) { 
+            const link = e.target.value.trim();
+            if(link) { 
+                CONFIG.botImage = link; 
+                applyConfig(CONFIG); 
+                document.getElementById('admin-icon-remove').style.display = 'inline-block'; 
+            }
         });
-        window.removeBotIcon = function() { CONFIG.botImage = ""; applyConfig(CONFIG); document.getElementById('admin-icon-upload').value = ""; document.getElementById('admin-icon-remove').style.display = 'none'; };
-        document.getElementById('admin-bg-upload').addEventListener('change', function(e) { 
-            const file = e.target.files[0]; if(file) { compressImage(file, (base64String) => { CONFIG.chatBgImage = base64String; applyConfig(CONFIG); document.getElementById('admin-bg-remove').style.display = 'inline-block'; }); } 
+        window.removeBotIcon = function() { 
+            CONFIG.botImage = ""; 
+            applyConfig(CONFIG); 
+            document.getElementById('admin-icon-upload').value = ""; 
+            document.getElementById('admin-icon-remove').style.display = 'none'; 
+        };
+
+        // Chat Background Logic
+        document.getElementById('admin-bg-upload').addEventListener('input', function(e) { 
+            const link = e.target.value.trim();
+            if(link) { 
+                CONFIG.chatBgImage = link; 
+                applyConfig(CONFIG); 
+                document.getElementById('admin-bg-remove').style.display = 'inline-block'; 
+            }
         });
-        window.removeChatBg = function() { CONFIG.chatBgImage = ""; applyConfig(CONFIG); document.getElementById('admin-bg-upload').value = ""; document.getElementById('admin-bg-remove').style.display = 'none'; };
+        window.removeChatBg = function() { 
+            CONFIG.chatBgImage = ""; 
+            applyConfig(CONFIG); 
+            document.getElementById('admin-bg-upload').value = ""; 
+            document.getElementById('admin-bg-remove').style.display = 'none'; 
+        };
+
+        // --- END NEW LOGIC ---
 
         function renderAdminList() {
             const container = document.getElementById('admin-list-container'); container.innerHTML = ''; 
@@ -1597,19 +1631,6 @@
         
         async function setupCapacitorNotifications() { console.log("WebView Mode: Skipping Native Notification Setup."); }
         
-        function compressImage(file, callback) {
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image(); img.src = event.target.result;
-                img.onload = () => {
-                    let width = img.width, height = img.height, MAX_SIZE = 600; 
-                    if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
-                    const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-                    callback(canvas.toDataURL('image/jpeg', 1));
-                };
-            };
-        }
         function resizeAppIcon(file, callback) {
             const reader = new FileReader(); reader.readAsDataURL(file);
             reader.onload = (event) => {
