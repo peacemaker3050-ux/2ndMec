@@ -261,7 +261,7 @@
         .form-textarea { height: 90px; resize: vertical; }
 
         input[type="color"] {
-            appearance: none;
+        appearance: none;
             -webkit-appearance: none;
             border: none;
             width: 100%;
@@ -301,8 +301,7 @@
             background: rgba(255, 255, 255, 0.03); padding: 12px; border-radius: var(--radius-md);
             border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
         }
-        .data-name { cursor: pointer; font-weight: 500; flex: 1; display: flex; align-items: center; gap: 8px;}
-        .data-name .type-icon { font-size: 18px; opacity: 0.7; width: 24px; text-align: center; }
+        .data-name { cursor: pointer; font-weight: 500; flex: 1; }
         .btn-sm { padding: 6px 10px; border-radius: 6px; border: none; font-size: 11px; cursor: pointer; font-weight: bold; margin-left: 5px; }
         .btn-del { background: rgba(239, 68, 68, 0.2); color: #f87171; }
         .btn-edit { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
@@ -365,17 +364,6 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { font-family: var(--font-en); font-size: 18px; font-weight: 600; letter-spacing: 1px; margin-top: 20px; text-align: center; }
         .loading-text small { display: block; font-size: 14px; color: var(--text-secondary); font-weight: 400; margin-top: 5px; opacity: 0.8; }
-
-        /* New Toggle Switch Styles */
-        .add-type-toggle {
-            display: flex; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 4px; margin-bottom: 10px;
-        }
-        .add-type-option {
-            flex: 1; padding: 8px; text-align: center; font-size: 13px; cursor: pointer; border-radius: 6px; color: #94a3b8; transition: all 0.2s;
-        }
-        .add-type-option.active {
-            background: var(--accent-primary); color: #fff; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
     </style>
 </head>
 <body>
@@ -607,13 +595,6 @@
                     <div class="data-list" id="admin-list-items"></div>
                     <div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);">
                         <div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div>
-                        
-                        <!-- Toggle for File/Folder -->
-                        <div class="add-type-toggle" id="add-type-container" style="display:none;">
-                            <div class="add-type-option active" id="opt-file" onclick="window.setAddType('file')">📄 File</div>
-                            <div class="add-type-option" id="opt-folder" onclick="window.setAddType('folder')">📁 Folder</div>
-                        </div>
-
                         <div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div>
                         <div class="form-group" style="margin-bottom:0;" id="file-link-input-group" style="display:none;"><input type="text" id="new-item-link" class="form-input" placeholder="Link..."></div>
                         <button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">Add</button>
@@ -641,7 +622,7 @@
     <script>
         /**
          * University Bot Pro - Final Merged & Fixed Implementation
-         * Features: Offline-First, Direct Drive Links, Smart Reload, Nested Folders
+         * Features: Offline-First, Direct Drive Links, Smart Reload
          */
 
         // --- Configuration & Constants ---
@@ -682,10 +663,9 @@
         let deferredPrompt;
         let refreshInterval = null;
         let currentSubject = null, currentDoctor = null, currentCategory = null;
-        let adminNavStack = []; // Stack for nested navigation in Admin
+        let adminNavStack = [];
         let currentAdminTab = 0;
         let currentModalCallback = null;
-        let currentAddType = 'file'; // 'file' or 'folder'
 
         try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch (e) { console.log("Firebase already initialized or error:", e); }
 
@@ -1281,238 +1261,52 @@
             showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index,1); renderAdminList(); } }); 
         }
 
-        // ==========================================
-        // REVISED ADMIN DATA VIEW LOGIC (Nested Support)
-        // ==========================================
         function renderAdminDataView() {
-            const pathContainer = document.getElementById('admin-data-path'); 
-            const listContainer = document.getElementById('admin-list-items');
-            const toggleContainer = document.getElementById('add-type-container');
-            const nameInput = document.getElementById('new-item-name');
-            const linkInput = document.getElementById('new-item-link');
+            const pathContainer = document.getElementById('admin-data-path'); const listContainer = document.getElementById('admin-list-items');
+            listContainer.innerHTML = ''; document.getElementById('new-item-name').value = ''; document.getElementById('new-item-link').value = ''; 
+            let pathHTML = `<span onclick="window.adminNavTo(-1)">Home</span>`;
+            if (adminNavStack.length > 0) pathHTML += ` > <span onclick="window.adminNavTo(0)">${adminNavStack[0]}</span>`;
+            if (adminNavStack.length > 1) pathHTML += ` > <span onclick="window.adminNavTo(1)">${adminNavStack[1]}</span>`;
+            if (adminNavStack.length > 2) pathHTML += ` > <span>${adminNavStack[2]}</span>`; pathContainer.innerHTML = pathHTML;
+            let level = adminNavStack.length; let dataList = []; let isNotificationsFolder = (level ===3 && adminNavStack[2] === "🔔 Notifications");
             const linkGroup = document.getElementById('file-link-input-group');
-
-            listContainer.innerHTML = ''; 
-            nameInput.value = ''; 
-            linkInput.value = ''; 
-
-            // 1. Build Breadcrumb Path
-            let pathHTML = `<span onclick="window.adminNavTo(-1)" style="cursor:pointer;">Home</span>`;
-            for (let i = 0; i < adminNavStack.length; i++) {
-                pathHTML += ` > <span onclick="window.adminNavTo(${i})" style="cursor:pointer;">${adminNavStack[i]}</span>`;
+            if (level === 0) { dataList = Object.keys(database); linkGroup.style.display = 'none'; } 
+            else if (level === 1) { const subName = adminNavStack[0]; if (database[subName] && database[subName].doctors) dataList = database[subName].doctors; linkGroup.style.display = 'none'; } 
+            else if (level === 2) { const subName = adminNavStack[0]; const docName = adminNavStack[1]; if (database[subName] && database[subName][docName] && database[subName][docName].sections) dataList = database[subName][docName].sections; linkGroup.style.display = 'none'; } 
+            else if (level === 3) { const subName = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2]; if (database[subName] && database[subName][docName] && database[subName][docName][secName]) dataList = database[subName][docName][secName]; 
+                if (!isNotificationsFolder) { linkGroup.style.display = 'block'; document.getElementById('new-item-name').placeholder = "File Name..."; } else { linkGroup.style.display = 'none'; document.getElementById('new-item-name').placeholder = "Notification Text..."; } 
             }
-            pathContainer.innerHTML = pathHTML;
-
-            // 2. Get Current Level Data
-            let currentList = [];
-            let level = adminNavStack.length;
-            
-            // Level 0: Subjects
-            if (level === 0) {
-                currentList = Object.keys(database).map(k => ({ name: k, type: 'folder', data: database[k] }));
-                toggleContainer.style.display = 'none';
-                linkGroup.style.display = 'none';
-            }
-            // Level 1: Doctors
-            else if (level === 1) {
-                const sub = adminNavStack[0];
-                if (database[sub] && database[sub].doctors) {
-                    currentList = database[sub].doctors.map(doc => ({ name: doc, type: 'folder', data: database[sub][doc] }));
-                }
-                toggleContainer.style.display = 'none';
-                linkGroup.style.display = 'none';
-            }
-            // Level 2: Sections
-            else if (level === 2) {
-                const sub = adminNavStack[0];
-                const doc = adminNavStack[1];
-                if (database[sub] && database[sub][doc] && database[sub][doc].sections) {
-                    currentList = database[sub][doc].sections.map(sec => ({ name: sec, type: 'folder', data: database[sub][doc][sec] }));
-                }
-                toggleContainer.style.display = 'none'; // Special handling for level 2 root
-                linkGroup.style.display = 'none';
-            }
-            // Level 3+: Nested Sections (Folders) OR Files
+            if (dataList.length === 0) { listContainer.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No items found</div>'; }
             else {
-                // Navigate deep into the structure
-                // Structure: database[subject][doctor][section][sub_section]... -> Array
-                let targetArray = database;
-                for (let i = 0; i < adminNavStack.length; i++) {
-                    const key = adminNavStack[i];
-                    if (i === 0) targetArray = targetArray[key]; // Subject Object
-                    else if (i === 1) targetArray = targetArray[key]; // Doctor Object
-                    else if (i === 2) targetArray = targetArray[key]; // Section Array
-                    else targetArray = targetArray.find(item => item.name === key)?.content || targetArray[key]; // Nested
-                }
-
-                // If targetArray is not an array (error fallback), make it one
-                if (!Array.isArray(targetArray)) targetArray = [];
-
-                // Map items to standard format
-                currentList = targetArray.map((item, idx) => {
-                    // Check if item is a folder (has content array) or file (has link)
-                    if (item.content && Array.isArray(item.content)) {
-                        return { name: item.name, type: 'folder', original: item };
-                    } else {
-                        return { name: item.name, type: 'file', original: item };
-                    }
-                });
-
-                // SHOW Toggle for Level 3+
-                toggleContainer.style.display = 'flex';
-                updateAddTypeUI();
-            }
-
-            // 3. Render List
-            if (currentList.length === 0) {
-                listContainer.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No items found</div>';
-            } else {
-                currentList.forEach((item, index) => {
-                    const div = document.createElement('div'); 
-                    div.className = 'data-item'; 
-                    
-                    const nameSpan = document.createElement('div'); 
-                    nameSpan.className = 'data-name';
-                    
-                    // Icon based on type
-                    const icon = document.createElement('span');
-                    icon.className = 'type-icon';
-                    icon.innerText = item.type === 'folder' ? '📁' : '📄';
-                    
-                    nameSpan.appendChild(icon);
-                    nameSpan.appendChild(document.createTextNode(item.name));
-                    
-                    // Click Event
-                    if (item.type === 'folder') {
-                        nameSpan.onclick = () => { adminNavStack.push(item.name); renderAdminDataView(); };
-                    }
-                    
+                dataList.forEach((item, index) => {
+                    const itemName = (typeof item === 'object') ? item.name : item; const div = document.createElement('div'); div.className = 'data-item'; 
+                    const nameSpan = document.createElement('div'); nameSpan.className = 'data-name'; nameSpan.innerText = itemName; 
+                    if (level < 3) nameSpan.onclick = () => { adminNavStack.push(itemName); renderAdminDataView(); }; 
                     const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions'; 
-                    
-                    const delBtn = document.createElement('button'); 
-                    delBtn.className = 'btn-sm btn-del'; 
-                    delBtn.innerText = '🗑️'; 
-                    delBtn.onclick = () => deleteAdminDataItem(index, item.type); 
-                    actionsDiv.appendChild(delBtn); 
-
-                    div.appendChild(nameSpan); 
-                    div.appendChild(actionsDiv); 
-                    listContainer.appendChild(div);
+                    const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; delBtn.onclick = () => deleteAdminDataItem(index); actionsDiv.appendChild(delBtn); 
+                    if (isNotificationsFolder && (typeof item === 'object') && item.id) { 
+                        const editBtn = document.createElement('button'); editBtn.className = 'btn-sm btn-edit'; editBtn.innerText = '✏️'; editBtn.onclick = () => editNotification(index); actionsDiv.appendChild(editBtn); 
+                    } div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div);
                 });
             }
         }
-
-        window.adminNavTo = function(index) { 
-            if (index === -1) adminNavStack = []; 
-            else adminNavStack = adminNavStack.slice(0, index + 1); 
-            renderAdminDataView(); 
+        window.adminNavTo = function(index) { if (index === -1) adminNavStack = []; else adminNavStack = adminNavStack.slice(0, index + 1); renderAdminDataView(); }
+        window.editNotification = function(index) {
+            const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; const list = database[sub][doc][sec]; const item = list[index];
+            showInputModal("Edit Notification", "New Text:", (newText) => { if (newText !== null && newText.trim() !== "") { item.name = newText.trim(); item.date = new Date().toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute:'2-digit' }) + " (Edited)"; renderAdminDataView(); showToast("Edited. Save to apply.", "info"); } });
         }
-
-        // Toggle Functionality
-        window.setAddType = function(type) {
-            currentAddType = type;
-            updateAddTypeUI();
-        }
-
-        function updateAddTypeUI() {
-            const optFile = document.getElementById('opt-file');
-            const optFolder = document.getElementById('opt-folder');
-            const linkGroup = document.getElementById('file-link-input-group');
-            const nameInput = document.getElementById('new-item-name');
-
-            if (currentAddType === 'file') {
-                optFile.classList.add('active');
-                optFolder.classList.remove('active');
-                linkGroup.style.display = 'block';
-                nameInput.placeholder = "File Name...";
-            } else {
-                optFile.classList.remove('active');
-                optFolder.classList.add('active');
-                linkGroup.style.display = 'none';
-                nameInput.placeholder = "Folder Name...";
-            }
-        }
-
         window.addAdminDataItem = function() {
-            const nameInput = document.getElementById('new-item-name'); 
-            const linkInput = document.getElementById('new-item-link'); 
-            const name = nameInput.value.trim(); 
-            let level = adminNavStack.length;
-
+            const nameInput = document.getElementById('new-item-name'); const linkInput = document.getElementById('new-item-link'); const name = nameInput.value.trim(); let level = adminNavStack.length;
             if (!name) return showToast("Please enter a name", "error");
-
-            // Level 0: Add Subject
-            if (level === 0) { 
-                if (database[name]) return showToast("Subject exists", "error"); 
-                database[name] = { doctors: [] }; 
-            } 
-            // Level 1: Add Doctor
-            else if (level === 1) { 
-                const sub = adminNavStack[0]; 
-                if (!database[sub]) database[sub] = { doctors: [] }; 
-                if (database[sub].doctors.includes(name)) return showToast("Doctor exists", "error"); 
-                database[sub].doctors.push(name); 
-                database[sub][name] = { sections: ["📚 Lectures", "🔔 Notifications"] }; 
-                database[sub][name]["📚 Lectures"] = []; 
-                database[sub][name]["🔔 Notifications"] = []; 
-            } 
-            // Level 2: Add Section
-            else if (level === 2) { 
-                const sub = adminNavStack[0]; 
-                const doc = adminNavStack[1]; 
-                if (!database[sub][doc]) database[sub][doc] = { sections: [] }; 
-                if (database[sub][doc].sections.includes(name)) return showToast("Section exists", "error"); 
-                database[sub][doc].sections.push(name); 
-                database[sub][doc][name] = []; 
-            } 
-            // Level 3+: Add Nested Folder or File
-            else { 
-                // Get parent array
-                let parentArray = database;
-                for (let i = 0; i < adminNavStack.length - 1; i++) {
-                     const key = adminNavStack[i];
-                     if (i === 0) parentArray = parentArray[key];
-                     else if (i === 1) parentArray = parentArray[key];
-                     else if (i === 2) parentArray = parentArray[key];
-                     else parentArray = parentArray.find(item => item.name === key)?.content || parentArray[key];
-                }
-                
-                // Last step: navigate to the specific container (Array) inside the last key
-                const lastKey = adminNavStack[adminNavStack.length - 1];
-                let targetArray;
-                
-                if (level === 3) {
-                     // If level is 3, lastKey is a section name (key in doc object)
-                     targetArray = parentArray[lastKey];
-                } else {
-                    // If level > 3, lastKey is a folder name inside an array
-                    const folderObj = parentArray.find(item => item.name === lastKey);
-                    targetArray = folderObj ? folderObj.content : [];
-                }
-
-                if (!Array.isArray(targetArray)) {
-                    // Safety init if undefined
-                    targetArray = [];
-                    if (level === 3) parentArray[lastKey] = targetArray;
-                    else if (folderObj) folderObj.content = targetArray;
-                }
-
-                if (currentAddType === 'folder') {
-                    // Check if folder name exists
-                    if (targetArray.some(i => i.name === name && i.content)) return showToast("Folder exists", "error");
-                    targetArray.push({ name: name, content: [] });
-                } else {
-                    // Add File
-                    const link = linkInput.value.trim() || "#";
-                    targetArray.push({ name: name, link: link });
-                }
-            }
-            
+            if (level === 0) { if (database[name]) return showToast("Subject exists", "error"); database[name] = { doctors: [] }; } 
+            else if (level === 1) { const sub = adminNavStack[0]; if (!database[sub]) database[sub] = { doctors: [] }; if (database[sub].doctors.includes(name)) return showToast("Doctor exists", "error"); database[sub].doctors.push(name); database[sub][name] = { sections: ["📚 Lectures", "🔔 Notifications"] }; database[sub][name]["📚 Lectures"] = []; database[sub][name]["🔔 Notifications"] = []; } 
+            else if (level === 2) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; if (!database[sub][doc]) database[sub][doc] = { sections: [] }; if (database[sub][doc].sections.includes(name)) return showToast("Section exists", "error"); database[sub][doc].sections.push(name); database[sub][doc][name] = []; } 
+            else if (level === 3) { const sub = adminNavStack[0]; const doc = adminNavStack[1]; const sec = adminNavStack[2]; if (sec === "🔔 Notifications") { database[sub][doc][sec].unshift({ id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: name, date: new Date().toLocaleString(), type: "notif" }); } else { const link = linkInput.value.trim() || "#"; if (!database[sub][doc][sec]) database[sub][doc][sec] = []; database[sub][doc][sec].push({ name: name, link: link }); } }
             renderAdminDataView();
         }
         
         // Merge deletion logic: Try to delete from Drive then DB
-        function deleteAdminDataItem(index, type) {
+        function deleteAdminDataItem(index) {
             let level = adminNavStack.length;
             showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => {
                 if(!confirmed) return;
@@ -1521,28 +1315,9 @@
                 let itemToDelete = null;
                 let sub, doc, sec;
 
-                // Retrieve target array logic (similar to add)
-                let parentArray = database;
-                for (let i = 0; i < adminNavStack.length - 1; i++) {
-                     const key = adminNavStack[i];
-                     if (i === 0) parentArray = parentArray[key];
-                     else if (i === 1) parentArray = parentArray[key];
-                     else if (i === 2) parentArray = parentArray[key];
-                     else parentArray = parentArray.find(item => item.name === key)?.content || parentArray[key];
-                }
-
-                const lastKey = adminNavStack[adminNavStack.length - 1];
-                let targetArray;
-
-                if (level === 3) {
-                     targetArray = parentArray[lastKey];
-                } else {
-                    const folderObj = parentArray.find(item => item.name === lastKey);
-                    targetArray = folderObj ? folderObj.content : [];
-                }
-
-                if (targetArray && targetArray[index]) {
-                    itemToDelete = targetArray[index];
+                if (level === 3) { 
+                    sub = adminNavStack[0]; doc = adminNavStack[1]; sec = adminNavStack[2]; 
+                    itemToDelete = database[sub][doc][sec][index]; 
                 }
 
                 // 2. Delete from Drive if exists
@@ -1561,28 +1336,10 @@
                 }
 
                 // 3. Delete from JSONBin DB
-                if (level === 0) { 
-                    const subKeys = Object.keys(database); 
-                    delete database[subKeys[index]]; 
-                } 
-                else if (level === 1) { 
-                    const sub = adminNavStack[0]; 
-                    const docName = database[sub].doctors[index]; 
-                    database[sub].doctors.splice(index, 1); 
-                    delete database[sub][docName]; 
-                }
-                else if (level === 2) { 
-                    const sub = adminNavStack[0]; 
-                    const docName = database[sub][doc].sections[index]; 
-                    database[sub][doc].sections.splice(index, 1); 
-                    delete database[sub][doc][docName]; 
-                }
-                else { 
-                    // Level 3+
-                    if (targetArray) {
-                        targetArray.splice(index, 1);
-                    }
-                }
+                if (level === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } 
+                else if (level === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; }
+                else if (level === 2) { const sub = adminNavStack[0]; const docName = database[sub][doc].sections[index]; database[sub][doc].sections.splice(index, 1); delete database[sub][doc][docName]; }
+                else if (level === 3) { const sub = adminNavStack[0]; const docName = adminNavStack[1]; const secName = adminNavStack[2]; database[sub][doc][sec].splice(index, 1); }
                 
                 // 4. Save Changes
                 saveConfigToBin(CONFIG);
