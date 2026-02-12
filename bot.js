@@ -150,16 +150,19 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
 
         console.log(`[Drive] Uploading ${fileName}...`);
 
+        // إضافة خيارات إضافية للرفع الكبير
         const file = await drive.files.create({
             resource: fileMetadata,
             media: media,
             fields: 'id, webViewLink',
             supportsAllDrives: true,
             supportsTeamDrives: true
+            // resumable: true // This is default in v3 but good to know it's active
         });
 
         console.log(`[Drive] Upload successful. ID: ${file.data.id}`);
 
+        // منح صلاحية الوصول للجميع (Anyone with the link)
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
@@ -235,31 +238,15 @@ async function saveDatabase(data) {
 // 5. دوال مساعدة للتنقل (Recursive Helpers)
 // ==========================================
 
-// الحصول على محتويات المجلد الحالي بناءً على المسار (Path)
 function getCurrentFolderContent(db, subject, doctor, pathIds) {
-    // التأكد من وجود البنية الجديدة
     if (!db.database[subject] || !db.database[subject][doctor]) return [];
-    
     let doctorData = db.database[subject][doctor];
-    
-    // التحقق من الهجرة (Migration)
-    if (!doctorData.root) {
-        // إذا كانت البيانات قديمة (مسطحة)، نقوم بإنشاء root فارغة أو نعتبرها فارغة للرفع الجديد
-        // لكن بما أننا عدلنا الموقع، يجب أن الموقع قد أنشأ الـ root بالفعل.
-        doctorData.root = []; 
-    }
-
+    if (!doctorData.root) doctorData.root = []; 
     let currentList = doctorData.root;
-
-    // التنقل داخل الأطفال (Children) حسب المسار المخزن
     for (let folderId of pathIds) {
         const folder = currentList.find(item => item.id === folderId && item.type === 'folder');
-        if (folder && folder.children) {
-            currentList = folder.children;
-        } else {
-            // المسار غير صحيح، نرجع فارغ
-            return [];
-        }
+        if (folder && folder.children) currentList = folder.children;
+        else return [];
     }
     return currentList;
 }
@@ -295,10 +282,10 @@ async function executeUpload(chatId) {
                     parse_mode: 'Markdown',
                     disable_web_page_preview: true 
                 });
-            } catch (e) {}
+            } catch (e) { console.log("Edit msg error (user might have deleted it):", e.message); }
         };
 
-        // 1. تحميل الملف
+        // 1. تحميل الملف (تم زيادة التايم أوت إلى 5 دقائق)
         updateText("⏳ Downloading From Telegram...");
         
         try {
@@ -311,13 +298,13 @@ async function executeUpload(chatId) {
             const tgStream = await axios({ 
                 url: encodedFileLink, 
                 responseType: 'stream',
-                timeout: 60000 
+                timeout: 300000 // 5 دقائق للتحميل
             });
             await pipeline(tgStream.data, writer);
             console.log(`[Download] File saved to: ${tempFilePath}`);
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
-            throw new Error("Failed to download file. Please check the file name and try again.");
+            throw new Error("Failed to download file. Connection timeout or invalid file.");
         }
 
         await new Promise(resolve => setTimeout(resolve, 1000)); 
@@ -330,7 +317,6 @@ async function executeUpload(chatId) {
         ]);
 
         // 3. بناء هيكل المجلدات في Drive (Recursive)
-        // المسار الكامل: Subject > Doctor > Folder1 > Folder2 ...
         let folderNames = [state.subject, state.doctor, ...state.folderPathNames];
         let currentDriveId = rootId;
 
@@ -343,8 +329,10 @@ async function executeUpload(chatId) {
         // 4. رفع الملف
         console.log(`[Upload] Initiating Drive upload...`);
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, currentDriveId);
+        
+        // زيادة الوقت للرفع في Drive إلى 10 دقائق
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Upload Timeout (5 mins)")), 300000)
+            setTimeout(() => reject(new Error("Upload Timeout (10 mins)")), 600000)
         );
 
         let driveResult;
@@ -356,7 +344,6 @@ async function executeUpload(chatId) {
         }
 
         // 5. الحفظ في قاعدة البيانات (Recursive)
-        // ننفسل للوصول للمصفوفة المناسبة ونضيف الملف
         let currentList = db.database[state.subject][state.doctor].root;
         for (let folderId of state.folderPathIds) {
             const folder = currentList.find(i => i.id === folderId && i.type === 'folder');
@@ -371,17 +358,25 @@ async function executeUpload(chatId) {
             driveId: driveResult.id
         });
 
-        await saveDatabase(db);
-
-        const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
-        const folderPathStr = state.folderPathNames.join(' / ');
-        const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor}${folderPathStr ? ' / ' + folderPathStr : ''}\n📝 Name: *${displayName}*\n🔗 ${driveResult.link}`;
-        await updateText(finalText);
+        // تمييز الخطأ هنا: هل هو في Drive أم في الموقع؟
+        try {
+            await saveDatabase(db);
+            const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
+            const folderPathStr = state.folderPathNames.join(' / ');
+            const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor}${folderPathStr ? ' / ' + folderPathStr : ''}\n📝 Name: *${displayName}*\n🔗 ${driveResult.link}`;
+            await updateText(finalText);
+        } catch (dbError) {
+            console.error('[DB Save Error]', dbError.message);
+            // حالة فشل جزئي: ملف في Drive لكن ليس في الموقع
+            await updateText(`⚠️ **Upload Partially Failed**\n\n✅ Uploaded to Drive successfully.\n❌ Failed to update Site Database.\n\n🔗 Drive Link: ${driveResult.link}\n\n*Please try saving again or contact admin.*`);
+        }
 
     } catch (error) {
         console.error('[Upload Fatal Error]', error);
-        bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}\n\nPlease try sending the file again.`);
+        // رسالة خطأ أوضح
+        await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}\n\nPlease try sending the file again.`);
     } finally {
+        // التنظيف
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
@@ -422,7 +417,16 @@ bot.on('photo', async (msg) => {
 
 async function handleFile(msg) {
     const chatId = msg.chat.id;
+    
+    // التحقق من الصلاحيات
     if (!AUTHORIZED_USERS.includes(chatId)) return;
+
+    // === الإصلاح الأول: القفل (Concurrency Lock) ===
+    // إذا كان هناك عملية رفع جارية لهذا المستخدم، ارفض الملف الجديد فوراً
+    if (userStates[chatId]) {
+        bot.sendMessage(chatId, "⚠️ **Busy!**\n\nيرجى الانتظار حتى انتهاء الرفع الحالي قبل إرسال ملف جديد.\n\nSending multiple files quickly will cause the bot to freeze.");
+        return;
+    }
 
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
     const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
@@ -438,17 +442,23 @@ async function handleFile(msg) {
         step: 'select_subject',
         type: 'file',
         file: { id: fileId, name: fileName },
-        folderPathIds: [], // لتتبع الـ IDs داخل الـ JSON
-        folderPathNames: [] // لتتبع الأسماء في الـ Drive
+        folderPathIds: [],
+        folderPathNames: []
     };
 
-    const API = await getDatabase();
-    const subjects = Object.keys(API.database);
-    const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-    
-    bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
-        reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
-    });
+    try {
+        const API = await getDatabase();
+        const subjects = Object.keys(API.database);
+        const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+        
+        bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
+            reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+        });
+    } catch (e) {
+        // في حالة فشل جلب البيانات، ننظف الحالة
+        delete userStates[chatId];
+        bot.sendMessage(chatId, "❌ Failed to load database. Please try again.");
+    }
 }
 
 bot.on('message', async (msg) => {
@@ -461,7 +471,7 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // حماية الحالة النشطة
+    // حماية الحالة النشطة (Lock للنصوص أيضاً)
     if (state) {
         if (state.step === 'waiting_for_new_name') {
             console.log(`[Action] User sent new name: "${text}"`);
@@ -469,6 +479,7 @@ bot.on('message', async (msg) => {
             state.step = 'uploading'; 
             executeUpload(chatId);
         } else {
+            // إذا كان البوت مشغولاً وارسل نص عشوائي
             console.log(`[Ignored] User sent text while busy in step: ${state.step}`);
         }
         return; 
@@ -486,18 +497,23 @@ bot.on('message', async (msg) => {
             folderPathNames: []
         };
 
-        const data = await getDatabase();
-        const subjects = Object.keys(data.database);
-        const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-        
-        bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
-            reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
-        });
+        try {
+            const data = await getDatabase();
+            const subjects = Object.keys(data.database);
+            const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+            
+            bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
+                reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+            });
+        } catch (e) {
+             delete userStates[chatId];
+             bot.sendMessage(chatId, "❌ Failed to load database.");
+        }
     }
 });
 
 // ==========================================
-// 9. معالجة الأزرار (Callback Query) - Updated for Tree Logic
+// 9. معالجة الأزرار (Callback Query)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -505,7 +521,10 @@ bot.on('callback_query', async (query) => {
     const data = query.data;
     const state = userStates[chatId];
 
-    if (!AUTHORIZED_USERS.includes(chatId)) return;
+    if (!AUTHORIZED_USERS.includes(chatId)) {
+        await bot.answerCallbackQuery(query.id, "Unauthorized");
+        return;
+    }
 
     try {
         // --- اختيار المادة ---
@@ -528,15 +547,13 @@ bot.on('callback_query', async (query) => {
         else if (state && state.step === 'select_doctor' && data.startsWith('doc_')) {
             const doctorName = data.replace('doc_', '');
             state.doctor = doctorName;
-            state.step = 'navigate_folder'; // خطوة جديدة: التنقل
+            state.step = 'navigate_folder';
 
-            // الإشعارات تذهب مباشرة لقسم الإشعارات
             if (state.type === 'text') {
                 await processTextNotification(chatId, state, query.message.message_id);
                 return;
             }
 
-            // عرض محتويات الـ Root الخاص بالدكتور
             await renderFolderContents(chatId, query.message.message_id, state);
         }
 
@@ -546,12 +563,10 @@ bot.on('callback_query', async (query) => {
             // زر رجوع
             if (data === 'back') {
                 if (state.folderPathIds.length > 0) {
-                    // نرجع خطوة للوراء
                     state.folderPathIds.pop();
                     state.folderPathNames.pop();
                     await renderFolderContents(chatId, query.message.message_id, state);
                 } else {
-                    // لو كنا في الـ Root ورجعنا، نرجع لاختيار الدكتور
                     state.step = 'select_doctor';
                     state.doctor = null;
                     const db = await getDatabase();
@@ -569,8 +584,6 @@ bot.on('callback_query', async (query) => {
             else if (data.startsWith('folder_')) {
                 const folderId = data.replace('folder_', '');
                 const db = await getDatabase();
-                
-                // العثور على اسم الفولدر للعرض وللحفظ في الـ Drive Path
                 const currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
                 const folder = currentList.find(f => f.id === folderId);
                 
@@ -613,81 +626,82 @@ bot.on('callback_query', async (query) => {
 
     } catch (error) {
         console.error('[Callback Error]', error);
+        // محاولة إصلاح الحالة في حالة الخطأ لتجنب تعليق البوت
+        if(userStates[chatId] && chatId) {
+             // نترك الحالة كما هي لتجنب فقدان التقدم، ولكن نسجل الخطأ
+        }
     }
 });
 
-// دالة مساعدة لعرض محتويات المجلد (Recursive Rendering)
+// دالة مساعدة لعرض محتويات المجلد
 async function renderFolderContents(chatId, messageId, state) {
-    const db = await getDatabase();
-    const currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
-    
-    // إنشاء الكيبورد
-    const keyboard = [];
+    try {
+        const db = await getDatabase();
+        const currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
+        
+        const keyboard = [];
 
-    // عرض الفولدرات والملفات الموجودة (للعرض فقط)
-    currentList.forEach(item => {
-        if (item.type === 'folder') {
-            keyboard.push([{ text: `📂 ${item.name}`, callback_data: `folder_${item.id}` }]);
-        } else {
-            keyboard.push([{ text: `📄 ${item.name}`, callback_data: `ignore_file` }]); // مجرد عرض
+        currentList.forEach(item => {
+            if (item.type === 'folder') {
+                keyboard.push([{ text: `📂 ${item.name}`, callback_data: `folder_${item.id}` }]);
+            } else {
+                keyboard.push([{ text: `📄 ${item.name}`, callback_data: `ignore_file` }]);
+            }
+        });
+
+        keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
+
+        if (state.folderPathIds.length > 0 || state.step === 'navigate_folder') {
+             keyboard.push([{ text: `🔙 Back`, callback_data: 'back' }]);
         }
-    });
 
-    // زر "رفع هنا" دائماً موجود
-    keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
+        let pathText = state.folderPathNames.join(' / ');
+        let headerText = `Doctor : *${state.doctor}*`;
+        if (pathText) headerText += `\n📂 Folder: *${pathText}*`;
 
-    // زر الرجوع
-    if (state.folderPathIds.length > 0 || state.step === 'navigate_folder') {
-         // إذا كنا في الـ Root، زر الرجوع يعود للأطباء (تمت معالجته في Callback Main)، ولكن هنا نعرضه بشكل واضح
-         keyboard.push([{ text: `🔙 Back`, callback_data: 'back' }]);
+        await bot.editMessageText(`${headerText}\n\nSelect a folder or Upload Here:`, {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: { inline_keyboard: keyboard },
+            parse_mode: 'Markdown'
+        });
+    } catch (e) {
+        console.error("Render Folder Error:", e);
+        bot.sendMessage(chatId, "Error loading folder contents.");
     }
-
-    let pathText = state.folderPathNames.join(' / ');
-    let headerText = `Doctor : *${state.doctor}*`;
-    if (pathText) headerText += `\n📂 Folder: *${pathText}*`;
-
-    await bot.editMessageText(`${headerText}\n\nSelect a folder or Upload Here:`, {
-        chat_id: chatId,
-        message_id: messageId,
-        reply_markup: { inline_keyboard: keyboard },
-        parse_mode: 'Markdown'
-    });
 }
 
 async function processTextNotification(chatId, state, messageId) {
-    const db = await getDatabase();
-    
-    if (!db.database[state.subject]) db.database[state.subject] = {};
-    if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
-    
-    const docData = db.database[state.subject][state.doctor];
-    
-    // التأكد من وجود الـ root
-    if (!docData.root) docData.root = [];
-    
-    // البحث عن مجلد الإشعارات
-    let notifFolder = docData.root.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
-    
-    if (!notifFolder) {
-        // إنشاؤه إذا لم يكن موجوداً
-        notifFolder = { id: 'def_notif_' + Date.now(), name: "🔔 Notifications", type: "folder", children: [] };
-        docData.root.push(notifFolder);
-    }
-
-    notifFolder.children.unshift({
-        id: Date.now().toString(36),
-        name: state.content,
-        date: new Date().toLocaleString(),
-        type: "notif"
-    });
-
     try {
+        const db = await getDatabase();
+        
+        if (!db.database[state.subject]) db.database[state.subject] = {};
+        if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
+        
+        const docData = db.database[state.subject][state.doctor];
+        if (!docData.root) docData.root = [];
+        
+        let notifFolder = docData.root.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
+        
+        if (!notifFolder) {
+            notifFolder = { id: 'def_notif_' + Date.now(), name: "🔔 Notifications", type: "folder", children: [] };
+            docData.root.push(notifFolder);
+        }
+
+        notifFolder.children.unshift({
+            id: Date.now().toString(36),
+            name: state.content,
+            date: new Date().toLocaleString(),
+            type: "notif"
+        });
+
         await saveDatabase(db);
         await bot.editMessageText(`✅ Notification Send Successfully`, { chat_id: chatId, message_id: messageId });
         delete userStates[chatId];
     } catch (err) {
         console.error("Save Notif Error:", err);
         await bot.sendMessage(chatId, "❌ Failed To Save Notification");
+        delete userStates[chatId]; // تنظيف الحالة حتى لو فشل
     }
 }
 
