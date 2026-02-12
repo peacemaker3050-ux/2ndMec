@@ -150,19 +150,17 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
 
         console.log(`[Drive] Uploading ${fileName}...`);
 
-        // إضافة خيارات إضافية للرفع الكبير
         const file = await drive.files.create({
             resource: fileMetadata,
             media: media,
             fields: 'id, webViewLink',
             supportsAllDrives: true,
             supportsTeamDrives: true
-            // resumable: true // This is default in v3 but good to know it's active
         });
 
         console.log(`[Drive] Upload successful. ID: ${file.data.id}`);
 
-        // منح صلاحية الوصول للجميع (Anyone with the link)
+        // منح صلاحية الوصول للجميع
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
@@ -235,7 +233,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. دوال مساعدة للتنقل (Recursive Helpers)
+// 5. دوال مساعدة للتنقل
 // ==========================================
 
 function getCurrentFolderContent(db, subject, doctor, pathIds) {
@@ -252,7 +250,7 @@ function getCurrentFolderContent(db, subject, doctor, pathIds) {
 }
 
 // ==========================================
-// 6. وظيفة الرفع الرئيسية (Recursive Support)
+// 6. وظيفة الرفع الرئيسية (الحل النهائي للمشاكل)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -285,7 +283,7 @@ async function executeUpload(chatId) {
             } catch (e) { console.log("Edit msg error (user might have deleted it):", e.message); }
         };
 
-        // 1. تحميل الملف (تم زيادة التايم أوت إلى 5 دقائق)
+        // 1. تحميل الملف (مع التعديل الجديد للوقت والتحقق)
         updateText("⏳ Downloading From Telegram...");
         
         try {
@@ -295,16 +293,35 @@ async function executeUpload(chatId) {
             tempFilePath = path.join('/tmp', `upload_${Date.now()}_${safeFileName}`);
             
             const writer = fs.createWriteStream(tempFilePath);
+            
+            // === التعديل الحاسم: زيادة التايم أوت إلى 15 دقيقة ===
             const tgStream = await axios({ 
                 url: encodedFileLink, 
                 responseType: 'stream',
-                timeout: 300000 // 5 دقائق للتحميل
+                timeout: 900000 // 15 دقيقة (900000 ms)
             });
+            
             await pipeline(tgStream.data, writer);
             console.log(`[Download] File saved to: ${tempFilePath}`);
+
+            // === التعديل الإضافي: التأكد من أن الملف ليس فارغاً ===
+            const stats = fs.statSync(tempFilePath);
+            if (stats.size === 0) {
+                 throw new Error("Downloaded file is empty (0 bytes). Telegram file might be corrupted or download failed silently.");
+            }
+            console.log(`[Download] File size verified: ${stats.size} bytes`);
+            
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
-            throw new Error("Failed to download file. Connection timeout or invalid file.");
+            
+            // رسالة خطأ محددة تحدد السبب
+            let errorMsg = "Failed to download file. Connection timeout or invalid file.";
+            if (downloadError.code === 'ECONNABORTED') {
+                errorMsg = "⏱️ **Download Aborted:** The file download was cancelled or connection was reset.";
+            } else if (downloadError.code === 'ETIMEDOUT') {
+                errorMsg = "⏱️ **Download Timeout:** The file is too large or internet is too slow (waited 15 mins). Please try again later.";
+            }
+            throw new Error(errorMsg);
         }
 
         await new Promise(resolve => setTimeout(resolve, 1000)); 
@@ -326,13 +343,12 @@ async function executeUpload(chatId) {
             currentDriveId = await findOrCreateFolder(name, currentDriveId);
         }
 
-        // 4. رفع الملف
+        // 4. رفع الملف (مع تايم أوت 10 دقائق)
         console.log(`[Upload] Initiating Drive upload...`);
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, currentDriveId);
         
-        // زيادة الوقت للرفع في Drive إلى 10 دقائق
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Upload Timeout (10 mins)")), 600000)
+            setTimeout(() => reject(new Error("Upload Timeout (10 mins)")), 600000) // 10 دقائق
         );
 
         let driveResult;
@@ -343,7 +359,7 @@ async function executeUpload(chatId) {
             throw new Error(`Google Drive Upload Failed: ${err.message}`);
         }
 
-        // 5. الحفظ في قاعدة البيانات (Recursive)
+        // 5. الحفظ في قاعدة البيانات
         let currentList = db.database[state.subject][state.doctor].root;
         for (let folderId of state.folderPathIds) {
             const folder = currentList.find(i => i.id === folderId && i.type === 'folder');
@@ -358,7 +374,7 @@ async function executeUpload(chatId) {
             driveId: driveResult.id
         });
 
-        // تمييز الخطأ هنا: هل هو في Drive أم في الموقع؟
+        // معالجة فشل الحفظ في قاعدة البيانات بشكل منفصل
         try {
             await saveDatabase(db);
             const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
@@ -367,16 +383,16 @@ async function executeUpload(chatId) {
             await updateText(finalText);
         } catch (dbError) {
             console.error('[DB Save Error]', dbError.message);
-            // حالة فشل جزئي: ملف في Drive لكن ليس في الموقع
+            // حالة فشل جزئي
             await updateText(`⚠️ **Upload Partially Failed**\n\n✅ Uploaded to Drive successfully.\n❌ Failed to update Site Database.\n\n🔗 Drive Link: ${driveResult.link}\n\n*Please try saving again or contact admin.*`);
         }
 
     } catch (error) {
         console.error('[Upload Fatal Error]', error);
-        // رسالة خطأ أوضح
+        // رسالة خطأ واضحة جداً
         await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}\n\nPlease try sending the file again.`);
     } finally {
-        // التنظيف
+        // التنظيف وإلغاء القفل
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
@@ -421,8 +437,8 @@ async function handleFile(msg) {
     // التحقق من الصلاحيات
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
-    // === الإصلاح الأول: القفل (Concurrency Lock) ===
-    // إذا كان هناك عملية رفع جارية لهذا المستخدم، ارفض الملف الجديد فوراً
+    // === الحل الجذري للتهنيج (Lock) ===
+    // إذا كان هناك حالة نشطة، نرفض الملف الجديد فوراً لمنع التداخل
     if (userStates[chatId]) {
         bot.sendMessage(chatId, "⚠️ **Busy!**\n\nيرجى الانتظار حتى انتهاء الرفع الحالي قبل إرسال ملف جديد.\n\nSending multiple files quickly will cause the bot to freeze.");
         return;
@@ -455,7 +471,6 @@ async function handleFile(msg) {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
         });
     } catch (e) {
-        // في حالة فشل جلب البيانات، ننظف الحالة
         delete userStates[chatId];
         bot.sendMessage(chatId, "❌ Failed to load database. Please try again.");
     }
@@ -471,7 +486,7 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // حماية الحالة النشطة (Lock للنصوص أيضاً)
+    // حماية الحالة النشطة (Lock)
     if (state) {
         if (state.step === 'waiting_for_new_name') {
             console.log(`[Action] User sent new name: "${text}"`);
@@ -479,7 +494,7 @@ bot.on('message', async (msg) => {
             state.step = 'uploading'; 
             executeUpload(chatId);
         } else {
-            // إذا كان البوت مشغولاً وارسل نص عشوائي
+            // تجاهل النصوص العشوائية أثناء الرفع
             console.log(`[Ignored] User sent text while busy in step: ${state.step}`);
         }
         return; 
@@ -626,10 +641,6 @@ bot.on('callback_query', async (query) => {
 
     } catch (error) {
         console.error('[Callback Error]', error);
-        // محاولة إصلاح الحالة في حالة الخطأ لتجنب تعليق البوت
-        if(userStates[chatId] && chatId) {
-             // نترك الحالة كما هي لتجنب فقدان التقدم، ولكن نسجل الخطأ
-        }
     }
 });
 
@@ -645,7 +656,7 @@ async function renderFolderContents(chatId, messageId, state) {
             if (item.type === 'folder') {
                 keyboard.push([{ text: `📂 ${item.name}`, callback_data: `folder_${item.id}` }]);
             } else {
-                keyboard.push([{ text: `📄 ${item.name}`, callback_data: `ignore_file` }]);
+                keyboard.push([{ text: `📄 ${item.name}`, callback_data: 'ignore_file' }]);
             }
         });
 
@@ -701,7 +712,7 @@ async function processTextNotification(chatId, state, messageId) {
     } catch (err) {
         console.error("Save Notif Error:", err);
         await bot.sendMessage(chatId, "❌ Failed To Save Notification");
-        delete userStates[chatId]; // تنظيف الحالة حتى لو فشل
+        delete userStates[chatId];
     }
 }
 
