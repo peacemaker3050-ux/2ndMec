@@ -438,7 +438,6 @@ async function handleFile(msg) {
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     // === الحل الجذري للتهنيج (Lock) ===
-    // إذا كان هناك حالة نشطة، نرفض الملف الجديد فوراً لمنع التداخل
     if (userStates[chatId]) {
         bot.sendMessage(chatId, "⚠️ **Busy!**\n\nيرجى الانتظار حتى انتهاء الرفع الحالي قبل إرسال ملف جديد.\n\nSending multiple files quickly will cause the bot to freeze.");
         return;
@@ -716,7 +715,75 @@ async function processTextNotification(chatId, state, messageId) {
     }
 }
 
+// ==========================================
+// 10. Scheduled Reminders System (Cron Job)
+// ==========================================
+
+// دالة مساعدة لتحويل اليوم والوقت إلى التوقيت المحلي للسيرفر
+function checkSchedules() {
+    (async () => {
+        try {
+            const db = await getDatabase();
+            if (!db.schedules || db.schedules.length === 0) return;
+
+            const now = new Date();
+            const currentDay = now.getDay(); // 0 (Sunday) to 6 (Saturday)
+            const currentHours = String(now.getHours()).padStart(2, '0');
+            const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+            const currentTime = `${currentHours}:${currentMinutes}`;
+            
+            let dbUpdated = false;
+
+            db.schedules.forEach(sch => {
+                if (sch.active) {
+                    // 1. التحقق من تطابق اليوم والوقت
+                    if (sch.day === currentDay && sch.time === currentTime) {
+                        
+                        // 2. التحقق من أنه لم يتم إرساله اليوم بالفعل
+                        const lastTriggeredDate = new Date(sch.lastTriggered || 0);
+                        const isDifferentDay = lastTriggeredDate.getDate() !== now.getDate() || 
+                                               lastTriggeredDate.getMonth() !== now.getMonth();
+
+                        if (isDifferentDay) {
+                            console.log(`[Scheduler] Triggering reminder for ${sch.doctor} (${sch.subject})`);
+
+                            // 3. إنشاء Active Alert ليظهر للطلاب فوراً
+                            if (!db.activeAlerts) db.activeAlerts = [];
+                            db.activeAlerts.push({
+                                id: 'alert_' + Date.now() + Math.random(),
+                                subject: sch.subject,
+                                doctor: sch.doctor,
+                                message: sch.message,
+                                timestamp: Date.now()
+                            });
+
+                            // تنظيف الإشعارات القديمة (اختياري، ابقاء آخر 20 فقط)
+                            if (db.activeAlerts.length > 20) db.activeAlerts.shift();
+
+                            // 4. تحديث آخر وقت إرسال
+                            sch.lastTriggered = Date.now();
+                            dbUpdated = true;
+                        }
+                    }
+                }
+            });
+
+            if (dbUpdated) {
+                await saveDatabase(db);
+                console.log("[Scheduler] Database updated with new alerts.");
+            }
+
+        } catch (error) {
+            console.error("[Scheduler Error]", error.message);
+        }
+    })();
+}
+
+// تشغيل الفحص كل 60 ثانية
+setInterval(checkSchedules, 60000);
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
+    console.log("📅 Scheduler Started: Checking for reminders every minute.");
 });
