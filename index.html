@@ -22,185 +22,678 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
-    <!-- Fuse.js for Fuzzy Search -->
+    <!-- Fuse.js for Fuzzy Search (Free, Open Source) -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
 
     <style>
-        :root { --bg-dark: #0f172a; --bg-glass: rgba(15, 23, 42, 0.85); --bg-glass-heavy: rgba(15, 23, 42, 0.98); --accent-primary: #3b82f6; --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); --msg-bot-bg: rgba(255, 255, 255, 0.1); --msg-user-bg: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); --text-primary: #f8fafc; --text-secondary: #94a3b8; --border-color: rgba(255, 255, 255, 0.1); --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); --glass-blur: blur(16px); --radius-md: 12px; --radius-lg: 20px; --radius-full: 999px; --font-en: 'Inter', sans-serif; --font-ar: 'Cairo', sans-serif; }
+        :root {
+            /* Default Color Palette */
+            --bg-dark: #0f172a;
+            --bg-glass: rgba(15, 23, 42, 0.85);
+            --bg-glass-heavy: rgba(15, 23, 42, 0.98);
+            --accent-primary: #3b82f6;
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            --msg-bot-bg: rgba(255, 255, 255, 0.1);
+            --msg-user-bg: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --glass-blur: blur(16px);
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-full: 999px;
+            --font-en: 'Inter', sans-serif;
+            --font-ar: 'Cairo', sans-serif;
+        }
+
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background-color: var(--bg-dark); background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.15) 0px, transparent 50%); background-attachment: fixed; font-family: var(--font-en), var(--font-ar), sans-serif; color: var(--text-primary); }
-        .app-container { width: 100%; max-width: 500px; height: 100%; margin: 0 auto; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); z-index: 10; }
-        header { padding: 0 16px; display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-color); z-index: 20; user-select: none; position: relative; min-height: 70px; }
-        .header-info { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; overflow: hidden; }
-        .bot-avatar { width: 45px; height: 45px; border-radius: var(--radius-full); background: var(--accent-gradient); display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0; background-size: cover; background-position: center; border: 2px solid rgba(255,255,255, 0.2); box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4); color: #fff; text-align: center; overflow: hidden; }
-        .bot-name { display: flex; flex-direction: column; justify-content: center; width: 100%; min-width: 0; }
-        .bot-name h2 { font-size: 17px; margin: 0; font-weight: 700; color: #fff; letter-spacing: 0.3px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .bot-status-row { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; width: 100%; gap: 8px; }
-        .bot-status { font-size: 12px; color: #e2e8f0; font-weight: 600; letter-spacing: 0.2px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-        .sync-dot { width: 8px; height: 8px; background-color: #4ade80; border-radius: 50%; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); animation: pulse-green 2s infinite; }
+        
+        html, body {
+            height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden;
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            font-family: var(--font-en), var(--font-ar), sans-serif;
+            color: var(--text-primary);
+        }
+
+        .app-container {
+            width: 100%; max-width: 500px; height: 100%; margin: 0 auto;
+            display: flex; flex-direction: column; position: relative;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); z-index: 10;
+        }
+
+        header {
+            padding: 0 16px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.75); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px); 
+            border-bottom: 1px solid var(--border-color);
+            z-index: 20; 
+            user-select: none; 
+            position: relative;
+            min-height: 70px; 
+        }
+
+        .header-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            cursor: pointer; 
+            flex: 1; 
+            overflow: hidden; 
+        }
+        
+        .bot-avatar {
+            width: 45px; height: 45px; border-radius: var(--radius-full); background: var(--accent-gradient);
+            display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0;
+            background-size: cover; background-position: center; border: 2px solid rgba(255,255,255, 0.2);
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4); color: #fff; text-align: center; overflow: hidden;
+        }
+
+        .bot-name {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .bot-name h2 { 
+            font-size: 17px; 
+            margin: 0; 
+            font-weight: 700; 
+            color: #fff; 
+            letter-spacing: 0.3px; 
+            line-height: 1.2; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .bot-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+            width: 100%;
+            gap: 8px;
+        }
+
+        .bot-status {
+            font-size: 12px; 
+            color: #e2e8f0; 
+            font-weight: 600; 
+            letter-spacing: 0.2px; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .sync-dot {
+            width: 8px; height: 8px; background-color: #4ade80; border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); animation: pulse-green 2s infinite;
+        }
         .sync-dot.offline { background-color: #f87171; animation: none; }
-        @keyframes pulse-green { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
-        .header-actions { color: var(--text-secondary); font-size: 26px; cursor: pointer; padding: 5px; transition: color 0.2s; align-self: stretch; display: flex; align-items: center; }
+        @keyframes pulse-green { 
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); } 
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); } 
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } 
+        }
+
+        .header-actions { 
+            color: var(--text-secondary); 
+            font-size: 26px; 
+            cursor: pointer; 
+            padding: 5px; 
+            transition: color 0.2s; 
+            align-self: stretch; 
+            display: flex;
+            align-items: center;
+        }
         .header-actions:hover { color: #fff; }
-        .search-bar { flex: 1; position: relative; height: 30px; display: flex; align-items: center; }
-        .search-input { width: 100%; height: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255, 0.1); border-radius: 15px; color: #fff; padding: 0 12px; font-size: 13px; font-family: inherit; outline: none; transition: all 0.2s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .search-input:focus { background: rgba(0, 0, 0, 0.4); border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+
+        .search-bar {
+            flex: 1; 
+            position: relative;
+            height: 30px; 
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255,255,255, 0.1);
+            border-radius: 15px; 
+            color: #fff;
+            padding: 0 12px; 
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+        }
+
+        .search-input:focus {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
         .search-input::placeholder { color: rgba(255, 255, 255, 0.4); }
-        .search-dropdown { position: absolute; top: 100%; left: 0; width: 100%; max-height: 60vh; overflow-y: auto; background: var(--bg-glass-heavy); backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-top: none; z-index: 90; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; opacity: 0; transform: translateY(-10px); transition: opacity 0.2s ease, transform 0.2s ease; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%; 
+            left: 0;
+            width: 100%;
+            max-height: 60vh;
+            overflow-y: auto;
+            background: var(--bg-glass-heavy);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            z-index: 90; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        }
+        
         .search-dropdown.show { display: block; opacity: 1; transform: translateY(0); }
-        .search-result-item { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; flex-direction: column; gap: 4px; transition: background 0.2s; }
+
+        .search-result-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: background 0.2s;
+        }
         .search-result-item:last-child { border-bottom: none; }
         .search-result-item:hover { background: rgba(255,255,255,0.05); }
+        
         .sr-title { font-weight: 600; color: #fff; font-size: 14px; }
         .sr-path { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
         .sr-path span { opacity: 0.7; }
-        .sr-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; width: fit-content; }
+        .sr-badge { 
+            font-size: 10px; padding: 2px 6px; border-radius: 4px; 
+            background: rgba(59, 130, 246, 0.2); color: #60a5fa; 
+            width: fit-content;
+        }
         .search-empty { padding: 20px; text-align: center; color: #64748b; font-size: 13px; }
-        .menu-dropdown { position: absolute; top: 70px; width: 280px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); display: none; flex-direction: column; z-index: 100; overflow: hidden; animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1); padding: 8px 0; left: auto; right: 10px; }
+
+        .menu-dropdown {
+            position: absolute; top: 70px; width: 280px; background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); display: none; flex-direction: column;
+            z-index: 100; overflow: hidden; animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 8px 0; left: auto; right: 10px;
+        }
         .menu-dropdown.active { display: flex; }
-        .menu-item { padding: 14px 20px; cursor: pointer; color: #cbd5e1; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 12px; transition: all 0.2s; direction: ltr; }
+
+        .menu-item {
+            padding: 14px 20px; cursor: pointer; color: #cbd5e1; font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 12px; transition: all 0.2s; direction: ltr;
+        }
         .menu-item:hover { background: rgba(255, 255, 255, 0.05); color: #fff; padding-left: 25px; }
         .menu-item.danger { color: #f87171; }
         .menu-item.notif-toggle { color: #fbbf24; }
         .menu-item.install-btn { color: #4ade80; background: rgba(74, 222, 128, 0.1); }
+
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        #chat-area { flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; direction: ltr; background-size: 100% auto; background-position: top center; background-repeat: no-repeat; background-attachment: scroll; position: relative; z-index: 5; }
-        .message { width: fit-content; max-width: 85%; padding: 10px 16px; border-radius: var(--radius-lg); position: relative; font-size: 15px; line-height: 1.5; word-wrap: break-word; box-shadow: var(--shadow-soft); animation: messagePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; align-items: flex-start; }
+
+        #chat-area {
+            flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+            scroll-behavior: smooth; direction: ltr;
+            background-size: 100% auto;
+            background-position: top center;
+            background-repeat: no-repeat;
+            background-attachment: scroll;
+            position: relative;
+            z-index: 5;
+        }
+
+        .message {
+            width: fit-content; max-width: 85%; padding: 10px 16px; border-radius: var(--radius-lg);
+            position: relative; font-size: 15px; line-height: 1.5; word-wrap: break-word;
+            box-shadow: var(--shadow-soft); animation: messagePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex; flex-direction: column; align-items: flex-start;
+        }
+
         .msg-bot { align-self: flex-start; background: var(--msg-bot-bg); color: var(--text-primary); border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
         .msg-user { align-self: flex-end; background: var(--msg-user-bg); color: #fff; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
-        .timestamp { font-size: 10px; color: rgba(255, 255, 255, 0.5); text-align: right; align-self: flex-end; margin-top: 6px; user-select: none; }
-        .broadcast-msg { background: linear-gradient(145deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05)); border: 1px solid rgba(234, 179, 8, 0.4); border-left: 3px solid #eab308; border-radius: var(--radius-md); padding: 12px; margin-bottom: 5px; box-shadow: 0 4px 20px rgba(234, 179, 8, 0.1); width: 100%; box-sizing: border-box; }
+
+        .timestamp {
+            font-size: 10px; color: rgba(255, 255, 255, 0.5); text-align: right; align-self: flex-end;
+            margin-top: 6px; user-select: none;
+        }
+
+        .broadcast-msg {
+            background: linear-gradient(145deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05));
+            border: 1px solid rgba(234, 179, 8, 0.4); border-left: 3px solid #eab308;
+            border-radius: var(--radius-md); padding: 12px; margin-bottom: 5px;
+            box-shadow: 0 4px 20px rgba(234, 179, 8, 0.1); width: 100%; box-sizing: border-box;
+        }
         .broadcast-header { display: flex; align-items: center; gap: 8px; color: #fde047; font-weight: 700; margin-bottom: 8px; font-size: 14px; }
-        .notif-display { background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3); border-left: 3px solid #f97316; padding: 12px; border-radius: var(--radius-md); margin-top: 5px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); width: 100%; box-sizing: border-box; }
+
+        .notif-display {
+            background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3);
+            border-left: 3px solid #f97316; padding: 12px; border-radius: var(--radius-md);
+            margin-top: 5px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); width: 100%; box-sizing: border-box;
+        }
         .notif-header { display: justify; font-size: 11px; color: #f97316; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
-        .file-link-btn { display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.1); padding: 10px; border-radius: var(--radius-md); text-decoration: none; color: #fff; margin-top: 5px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box; }
+
+        .file-link-btn {
+            display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.1);
+            padding: 10px; border-radius: var(--radius-md); text-decoration: none; color: #fff;
+            margin-top: 5px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px;
+            cursor: pointer; transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
+            width: 100%; box-sizing: border-box;
+        }
         .file-link-btn:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
-        #keyboard-area { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; border-top: 1px solid var(--border-color); min-height: 0; max-height: 45vh; overflow-y: auto; flex-shrink: 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
-        .keyboard-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-primary); padding: 14px 10px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); direction: ltr; }
+
+        #keyboard-area {
+            background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            border-top: 1px solid var(--border-color); min-height: 0; max-height: 45vh; overflow-y: auto;
+            flex-shrink: 0; padding-bottom: max(20px, env(safe-area-inset-bottom));
+        }
+
+        .keyboard-btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-primary); padding: 14px 10px; border-radius: var(--radius-md);
+            cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 600;
+            text-align: center; display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            direction: ltr;
+        }
         .keyboard-btn:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.2); }
         .keyboard-btn:active { transform: scale(0.95); background: rgba(255, 255, 255, 0.05); }
         .keyboard-btn.back-btn { grid-column: span 2; background: rgba(0, 0, 0, 0.2); border-color: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px dashed rgba(255, 255, 255, 0.2); }
         .keyboard-btn.folder-btn { color: #fbbf24; border-color: rgba(251, 191, 36, 0.2); }
+
         @keyframes messagePop { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 9999; display: none; align-items: center; justify-content: center; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 9999;
+            display: none; align-items: center; justify-content: center;
+        }
         .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
-        .visual-alert-card, .ui-modal-box, .install-guide-box { background: #1e293b; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 24px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-width: 90%; width: 400px; }
+
+        .visual-alert-card, .ui-modal-box, .install-guide-box {
+            background: #1e293b; border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+            padding: 24px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-width: 90%; width: 400px;
+        }
+
         .visual-alert-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #3b82f6; text-align: center; }
         .alert-icon { font-size: 50px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5)); }
         .alert-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; }
-        .alert-body { font-size: 16px; color: #cbd5e1; margin-bottom: 25px; line-height: 1.6; text-align: left; white-space: pre-wrap; }
-        .alert-btn, .ui-btn { background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px; border-radius: var(--radius-full); font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); transition: transform 0.1s; }
+        .alert-body { font-size: 16px; color: #cbd5e1; margin-bottom: 25px; line-height: 1.6; text-align: left; }
+        
+        .alert-btn, .ui-btn {
+            background: var(--accent-gradient); color: #fff; border: none; padding: 12px 30px;
+            border-radius: var(--radius-full); font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); transition: transform 0.1s;
+        }
         .alert-btn:active, .ui-btn:active { transform: scale(0.96); }
+
         .install-step { margin-bottom: 15px; display: flex; align-items: flex-start; gap: 10px; }
         .install-icon { font-size: 24px; background: rgba(255, 255, 255, 0.1); padding: 8px; border-radius: 50%; }
         .install-text h4 { margin: 0 0 5px 0; color: #fff; font-size: 15px; }
         .install-text p { margin: 0; color: #94a3b8; font-size: 13px; line-height: 1.4; }
-        .admin-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 200; display: none; flex-direction: column; border-radius: 0; max-width: 100%; padding: 0; overflow: hidden; }
+
+        .admin-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            z-index: 200; display: none; flex-direction: column; border-radius: 0;
+            max-width: 100%; padding: 0; overflow: hidden;
+        }
         .admin-modal.active { display: flex; }
-        .admin-nav-bar { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); padding: 10px 15px; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0; scrollbar-width: none; z-index: 10; }
+
+        .admin-nav-bar {
+            background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color); padding: 10px 15px; display: flex;
+            gap: 8px; overflow-x: auto; flex-shrink: 0; scrollbar-width: none; z-index: 10;
+        }
         .admin-nav-bar::-webkit-scrollbar { display: none; }
-        .nav-item { flex: 1; min-width: 70px; padding: 10px 5px; text-align: center; color: var(--text-secondary); font-size: 12px; font-weight: 600; border-radius: var(--radius-md); cursor: pointer; transition: all 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: rgba(255, 255, 255, 0.03); }
+        
+        .nav-item {
+            flex: 1; min-width: 70px; padding: 10px 5px; text-align: center; color: var(--text-secondary);
+            font-size: 12px; font-weight: 600; border-radius: var(--radius-md); cursor: pointer;
+            transition: all 0.3s; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 4px; background: rgba(255, 255, 255, 0.03);
+        }
         .nav-item span { font-size: 18px; }
         .nav-item:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
         .nav-item.active { background: var(--accent-primary); color: #fff; box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4); }
+
         .admin-content-wrapper { position: relative; flex: 1; overflow: hidden; width: 100%; }
-        .tab-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto; padding: 20px; opacity: 0; pointer-events: none; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; display: none; }
+        
+        .tab-content {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto;
+            padding: 20px; opacity: 0; pointer-events: none; transform: scale(0.98);
+            transition: opacity 0.3s ease, transform 0.3s ease; display: none;
+        }
         .tab-content.active { opacity: 1; pointer-events: auto; transform: scale(1); display: block; }
+
         .form-group { margin-bottom: 20px; }
         .form-label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 13px; font-weight: 600; }
-        .form-input, .form-textarea, .form-select { width: 100%; padding: 12px 14px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #fff; font-family: inherit; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
-        .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); background: rgba(0, 0, 0, 0.3); }
+        
+        .form-input, .form-textarea, .form-select {
+            width: 100%; padding: 12px 14px; background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #fff;
+            font-family: inherit; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); background: rgba(0, 0, 0, 0.3);
+        }
         .form-textarea { height: 90px; resize: vertical; }
-        input[type="color"] { appearance: none; -webkit-appearance: none; border: none; width: 100%; height: 40px; cursor: pointer; background: none; padding: 0; }
+
+        input[type="color"] {
+            appearance: none;
+            -webkit-appearance: none;
+            border: none;
+            width: 100%;
+            height: 40px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border-color); border-radius: var(--radius-md); }
-        .admin-section-title { color: #60a5fa; margin: 25px 0 15px 0; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px; }
-        .btn-save, .btn-send { width: 100%; padding: 14px; background: var(--accent-gradient); color: #fff; border: none; border-radius: var(--radius-md); font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); transition: transform 0.2s; }
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+        }
+
+        .admin-section-title {
+            color: #60a5fa; margin: 25px 0 15px 0; font-size: 14px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 8px;
+        }
+
+        .btn-save, .btn-send {
+            width: 100%; padding: 14px; background: var(--accent-gradient); color: #fff; border: none;
+            border-radius: var(--radius-md); font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); transition: transform 0.2s;
+        }
         .btn-save:hover, .btn-send:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); }
-        .btn-delete { width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-md); font-weight: 700; cursor: pointer; margin-top: 10px; }
+        
+        .btn-delete {
+            width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-md);
+            font-weight: 700; cursor: pointer; margin-top: 10px;
+        }
         .btn-delete:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
         .data-list { display: flex; flex-direction: column; gap: 10px; max-height: 40vh; overflow-y: auto; }
-        .data-item { background: rgba(255, 255, 255, 0.03); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .data-item {
+            background: rgba(255, 255, 255, 0.03); padding: 12px; border-radius: var(--radius-md);
+            border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
+        }
         .data-name { cursor: pointer; font-weight: 500; flex: 1; display: flex; align-items: center; gap: 8px; }
         .folder-icon { color: #fbbf24; }
         .file-icon { color: #60a5fa; }
         .btn-sm { padding: 6px 10px; border-radius: 6px; border: none; font-size: 11px; cursor: pointer; font-weight: bold; margin-left: 5px; }
         .btn-del { background: rgba(239, 68, 68, 0.2); color: #f87171; }
         .btn-edit { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-        #toast-container { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 9998; width: 90%; max-width: 350px; pointer-events: none; }
-        .toast { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); color: #fff; padding: 14px 20px; border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); font-size: 14px; display: flex; align-items: center; gap: 12px; animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; border: 1px solid rgba(255, 255, 255, 0.05); }
+
+        #toast-container {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; gap: 10px; z-index: 9998;
+            width: 90%; max-width: 350px; pointer-events: none;
+        }
+        .toast {
+            background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); color: #fff;
+            padding: 14px 20px; border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            font-size: 14px; display: flex; align-items: center; gap: 12px;
+            animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto; border: 1px solid rgba(255, 255, 255, 0.05);
+        }
         .toast.success { border-left: 4px solid #22c55e; }
         .toast.error { border-left: 4px solid #ef4444; }
+
         @keyframes toastIn { from { opacity: 0; transform: translateY(30px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUpFade { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .typing-indicator { font-size: 12px; color: var(--text-secondary); margin-left: 15px; margin-bottom: 10px; display: none; font-style: italic; opacity: 0.7; font-weight: 600; direction: ltr; text-align: left; }
+
+        .typing-indicator {
+            font-size: 12px; color: var(--text-secondary); margin-left: 15px; margin-bottom: 10px;
+            display: none; font-style: italic; opacity: 0.7; font-weight: 600; direction: ltr; text-align: left;
+        }
         .typing-indicator.active { display: block; }
-        .admin-header-top { display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); z-index: 20; padding: 15px 20px; }
+
+        .admin-header-top {
+            display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color); z-index: 20; padding: 15px 20px;
+        }
         .modal-title { font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; }
         .close-modal { font-size: 32px; color: #64748b; cursor: pointer; line-height: 1; transition: color 0.2s; }
         .close-modal:hover { color: #fff; }
-        .manifest-preview { width: 120px; height: 120px; border-radius: 24px; background: rgba(255, 255, 255, 0.1); border: 2px solid var(--border-color); margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); }
+
+        .manifest-preview {
+            width: 120px; height: 120px; border-radius: 24px; background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--border-color); margin: 0 auto 20px auto;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            position: relative; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
         .manifest-preview img { width: 100%; height: 100%; object-fit: cover; }
         .manifest-preview span { font-size: 40px; color: rgba(255, 255, 255, 0.2); }
-        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-dark); background-image: radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 70%); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease; }
+
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-dark); background-image: radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+            z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
         .spinner-container { text-align: center; color: var(--text-primary); }
-        .spinner { width: 50px; height: 50px; border: 5px solid rgba(59, 130, 246, 0.3); border-top: 5px solid var(--accent-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px auto; }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid rgba(59, 130, 246, 0.3);
+            border-top: 5px solid var(--accent-primary); border-radius: 50%;
+            animation: spin 1s linear infinite; margin: 0 auto 20px auto;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { font-family: var(--font-en); font-size: 18px; font-weight: 600; letter-spacing: 1px; margin-top: 20px; text-align: center; }
         .loading-text small { display: block; font-size: 14px; color: var(--text-secondary); font-weight: 400; margin-top: 5px; opacity: 0.8; }
+        
         .radio-group { display: flex; gap: 10px; margin-bottom: 10px; }
-        .radio-label { flex:1; padding: 8px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; border: 1px solid transparent; font-size: 13px; color: #94a3b8; }
+        .radio-label { 
+            flex:1; padding: 8px; text-align: center; background: rgba(255,255,255,0.05); 
+            border-radius: 6px; cursor: pointer; border: 1px solid transparent; font-size: 13px; color: #94a3b8;
+        }
         .radio-label.active { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #fff; }
         input[type="radio"] { display: none; }
+
+        /* Schedule Toggle Styles */
+        .schedule-toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: var(--radius-md);
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #475569;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #3b82f6; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        #schedule-datetime-container {
+            display: none;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 15px;
+            border-radius: var(--radius-md);
+            margin-bottom: 15px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        #schedule-datetime-container.active { display: block; animation: fadeIn 0.3s; }
     </style>
 </head>
 <body>
-    <div id="loading-screen"><div class="spinner-container"><div class="spinner"></div><div class="loading-text">Syncing from Cloud... <br><small>You Will Never Walk Alone</small></div></div></div>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <div class="loading-text">Syncing from Cloud... <br><small>You Will Never Walk Alone</small></div>
+        </div>
+    </div>
 
     <div class="app-container">
+        <!-- Header -->
         <header id="main-header">
-            <div class="header-info"><div class="bot-avatar" id="header-avatar">🎓</div><div class="bot-name"><h2 id="header-name">University Bot</h2><div class="bot-status-row"><span class="bot-status" id="header-status"><div class="sync-dot" id="connection-dot"></div> <span id="status-text">Online</span></span><div class="search-bar"><input type="text" id="search-input" class="search-input" placeholder="Search files..." autocomplete="off"></div></div></div></div>
+            <div class="header-info">
+                <div class="bot-avatar" id="header-avatar">🎓</div>
+                <div class="bot-name">
+                    <h2 id="header-name">University Bot</h2>
+                    <!-- Lower Row Wrapper -->
+                    <div class="bot-status-row">
+                        <span class="bot-status" id="header-status"><div class="sync-dot" id="connection-dot"></div> <span id="status-text">Online</span></span>
+                        
+                        <!-- Permanent Search Bar -->
+                        <div class="search-bar">
+                            <input type="text" id="search-input" class="search-input" placeholder="Search files..." autocomplete="off">
+                        </div>
+
+                    </div>
+                </div>
+            </div>
             <div class="header-actions" id="menu-btn">⋮</div>
+            
+            <!-- Search Results Dropdown -->
             <div id="search-dropdown" class="search-dropdown"></div>
+
+            <!-- Dropdown Menu -->
             <div class="menu-dropdown" id="menu-dropdown">
-                <div class="menu-item install-btn" id="pwa-install-btn" style="display:none;" onclick="window.installApp()"><span>📲</span> <span>Install App</span></div>
-                <div class="menu-item" onclick="window.showInstallGuide()"><span>📱</span> <span>How to Install (iOS/Android)</span></div>
-                <div class="menu-item notif-toggle" onclick="window.enableNotifications()"><span>🔔</span> <span>Enable Notifications</span></div>
-                <div class="menu-item notif-test" onclick="window.testNotification()"><span>🧪</span> <span>Test Notification</span></div>
-                <div class="menu-item google-auth" id="google-login-btn" onclick="window.handleMenuAuthClick()"><span id="auth-icon">🌐</span> <span id="auth-text">Loading...</span></div>
-                <div class="menu-item" onclick="window.forceReload()"><span>🔄</span> <span>Force Reload</span></div>
-                <div class="menu-item" onclick="window.clearChat()"><span>🗑️</span> <span>Clear Chat</span></div>
-                <div class="menu-item danger" onclick="window.resetBot()"><span>🏠</span> <span>Reset Bot</span></div>
+                <div class="menu-item install-btn" id="pwa-install-btn" style="display:none;" onclick="window.installApp()">
+                    <span>📲</span> <span>Install App</span>
+                </div>
+                <div class="menu-item" onclick="window.showInstallGuide()">
+                    <span>📱</span> <span>How to Install (iOS/Android)</span>
+                </div>
+                <div class="menu-item notif-toggle" onclick="window.enableNotifications()">
+                    <span>🔔</span> <span>Enable Notifications</span>
+                </div>
+                <div class="menu-item notif-test" onclick="window.testNotification()">
+                    <span>🧪</span> <span>Test Notification</span>
+                </div>
+                <div class="menu-item google-auth" id="google-login-btn" onclick="window.handleMenuAuthClick()">
+                    <span id="auth-icon">🌐</span> <span id="auth-text">Loading...</span>
+                </div>
+                <div class="menu-item" onclick="window.forceReload()">
+                    <span>🔄</span> <span>Force Reload</span>
+                </div>
+                <div class="menu-item" onclick="window.clearChat()">
+                    <span>🗑️</span> <span>Clear Chat</span>
+                </div>
+                <div class="menu-item danger" onclick="window.resetBot()">
+                    <span>🏠</span> <span>Reset Bot</span>
+                </div>
             </div>
         </header>
 
+        <!-- Main Chat Area -->
         <div id="chat-area"></div>
         <div class="typing-indicator" id="typing">Syncing...</div>
+        
+        <!-- Interactive Keyboard -->
         <div id="keyboard-area"></div>
     </div>
 
+    <!-- Modals -->
     <div id="visual-alert-overlay" class="modal-overlay">
         <div class="visual-alert-card">
             <span class="alert-icon">🔔</span>
-            <div class="alert-title">New Messages</div>
-            <div class="alert-body" id="visual-alert-body">You have new messages...</div>
-            <button class="alert-btn" onclick="window.openPendingNotification()">Open</button>
+            <div class="alert-title">New Message</div>
+            <div class="alert-body" id="visual-alert-body">You have a new notification.</div>
+            <!-- Button Text Changed to "Open" -->
+            <button class="alert-btn" onclick="window.closeVisualAlert()">Open</button>
         </div>
     </div>
 
     <div id="install-guide-overlay" class="modal-overlay">
-        <div class="install-guide-box"><div class="alert-title" style="text-align:center;">Install App 📲</div><p style="color:#cbd5e1;font-size:13px;text-align:center;margin-bottom:15px;">To receive notifications when app is closed, you must install it on your phone.</p><div id="guide-android" class="install-step"><div class="install-icon">🤖</div><div class="install-text"><h4>Android (Chrome)</h4><p>Tap <b>"Install App"</b> button in menu above, or look for "Add to Home Screen" in browser menu (⋮).</p></div></div><div id="guide-ios" class="install-step"><div class="install-icon">🍎</div><div class="install-text"><h4>iPhone (Safari)</h4><p>Tap <b>Share</b> button (square with arrow) → Scroll down → Tap <b>"Add to Home Screen"</b>.</p></div></div><button class="alert-btn" onclick="document.getElementById('install-guide-overlay').classList.remove('active')" style="width:100%;">Close</button></div>
+        <div class="install-guide-box">
+            <div class="alert-title" style="text-align:center;">Install App 📲</div>
+            <p style="color:#cbd5e1;font-size:13px;text-align:center;margin-bottom:15px;">To receive notifications when app is closed, you must install it on your phone.</p>
+            <div id="guide-android" class="install-step">
+                <div class="install-icon">🤖</div>
+                <div class="install-text">
+                    <h4>Android (Chrome)</h4>
+                    <p>Tap <b>"Install App"</b> button in menu above, or look for "Add to Home Screen" in browser menu (⋮).</p>
+                </div>
+            </div>
+            <div id="guide-ios" class="install-step">
+                <div class="install-icon">🍎</div>
+                <div class="install-text">
+                    <h4>iPhone (Safari)</h4>
+                    <p>Tap <b>Share</b> button (square with arrow) → Scroll down → Tap <b>"Add to Home Screen"</b>.</p>
+                </div>
+            </div>
+            <button class="alert-btn" onclick="document.getElementById('install-guide-overlay').classList.remove('active')" style="width:100%;">Close</button>
+        </div>
     </div>
 
     <div id="ui-modal-overlay" class="modal-overlay">
-        <div class="ui-modal-box"><div class="ui-modal-title" id="ui-modal-title" style="font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;">Title</div><div class="ui-modal-body" id="ui-modal-body" style="font-size:15px;color:#cbd5e1;margin-bottom:20px;">Message</div><div id="ui-modal-input-container"></div><div class="ui-modal-actions" style="display:flex;gap:10px;justify-content:center;"><button class="ui-btn" style="background:#334155;box-shadow:none;" onclick="window.closeUiModal()">Cancel</button><button class="ui-btn" id="ui-modal-confirm-btn">Confirm</button></div></div>
+        <div class="ui-modal-box">
+            <div class="ui-modal-title" id="ui-modal-title" style="font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;">Title</div>
+            <div class="ui-modal-body" id="ui-modal-body" style="font-size:15px;color:#cbd5e1;margin-bottom:20px;">Message</div>
+            <div id="ui-modal-input-container"></div>
+            <div class="ui-modal-actions" style="display:flex;gap:10px;justify-content:center;">
+                <button class="ui-btn" style="background:#334155;box-shadow:none;" onclick="window.closeUiModal()">Cancel</button>
+                <button class="ui-btn" id="ui-modal-confirm-btn">Confirm</button>
+            </div>
+        </div>
     </div>
 
     <div id="toast-container"></div>
 
+    <!-- Admin Panel -->
     <div class="admin-modal" id="admin-modal">
-        <div class="admin-header-top"><div class="modal-title">⚙️ Bot Settings</div><div class="close-modal" onclick="window.closeAdminPanel()">×</div></div>
+        <div class="admin-header-top">
+            <div class="modal-title">⚙️ Bot Settings</div>
+            <div class="close-modal" onclick="window.closeAdminPanel()">×</div>
+        </div>
         <div class="admin-nav-bar">
             <div class="nav-item active" id="nav-0" onclick="window.switchAdminTab(0)"><span>⚙️</span> <span>Settings</span></div>
             <div class="nav-item" id="nav-1" onclick="window.switchAdminTab(1)"><span>📢</span> <span>Notif</span></div>
@@ -209,24 +702,68 @@
             <div class="nav-item" id="nav-4" onclick="window.switchAdminTab(4)" style="display: none;"><span>📲</span> <span>App</span></div>
         </div>
         <div class="admin-content-wrapper">
+            <!-- Settings Tab -->
             <div id="tab-settings" class="tab-content active">
-                <div style="text-align: left;margin-bottom: 20px;"><span onclick="window.logoutUser()" style="cursor: pointer; color: #f87171; font-size: 13px; font-weight: 600;">Sign Out 🚪</span></div>
+                <div style="text-align: left;margin-bottom: 20px;">
+                    <span onclick="window.logoutUser()" style="cursor: pointer; color: #f87171; font-size: 13px; font-weight: 600;">Sign Out 🚪</span>
+                </div>
                 <div id="owner-theme-section" style="display: none;">
                     <div class="admin-section-title" style="color: #fbbf24;">Theme Colors (Owner Only)</div>
-                    <div class="form-group" style="display: flex; gap: 15px;"><div style="flex: 1;"><label class="form-label">Primary Color</label><input type="color" id="color-primary-input" value="#3b82f6"></div><div style="flex: 1;"><label class="form-label">Bot Message Tint</label><input type="color" id="color-bot-input" value="#ffffff"></div></div>
+                    <div class="form-group" style="display: flex; gap: 15px;">
+                        <div style="flex: 1;">
+                            <label class="form-label">Primary Color</label>
+                            <input type="color" id="color-primary-input" value="#3b82f6">
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="form-label">Bot Message Tint</label>
+                            <input type="color" id="color-bot-input" value="#ffffff">
+                        </div>
+                    </div>
+                    
                     <div class="admin-section-title" style="color: #fbbf24;">Chat Background (Owner Only)</div>
-                    <div class="form-group"><label class="form-label">Upload Background Image (Compressed)</label><input type="file" id="admin-bg-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;"><div style="font-size:11px; color:#94a3b8; margin-top:5px;">Images will be compressed to fit storage limits.</div><button class="btn-sm btn-del" id="admin-bg-remove" onclick="window.removeBotBg()" style="display:inline-block; width:auto; margin-top:8px;">Remove Background</button></div>
-                    <div class="form-group"><label class="form-label">Or Paste Image URL (Link)</label><input type="text" id="admin-bg-url" class="form-input" placeholder="https://example.com/image.jpg"></div>
+                    <div class="form-group">
+                        <label class="form-label">Upload Background Image (Compressed)</label>
+                        <input type="file" id="admin-bg-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+                        <div style="font-size:11px; color:#94a3b8; margin-top:5px;">Images will be compressed to fit storage limits.</div>
+                        <button class="btn-sm btn-del" id="admin-bg-remove" onclick="window.removeBotBg()" style="display:inline-block; width:auto; margin-top:8px;">Remove Background</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Or Paste Image URL (Link)</label>
+                        <input type="text" id="admin-bg-url" class="form-input" placeholder="https://example.com/image.jpg">
+                    </div>
                 </div>
+
                 <div id="owner-typography-section" style="display: none;">
                     <div class="admin-section-title" style="color: #fbbf24;">Typography (Owner Only)</div>
-                    <div class="form-group"><label class="form-label">English Font</label><select id="select-en-font" class="form-select"><option value="'Inter', sans-serif">Inter</option><option value="'Roboto', sans-serif">Roboto</option><option value="'Poppins', sans-serif">Poppins</option><option value="'Open Sans', sans-serif">Open Sans</option><option value="'Montserrat', sans-serif">Montserrat</option></select></div>
-                    <div class="form-group"><label class="form-label">Arabic Font</label><select id="select-ar-font" class="form-select"><option value="'Cairo', sans-serif">Cairo</option><option value="'Tajawal', sans-serif">Tajawal</option><option value="'Almarai', sans-serif">Almarai</option><option value="'Amiri', serif">Amiri</option><option value="'El Messiri', cursive">El Messiri</option></select></div>
+                    <div class="form-group">
+                        <label class="form-label">English Font</label>
+                        <select id="select-en-font" class="form-select">
+                            <option value="'Inter', sans-serif">Inter</option>
+                            <option value="'Roboto', sans-serif">Roboto</option>
+                            <option value="'Poppins', sans-serif">Poppins</option>
+                            <option value="'Open Sans', sans-serif">Open Sans</option>
+                            <option value="'Montserrat', sans-serif">Montserrat</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Arabic Font</label>
+                        <select id="select-ar-font" class="form-select">
+                            <option value="'Cairo', sans-serif">Cairo</option>
+                            <option value="'Tajawal', sans-serif">Tajawal</option>
+                            <option value="'Almarai', sans-serif">Almarai</option>
+                            <option value="'Amiri', serif">Amiri</option>
+                            <option value="'El Messiri', cursive">El Messiri</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="admin-section-title">Appearance & Messages</div>
                 <div class="form-group"><label class="form-label">Bot Name</label><input type="text" id="admin-bot-name" class="form-input"></div>
                 <div class="form-group"><label class="form-label">Status</label><input type="text" id="admin-bot-status" class="form-input"></div>
-                <div class="form-group"><label class="form-label">Bot Icon (Upload Image)</label><input type="file" id="admin-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;"><button class="btn-sm btn-del" id="admin-icon-remove" onclick="window.removeBotIcon()" style="display:inline-block; width:auto; margin-top:8px;">Remove Icon</button></div>
+                <div class="form-group">
+                    <label class="form-label">Bot Icon (Upload Image)</label>
+                    <input type="file" id="admin-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+                    <button class="btn-sm btn-del" id="admin-icon-remove" onclick="window.removeBotIcon()" style="display:inline-block; width:auto; margin-top:8px;">Remove Icon</button>
+                </div>
                 <div class="form-group"><label class="form-label">Welcome Message</label><textarea id="admin-msg-welcome" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Subject Select Text</label><textarea id="admin-msg-subject" class="form-textarea"></textarea></div>
                 <div class="form-group"><label class="form-label">Doctor Select Text</label><textarea id="admin-msg-doctor" class="form-textarea"></textarea></div>
@@ -234,56 +771,231 @@
                 <div class="form-group"><label class="form-label">Back Texts</label><textarea id="admin-msg-backs" class="form-textarea" placeholder="Back Subject | Back Doctor | Back Main"></textarea></div>
                 <div id="owner-admin-section" style="display: none;">
                     <div class="admin-section-title" style="color: #fbbf24;">Manage Admins (Owner Only)</div>
-                    <div class="form-group"><label class="form-label">Add Admin (Email)</label><div style="display: flex; gap: 5px;"><input type="email" id="admin-add-input" class="form-input" placeholder="admin@example.com"><button class="btn-save" style="width: auto; margin: 0; padding: 0 20px;" onclick="window.addAdmin()">+</button></div></div>
+                    <div class="form-group">
+                        <label class="form-label">Add Admin (Email)</label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="email" id="admin-add-input" class="form-input" placeholder="admin@example.com">
+                            <button class="btn-save" style="width: auto; margin: 0; padding: 0 20px;" onclick="window.addAdmin()">+</button>
+                        </div>
+                    </div>
                     <div class="data-list" id="admin-list-container"></div>
                 </div>
                 <button class="btn-save" onclick="window.saveAdminSettings()">Save Settings</button>
             </div>
+
+            <!-- Notifications Tab -->
             <div id="tab-notifications" class="tab-content">
                 <div class="admin-section-title" style="color: #f97316;">Send Doctor Notification</div>
-                <p style="font-size:13px; color:#94a3b8; margin-bottom:20px;">This notification will be saved in "🔔 Notifications" and push alert to students.</p>
-                <div class="form-group"><label class="form-label">Select Subject</label><select id="notif-subject-select" class="form-select" onchange="window.populateNotifDoctors()"></select></div>
-                <div class="form-group"><label class="form-label">Select Doctor</label><select id="notif-doctor-select" class="form-select" onchange="window.loadNotifPreview()"></select></div>
-                <div class="form-group"><label class="form-label">Notification Message</label><textarea id="notif-message-text" class="form-textarea" placeholder="Type important info here..."></textarea></div>
-                <div class="form-group" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;"><label class="form-label" style="color:#fbbf24;">🔔 Schedule Reminder (Optional)</label><div style="display:flex; gap:10px;"><div style="flex:1;"><label class="form-label" style="font-size:11px;">Day</label><select id="notif-day-select" class="form-select"><option value="">No Repeat</option><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option></select></div><div style="flex:1;"><label class="form-label" style="font-size:11px;">Time</label><input type="time" id="notif-time-input" class="form-input"></div></div></div>
+                <p style="font-size:13px; color:#94a3b8; margin-bottom:20px;">This notification will be saved and sent to students.</p>
+                <div class="form-group">
+                    <label class="form-label">Select Subject</label>
+                    <select id="notif-subject-select" class="form-select" onchange="window.populateNotifDoctors()"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Select Doctor</label>
+                    <select id="notif-doctor-select" class="form-select" onchange="window.loadNotifPreview()"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notification Message</label>
+                    <textarea id="notif-message-text" class="form-textarea" placeholder="Type important info here..."></textarea>
+                </div>
+
+                <!-- NEW: Schedule Toggle -->
+                <div class="schedule-toggle-container">
+                    <span style="font-weight:600; font-size:14px; color:#cbd5e1;">🕒 Schedule for later?</span>
+                    <label class="switch">
+                        <input type="checkbox" id="schedule-toggle" onchange="window.toggleScheduleInput()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div id="schedule-datetime-container">
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label" style="color:#60a5fa;">Date & Time</label>
+                        <input type="datetime-local" id="schedule-datetime-input" class="form-input">
+                    </div>
+                    <p style="font-size:11px; color:#94a3b8;">The notification will be sent automatically at this time.</p>
+                </div>
+
                 <button class="btn-send" onclick="window.sendDoctorNotification()">Send Notification</button>
             </div>
+
+            <!-- Broadcast Tab -->
             <div id="tab-broadcast" class="tab-content">
                 <div class="admin-section-title" style="color: #eab308;">Broadcast (Batch Rep)</div>
-                <div style="background: rgba(234, 179, 8, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.2); margin-bottom: 20px;"><p style="font-size:13px; color:#e2e8f0;">This message will appear pinned at top of chat. <b>No system notification sent.</b></p></div>
+                <div style="background: rgba(234, 179, 8, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.2); margin-bottom: 20px;">
+                    <p style="font-size:13px; color:#e2e8f0;">This message will appear pinned at top of chat. <b>No system notification sent.</b></p>
+                </div>
                 <div class="form-group"><label class="form-label">Title</label><input type="text" id="broadcast-title" class="form-input" placeholder="e.g. Schedule Change"></div>
                 <div class="form-group"><label class="form-label">Body</label><textarea id="broadcast-body" class="form-textarea" style="height: 100px;" placeholder="Details here..."></textarea></div>
                 <button class="btn-save" style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);" onclick="window.saveBroadcast()">Post Broadcast</button>
                 <button class="btn-delete" onclick="window.deleteBroadcast()">Delete Broadcast</button>
                 <div id="broadcast-preview" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;"></div>
             </div>
+
+            <!-- Data Tab -->
             <div id="tab-data" class="tab-content">
                 <div class="data-path" id="admin-data-path" style="font-size:13px; color:#94a3b8; margin-bottom:15px; display:flex; align-items:center; gap:5px;">Home</div>
-                <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div class="form-group" style="margin-bottom:0;" id="file-link-input-group" style="display:block;"><input type="text" id="new-item-link" class="form-input" placeholder="Link (Google Drive)..."></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">Add</button></div></div>
+                <div id="admin-data-view-container">
+                    <div class="data-list" id="admin-list-items"></div>
+                    <div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div>
+                        <div class="radio-group" id="add-type-selector" style="display:none;">
+                            <label class="radio-label active" onclick="window.setAddType('file', this)">
+                                <input type="radio" name="addType" value="file" checked> 📄 File
+                            </label>
+                            <label class="radio-label" onclick="window.setAddType('folder', this)">
+                                <input type="radio" name="addType" value="folder"> 📁 Folder
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <input type="text" id="new-item-name" class="form-input" placeholder="Name...">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;" id="file-link-input-group" style="display:block;">
+                            <input type="text" id="new-item-link" class="form-input" placeholder="Link (Google Drive)...">
+                        </div>
+                        <button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">Add</button>
+                    </div>
+                </div>
             </div>
-            <div id="tab-manifest" class="tab-content"><div class="admin-section-title" style="color: #a855f7;">App Installation Settings</div><p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how app looks when installed.</p><div class="manifest-preview" id="manifest-icon-preview"><span>📲</span></div><div class="form-group"><label class="form-label">App Name (Short)</label><input type="text" id="manifest-app-name" class="form-input" placeholder="UniBot"></div><div class="form-group"><label class="form-label">App Icon (Upload Image)</label><input type="file" id="manifest-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;"><button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button></div><button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button></div>
+
+            <!-- Manifest Tab -->
+            <div id="tab-manifest" class="tab-content">
+                <div class="admin-section-title" style="color: #a855f7;">App Installation Settings</div>
+                <p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how app looks when installed.</p>
+                <div class="manifest-preview" id="manifest-icon-preview"><span>📲</span></div>
+                <div class="form-group"><label class="form-label">App Name (Short)</label><input type="text" id="manifest-app-name" class="form-input" placeholder="UniBot"></div>
+                <div class="form-group">
+                    <label class="form-label">App Icon (Upload Image)</label>
+                    <input type="file" id="manifest-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;">
+                    <button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button>
+                </div>
+                <button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button>
+            </div>
         </div>
     </div>
 
     <script>
+        // --- INLINE SERVICE WORKER GENERATOR ---
         function createInlineServiceWorker() {
-            const swCode = `const CACHE_NAME = 'uni-bot-v1'; self.addEventListener('install', (event) => { self.skipWaiting(); }); self.addEventListener('activate', (event) => { event.waitUntil(clients.claim()); }); self.addEventListener('fetch', (event) => { if (event.request.url.includes('jsonbin.io')) { event.respondWith(fetch(event.request).then((response) => { if (response && response.status === 200) { const responseClone = response.clone(); caches.open(CACHE_NAME).then((cache) => { cache.put(event.request, responseClone); }); } return response; }).catch(() => caches.match(event.request))); } else { event.respondWith(caches.match(event.request).then((cachedResponse) => { return cachedResponse || fetch(event.request).then((response) => { if (response && response.status === 200) { const responseClone = response.clone(); caches.open(CACHE_NAME).then((cache) => { cache.put(event.request, responseClone); }); } return response; }); })); } });`;
+            const swCode = `
+                const CACHE_NAME = 'uni-bot-v1';
+                
+                self.addEventListener('install', (event) => {
+                    self.skipWaiting();
+                });
+
+                self.addEventListener('activate', (event) => {
+                    event.waitUntil(clients.claim());
+                });
+
+                self.addEventListener('fetch', (event) => {
+                    // Network-First strategy for API calls
+                    if (event.request.url.includes('jsonbin.io')) {
+                        event.respondWith(
+                            fetch(event.request)
+                                .then((response) => {
+                                    if (response && response.status === 200) {
+                                        const responseClone = response.clone();
+                                        caches.open(CACHE_NAME).then((cache) => {
+                                            cache.put(event.request, responseClone);
+                                        });
+                                    }
+                                    return response;
+                                })
+                                .catch(() => {
+                                    return caches.match(event.request);
+                                })
+                        );
+                    } else {
+                        // Cache-First strategy for static assets
+                        event.respondWith(
+                            caches.match(event.request).then((cachedResponse) => {
+                                return cachedResponse || fetch(event.request).then((response) => {
+                                    if (response && response.status === 200) {
+                                        const responseClone = response.clone();
+                                        caches.open(CACHE_NAME).then((cache) => {
+                                            cache.put(event.request, responseClone);
+                                        });
+                                    }
+                                    return response;
+                                });
+                            })
+                        );
+                    }
+                });
+            `;
             const blob = new Blob([swCode], { type: 'application/javascript' });
             const swUrl = URL.createObjectURL(blob);
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register(swUrl).then(reg => console.log('SW Registered')).catch(err => console.log('SW Fail', err));
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('SW Registered (Inline)'))
+                    .catch(err => console.log('SW Registration Failed', err));
+            }
         }
+
+        // --- Configuration & Constants ---
         const DEFAULT_BG_URL = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/110.jpeg"; 
-        const firebaseConfig = { apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ", authDomain: "libirary-b2424.firebaseapp.com", projectId: "libirary-b2424", storageBucket: "libirary-b2424.firebasestorage.app", messagingSenderId: "371129360013", appId: "1:371129360013:web:377ef70759204018a60cc4" };
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
+          authDomain: "libirary-b2424.firebaseapp.com",
+          projectId: "libirary-b2424",
+          storageBucket: "libirary-b2424.firebasestorage.app",
+          messagingSenderId: "371129360013",
+          appId: "1:371129360013:web:377ef70759204018a60cc4"
+        };
         const OWNER_EMAIL = "peacemaker3050@gmail.com";
         const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
-        const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-        const defaultDatabase = { "Physics": { "doctors": ["Dr. Ahmed"], "Dr. Ahmed": { "root": [ { "id": "f1", "name": "📚 Lectures", "type": "folder", "children": [] }, { "id": "f2", "name": "🔔 Notifications", "type": "folder", "children": [] } ] } }, "Chemistry": { "doctors": [], "root": [] }, "Mathematics": { "doctors": [], "root": [] } };
-        const defaultConfig = { botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], generalBroadcast: { active: false, title: "", body: "", timestamp: 0 }, englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif", appName: "UniBot Pro", appIcon: "", appVersion: 1, themeColor: "#3b82f6", botMsgColor: "#ffffff", welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.", subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇", categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:", backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", schedules: [], activeAlerts: [], database: defaultDatabase };
+        // NOTE: Use READ-ONLY key here for safety. Master key is on backend.
+        const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2"; 
+
+        const defaultDatabase = {
+            "Physics": { 
+                "doctors": ["Dr. Ahmed"], 
+                "Dr. Ahmed": { 
+                    "root": [ 
+                        { "id": "f1", "name": "📚 Lectures", "type": "folder", "children": [] }, 
+                        { "id": "f2", "name": "🔔 Notifications", "type": "folder", "children": [] } 
+                    ] 
+                } 
+            },
+            "Chemistry": { "doctors": [], "root": [] },
+            "Mathematics": { "doctors": [], "root": [] }
+        };
+
+        const defaultConfig = {
+            botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], scheduledNotifications: [],
+            generalBroadcast: { active: false, title: "", body: "", timestamp: 0 },
+            englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif",
+            appName: "UniBot Pro", appIcon: "", appVersion: 1,
+            themeColor: "#3b82f6",
+            botMsgColor: "#ffffff",
+            welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.",
+            subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇",
+            categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:",
+            backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", database: defaultDatabase
+        };
+
         let CONFIG = { ...defaultConfig };
         let database = CONFIG.database;
-        let auth; let isAuthInitialized = false; let deferredPrompt; let refreshInterval = null; let fuseSearchEngine = null;
-        let botNavStack = []; let adminNavStack = []; let currentAdminTab = 0; let currentModalCallback = null; let adminAddType = 'file';
+        let auth;
+        let isAuthInitialized = false;
+        let deferredPrompt;
+        let refreshInterval = null;
+        let fuseSearchEngine = null; 
+        
+        let botNavStack = [];
+        let adminNavStack = [];
+        let currentAdminTab = 0;
+        let currentModalCallback = null;
+        let adminAddType = 'file';
+        let pendingNotificationContent = null; // Used for Popup
+
         try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch (e) { console.log("Firebase Init Error", e); }
+
+        // --- UI Logic ---
         const chatArea = document.getElementById('chat-area');
         const keyboardArea = document.getElementById('keyboard-area');
         const typingIndicator = document.getElementById('typing');
@@ -291,93 +1003,1139 @@
         const menuDropdown = document.getElementById('menu-dropdown');
         const searchInput = document.getElementById('search-input');
         const searchDropdown = document.getElementById('search-dropdown');
-        function showToast(message, type = 'info') { const container = document.getElementById('toast-container'); const toast = document.createElement('div'); toast.className = `toast ${type}`; let icon = 'ℹ️'; if(type === 'success') icon = '✅'; if(type === 'error') icon = '❌'; toast.innerHTML = `<span>${icon} ${message}</span>`; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(20px) scale(0.9)'; setTimeout(() => toast.remove(), 300); }, 3000); }
-        function showInputModal(title, placeholder, callback) { const overlay = document.getElementById('ui-modal-overlay'); document.getElementById('ui-modal-title').innerText = title; document.getElementById('ui-modal-body').style.display = 'none'; const inputContainer = document.getElementById('ui-modal-input-container'); inputContainer.style.display = 'block'; inputContainer.innerHTML = `<input type="text" class="ui-input-field" id="ui-modal-input" placeholder="${placeholder}" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); border:1px solid #475569; color:#fff; border-radius:8px;">`; currentModalCallback = callback; overlay.classList.add('active'); setTimeout(() => document.getElementById('ui-modal-input').focus(), 100); }
-        function showConfirmModal(title, message, callback) { const overlay = document.getElementById('ui-modal-overlay'); document.getElementById('ui-modal-title').innerText = title; document.getElementById('ui-modal-body').innerText = message; document.getElementById('ui-modal-body').style.display = 'block'; document.getElementById('ui-modal-input-container').style.display = 'none'; currentModalCallback = callback; overlay.classList.add('active'); }
-        function closeUiModal() { document.getElementById('ui-modal-overlay').classList.remove('active'); currentModalCallback = null; }
-        document.getElementById('ui-modal-confirm-btn').addEventListener('click', () => { if (currentModalCallback) { const inputEl = document.getElementById('ui-modal-input'); const val = inputEl ? inputEl.value : true; currentModalCallback(val); } closeUiModal(); });
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            let icon = 'ℹ️';
+            if(type === 'success') icon = '✅';
+            if(type === 'error') icon = '❌';
+            toast.innerHTML = `<span>${icon} ${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px) scale(0.9)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showInputModal(title, placeholder, callback) {
+            const overlay = document.getElementById('ui-modal-overlay');
+            document.getElementById('ui-modal-title').innerText = title;
+            document.getElementById('ui-modal-body').style.display = 'none';
+            const inputContainer = document.getElementById('ui-modal-input-container');
+            inputContainer.style.display = 'block';
+            inputContainer.innerHTML = `<input type="text" class="ui-input-field" id="ui-modal-input" placeholder="${placeholder}" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); border:1px solid #475569; color:#fff; border-radius:8px;">`;
+            currentModalCallback = callback;
+            overlay.classList.add('active');
+            setTimeout(() => document.getElementById('ui-modal-input').focus(), 100);
+        }
+
+        function showConfirmModal(title, message, callback) {
+            const overlay = document.getElementById('ui-modal-overlay');
+            document.getElementById('ui-modal-title').innerText = title;
+            document.getElementById('ui-modal-body').innerText = message;
+            document.getElementById('ui-modal-body').style.display = 'block';
+            document.getElementById('ui-modal-input-container').style.display = 'none';
+            currentModalCallback = callback;
+            overlay.classList.add('active');
+        }
+
+        function closeUiModal() {
+            document.getElementById('ui-modal-overlay').classList.remove('active');
+            currentModalCallback = null;
+        }
+
+        document.getElementById('ui-modal-confirm-btn').addEventListener('click', () => {
+            if (currentModalCallback) {
+                const inputEl = document.getElementById('ui-modal-input');
+                const val = inputEl ? inputEl.value : true;
+                currentModalCallback(val);
+            }
+            closeUiModal();
+        });
         document.getElementById('ui-modal-overlay').addEventListener('click', (e) => { if(e.target.id === 'ui-modal-overlay') closeUiModal(); });
-        function addMessage(content, sender, isHtml = false) { const msgDiv = document.createElement('div'); msgDiv.classList.add('message', sender === 'bot' ? 'msg-bot' : 'msg-user'); if (isHtml) msgDiv.innerHTML = content; else msgDiv.innerText = content; const timeSpan = document.createElement('span'); timeSpan.classList.add('timestamp'); timeSpan.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); msgDiv.appendChild(timeSpan); chatArea.appendChild(msgDiv); scrollToBottom(); return msgDiv; }
+
+        function addMessage(content, sender, isHtml = false) {
+            const msgDiv = document.createElement('div'); 
+            msgDiv.classList.add('message', sender === 'bot' ? 'msg-bot' : 'msg-user');
+            if (isHtml) msgDiv.innerHTML = content; else msgDiv.innerText = content;
+            const timeSpan = document.createElement('span'); 
+            timeSpan.classList.add('timestamp'); 
+            timeSpan.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+            msgDiv.appendChild(timeSpan); 
+            chatArea.appendChild(msgDiv); 
+            scrollToBottom();
+            return msgDiv;
+        }
+
         function scrollToBottom() { setTimeout(() => { chatArea.scrollTop = chatArea.scrollHeight; }, 0); }
-        function botReply(text, isHtml = false) { typingIndicator.classList.add('active'); scrollToBottom(); setTimeout(() => { typingIndicator.classList.remove('active'); addMessage(text, 'bot', isHtml); }, CONFIG.typingSpeed); }
-        function createButton(text, onClick, isBack = false, isFolder = false) { const btn = document.createElement('div'); btn.classList.add('keyboard-btn'); if(isBack) btn.classList.add('back-btn'); if(isFolder) btn.classList.add('folder-btn'); btn.innerText = text; btn.onclick = onClick; return btn; }
-        const numberMap = { 'واحد': '1', '1': '1', 'one': '1', 'ثاني': '2', 'اثنين': '2', '2': '2', 'two': '2', 'ثالث': '3', '3': '3', 'three': '3', 'رابع': '4', '4': '4', 'four': '4', 'خامس': '5', '5': '5', 'five': '5', 'سادس': '6', '6': '6', 'six': '6', 'سابع': '7', '7': '7', 'seven': '7', 'ثامن': '8', '8': '8', 'eight': '8', 'تاسع': '9', '9': '9', 'nine': '9', 'عاشر': '10', '10': '10', 'ten': '10' };
-        const transliterationMap = { 'كترك': 'electric', 'كتريك': 'electric', 'الكترك': 'electric machines', 'electric': 'electric machines', 'ماشين': 'machine', 'machines': 'machines', 'ماشينس': 'machines', 'فلويد': 'fluid', 'فل': 'fluid', 'fluids': 'fluid', 'هيدروليك': 'hydraulics', 'ديزاين': 'design', 'دزاين': 'design', 'هات': 'heat', 'heat': 'heat transfer', 'ترانسفر': 'transfer', 'سيركويت': 'circuit', 'circuits': 'circuit', 'سيجنال': 'signal', 'ساينس': 'science', 'ميكانيكا': 'mechanics', 'ميكانيك': 'mechanics', 'ترمودايناميك': 'thermodynamics', 'ترموداينامكس': 'thermodynamics', 'دايناميك': 'dynamics', 'استاتيك': 'statics', 'فزياء': 'physics', 'كيمياء': 'chemistry', 'رياضيات': 'mathematics', 'رسم': 'drawing', 'جرافيك': 'graphic', 'جيومتري': 'geometry', 'بروبابيلتي': 'probability', 'بروبرمجشن': 'programming', 'محاضره': 'lec', 'محاضرة': 'lec', 'محاضرات': 'lec', 'لايكتشر': 'lec', 'lecture': 'lec', 'lectures': 'lec', 'شيت': 'sheet', 'شيتات': 'sheet', 'sheets': 'sheet', 'حل': 'sol', 'حلول': 'sol', 'solution': 'sol', 'solutions': 'sol', 'كويز': 'quiz', 'quizzes': 'quiz', 'اسايمنت': 'assignment', 'assignments': 'assignment', 'لاب': 'lab', 'labs': 'lab', 'laboratory': 'lab', 'فاينل': 'final', 'finals': 'final', 'ميد': 'midterm', 'بوربوينت': 'ppt', 'powerpoint': 'ppt', 'slide': 'slide', 'ورد': 'word', 'اكسل': 'excel', 'pdf': 'pdf', 'سكان': 'scan', 'صور': 'images', 'صورة': 'image', 'فديو': 'video', 'نوت': 'notes', 'summary': 'summary' };
-        function normalizeText(text) { if (!text) return ""; let processed = text.toLowerCase(); Object.keys(numberMap).forEach(key => { const regex = new RegExp(`\\b${key}\\b`, 'gi'); processed = processed.replace(regex, numberMap[key]); }); Object.keys(transliterationMap).forEach(key => { const regex = new RegExp(`\\b${key}\\b`, 'gi'); processed = processed.replace(regex, transliterationMap[key]); }); return processed; }
-        function flattenDatabase(db) { const list = []; Object.keys(db).forEach(subject => { list.push({ type: 'subject', name: subject, path: [subject], id: subject }); const subjectData = db[subject]; if (subjectData.doctors) { subjectData.doctors.forEach(doctor => { list.push({ type: 'doctor', name: doctor, path: [subject, doctor], id: `${subject}-${doctor}` }); const doctorData = subjectData[doctor]; if (doctorData && doctorData.root) traverseFolder(doctorData.root, [subject, doctor], list); }); } }); return list; }
-        function traverseFolder(items, currentPath, list) { if (!items) return; items.forEach(item => { const fullPath = [...currentPath, item.name]; list.push({ type: item.type, name: item.name, path: fullPath, id: item.id, link: item.link }); if (item.type === 'folder' && item.children) traverseFolder(item.children, fullPath, list); }); }
-        function initSearchEngine() { if (typeof Fuse === 'undefined') return; const flatData = flattenDatabase(database); fuseSearchEngine = new Fuse(flatData, { keys: [{ name: 'name', weight: 1 }, { name: 'path', weight: 0.5 }, { name: 'id', weight: 0.1 }], threshold: 0.4, ignoreLocation: true, minMatchCharLength: 1, includeScore: true }); }
-        function performSearch(query) { if (!query || !fuseSearchEngine) return []; const normalizedQuery = normalizeText(query); const results = fuseSearchEngine.search(normalizedQuery); return results.map(r => r.item); }
-        function renderSearchResults(results, query) { searchDropdown.innerHTML = ''; if (query.length < 2) return; const fileResults = results.filter(item => item.type === 'file'); if (fileResults.length === 0) searchDropdown.innerHTML = '<div class="search-empty">No files found</div>'; else { fileResults.forEach(item => { const div = document.createElement('div'); div.className = 'search-result-item'; div.innerHTML = `<div class="sr-title">📄 ${item.name}</div><div class="sr-path">${item.path.map(p => `<span>${p}</span>`).join('<span> > </span>')}</div>`; div.onclick = () => handleSearchResultClick(item); searchDropdown.appendChild(div); }); } searchDropdown.classList.add('show'); }
-        function handleSearchResultClick(item) { searchDropdown.classList.remove('show'); searchInput.value = ''; if (item.type === 'file' && item.link && item.link !== '#') { const fileName = item.name; const fileLink = item.link; const finalMessageHTML = `<div style="margin-bottom:5px;">📎 <b>${fileName}</b></div><div class="file-link-btn" onclick="window.open('${fileLink}', '_blank')"><span>🔗</span><span>Open in Google Drive</span></div>`; addMessage(finalMessageHTML, 'bot', true); scrollToBottom(); } }
-        let searchTimeout; searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const query = searchInput.value.trim(); if (query.length < 2) return; clearTimeout(searchTimeout); const results = performSearch(query); if (results.length > 0) { const fileResults = results.filter(item => item.type === 'file'); if (fileResults.length > 0) handleSearchResultClick(fileResults[0]); } } }); searchInput.addEventListener('input', (e) => { const query = e.target.value.trim(); clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { const results = performSearch(query); renderSearchResults(results, query); }, 200); });
-        document.addEventListener('click', (e) => { const isClickInsideSearch = searchInput.contains(e.target) || searchDropdown.contains(e.target); if (!isClickInsideSearch) searchDropdown.classList.remove('show'); if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active'); });
-        function renderKeyboard() { keyboardArea.innerHTML = ''; if (botNavStack.length === 0) { const subjects = Object.keys(database); subjects.forEach(sub => { keyboardArea.appendChild(createButton(sub, () => handleBotNavClick(sub, 'subject'))); }); return; } keyboardArea.appendChild(createButton("🔙 Back", handleBotBack, true)); if (botNavStack.length === 1) { const subjectName = botNavStack[0]; const subjectDoctors = database[subjectName].doctors; subjectDoctors.forEach(doc => { keyboardArea.appendChild(createButton(doc, () => handleBotNavClick(doc, 'doctor'))); }); } else { const currentFolderContent = getBotCurrentContent(); if (!currentFolderContent || currentFolderContent.length === 0) { const emptyBtn = createButton("📂 Empty Folder", () => {}); emptyBtn.style.opacity = "0.5"; emptyBtn.style.cursor = "default"; keyboardArea.appendChild(emptyBtn); } else { currentFolderContent.forEach(item => { if (item.type === 'folder') keyboardArea.appendChild(createButton(`📂 ${item.name}`, () => handleBotNavClick(item.name, 'folder'), false, true)); else keyboardArea.appendChild(createButton(`📄 ${item.name}`, () => handleFileClick(item))); }); } } }
-        function getBotCurrentContent() { if (botNavStack.length < 2) return null; const subject = botNavStack[0]; const doctor = botNavStack[1]; let currentList = database[subject][doctor].root || []; for (let i = 2; i < botNavStack.length; i++) { const folderName = botNavStack[i]; const folder = currentList.find(f => f.name === folderName && f.type === 'folder'); if (folder && folder.children) currentList = folder.children; else return []; } return currentList; }
-        function handleBotNavClick(name, type) { addMessage(name, 'user'); botNavStack.push(name); let replyText = ""; if (type === 'subject') replyText = replacePlaceholders(CONFIG.subjectPrompt, name); else if (type === 'doctor') replyText = replacePlaceholders(CONFIG.doctorPrompt, name); else if (type === 'folder') replyText = `Opened folder: <b>${name}</b>`; botReply(replyText, true); renderKeyboard(); }
-        function handleBotBack() { addMessage("🔙 Back", 'user'); botNavStack.pop(); let replyText = ""; if (botNavStack.length === 0) replyText = CONFIG.backMain; else if (botNavStack.length === 1) replyText = replacePlaceholders(CONFIG.backSubject, botNavStack[0]); else replyText = `Back to <b>${botNavStack[botNavStack.length-1]}</b>`; botReply(replyText, true); renderKeyboard(); }
-        function handleFileClick(fileObj) { const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:")); if (isNotification) { const actualMsg = fileObj.type === "notif" ? fileObj.name : fileObj.link.replace("content:", ""); const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${botNavStack[1]} (${botNavStack[0]})</div><div>${actualMsg}</div></div>`; addMessage(htmlContent, 'bot', true); } else { addMessage(`Opening: ${fileObj.name}`, 'user'); setTimeout(() => { if (!fileObj.link || fileObj.link.startsWith("javascript:") || fileObj.link === "#") { const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; addMessage(htmlContent, 'bot', true); } else { const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div class="file-link-btn" onclick="window.open('${fileObj.link}', '_blank')"><span>🔗</span><span>Open in Google Drive</span></div>`; addMessage(htmlContent, 'bot', true); } }, 800); } }
+
+        function botReply(text, isHtml = false) { 
+            typingIndicator.classList.add('active'); 
+            scrollToBottom(); 
+            setTimeout(() => { 
+                typingIndicator.classList.remove('active'); 
+                addMessage(text, 'bot', isHtml); 
+            }, CONFIG.typingSpeed); 
+        }
+
+        function createButton(text, onClick, isBack = false, isFolder = false) { 
+            const btn = document.createElement('div'); 
+            btn.classList.add('keyboard-btn'); 
+            if(isBack) btn.classList.add('back-btn'); 
+            if(isFolder) btn.classList.add('folder-btn');
+            btn.innerText = text; 
+            btn.onclick = onClick; 
+            return btn; 
+        }
+
+        // --- SEARCH LOGIC ---
+        const numberMap = {
+            'واحد': '1', '1': '1', 'one': '1', 'ثاني': '2', 'اثنين': '2', '2': '2', 'two': '2',
+            'ثالث': '3', '3': '3', 'three': '3', 'رابع': '4', '4': '4', 'four': '4',
+            'خامس': '5', '5': '5', 'five': '5', 'سادس': '6', '6': '6', 'six': '6',
+            'سابع': '7', '7': '7', 'seven': '7', 'ثامن': '8', '8': '8', 'eight': '8',
+            'تاسع': '9', '9': '9', 'nine': '9', 'عاشر': '10', '10': '10', 'ten': '10'
+        };
+        const transliterationMap = {
+            'كترك': 'electric', 'كتريك': 'electric', 'الكترك': 'electric machines', 'electric': 'electric machines',
+            'ماشين': 'machine', 'machines': 'machines', 'ماشينس': 'machines', 'فلويد': 'fluid', 'فل': 'fluid', 'fluids': 'fluid',
+            'هيدروليك': 'hydraulics', 'ديزاين': 'design', 'دزاين': 'design', 'هات': 'heat', 'heat': 'heat transfer',
+            'ترانسفر': 'transfer', 'سيركويت': 'circuit', 'circuits': 'circuit', 'سيجنال': 'signal', 'ساينس': 'science',
+            'ميكانيكا': 'mechanics', 'ميكانيك': 'mechanics', 'ترمودايناميك': 'thermodynamics', 'ترموداينامكس': 'thermodynamics',
+            'دايناميك': 'dynamics', 'استاتيك': 'statics', 'فزياء': 'physics', 'كيمياء': 'chemistry',
+            'رياضيات': 'mathematics', 'رسم': 'drawing', 'جرافيك': 'graphic', 'جيومتري': 'geometry',
+            'بروبابيلتي': 'probability', 'بروبرمجشن': 'programming', 'محاضره': 'lec', 'محاضرة': 'lec', 'محاضرات': 'lec',
+            'لايكتشر': 'lec', 'lecture': 'lec', 'lectures': 'lec', 'شيت': 'sheet', 'شيتات': 'sheet', 'sheets': 'sheet',
+            'حل': 'sol', 'حلول': 'sol', 'solution': 'sol', 'solutions': 'sol', 'كويز': 'quiz', 'quizzes': 'quiz',
+            'اسايمنت': 'assignment', 'assignments': 'assignment', 'لاب': 'lab', 'labs': 'lab', 'laboratory': 'lab',
+            'فاينل': 'final', 'finals': 'final', 'ميد': 'midterm', 'بوربوينت': 'ppt', 'powerpoint': 'ppt', 'slide': 'slide',
+            'ورد': 'word', 'اكسل': 'excel', 'pdf': 'pdf', 'سكان': 'scan', 'صور': 'images', 'صورة': 'image',
+            'فديو': 'video', 'نوت': 'notes', 'summary': 'summary'
+        };
+
+        function normalizeText(text) {
+            if (!text) return "";
+            let processed = text.toLowerCase();
+            Object.keys(numberMap).forEach(key => {
+                const regex = new RegExp(`\\b${key}\\b`, 'gi');
+                processed = processed.replace(regex, numberMap[key]);
+            });
+            Object.keys(transliterationMap).forEach(key => {
+                const regex = new RegExp(`\\b${key}\\b`, 'gi');
+                processed = processed.replace(regex, transliterationMap[key]);
+            });
+            return processed;
+        }
+
+        function flattenDatabase(db) {
+            const list = [];
+            Object.keys(db).forEach(subject => {
+                list.push({ type: 'subject', name: subject, path: [subject], id: subject });
+                const subjectData = db[subject];
+                if (subjectData.doctors) {
+                    subjectData.doctors.forEach(doctor => {
+                        list.push({ type: 'doctor', name: doctor, path: [subject, doctor], id: `${subject}-${doctor}` });
+                        const doctorData = subjectData[doctor];
+                        if (doctorData && doctorData.root) traverseFolder(doctorData.root, [subject, doctor], list);
+                    });
+                }
+            });
+            return list;
+        }
+
+        function traverseFolder(items, currentPath, list) {
+            if (!items) return;
+            items.forEach(item => {
+                const fullPath = [...currentPath, item.name];
+                list.push({ type: item.type, name: item.name, path: fullPath, id: item.id, link: item.link });
+                if (item.type === 'folder' && item.children) traverseFolder(item.children, fullPath, list);
+            });
+        }
+
+        function initSearchEngine() {
+            if (typeof Fuse === 'undefined') return;
+            const flatData = flattenDatabase(database);
+            fuseSearchEngine = new Fuse(flatData, {
+                keys: [{ name: 'name', weight: 1 }, { name: 'path', weight: 0.5 }, { name: 'id', weight: 0.1 }],
+                threshold: 0.4, ignoreLocation: true, minMatchCharLength: 1, includeScore: true
+            });
+        }
+
+        function performSearch(query) {
+            if (!query || !fuseSearchEngine) return [];
+            const normalizedQuery = normalizeText(query);
+            const results = fuseSearchEngine.search(normalizedQuery);
+            return results.map(r => r.item);
+        }
+
+        function renderSearchResults(results, query) {
+            searchDropdown.innerHTML = '';
+            if (query.length < 2) return;
+            const fileResults = results.filter(item => item.type === 'file');
+            if (fileResults.length === 0) {
+                searchDropdown.innerHTML = '<div class="search-empty">No files found</div>';
+            } else {
+                fileResults.forEach(item => {
+                    const div = document.createElement('div'); div.className = 'search-result-item';
+                    div.innerHTML = `<div class="sr-title">📄 ${item.name}</div><div class="sr-path">${item.path.map(p => `<span>${p}</span>`).join('<span> > </span>')}</div>`;
+                    div.onclick = () => handleSearchResultClick(item);
+                    searchDropdown.appendChild(div);
+                });
+            }
+            searchDropdown.classList.add('show');
+        }
+
+        function handleSearchResultClick(item) {
+            searchDropdown.classList.remove('show');
+            searchInput.value = '';
+            if (item.type === 'file' && item.link && item.link !== '#') {
+                const fileName = item.name;
+                const fileLink = item.link;
+                const finalMessageHTML = `<div style="margin-bottom:5px;">📎 <b>${fileName}</b></div><div class="file-link-btn" onclick="window.open('${fileLink}', '_blank')"><span>🔗</span><span>Open in Google Drive</span></div>`;
+                addMessage(finalMessageHTML, 'bot', true);
+                scrollToBottom();
+            }
+        }
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = searchInput.value.trim();
+                if (query.length < 2) return;
+                clearTimeout(searchTimeout);
+                const results = performSearch(query);
+                if (results.length > 0) {
+                    const fileResults = results.filter(item => item.type === 'file');
+                    if (fileResults.length > 0) handleSearchResultClick(fileResults[0]);
+                }
+            }
+        });
+
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const results = performSearch(query);
+                renderSearchResults(results, query);
+            }, 200);
+        });
+
+        document.addEventListener('click', (e) => {
+            const isClickInsideSearch = searchInput.contains(e.target) || searchDropdown.contains(e.target);
+            if (!isClickInsideSearch) searchDropdown.classList.remove('show');
+            if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active');
+        });
+
+        // --- Bot Navigation ---
+        function renderKeyboard() {
+            keyboardArea.innerHTML = ''; 
+            if (botNavStack.length === 0) { 
+                const subjects = Object.keys(database);
+                subjects.forEach(sub => { keyboardArea.appendChild(createButton(sub, () => handleBotNavClick(sub, 'subject'))); }); 
+                return; 
+            }
+            keyboardArea.appendChild(createButton("🔙 Back", handleBotBack, true));
+            if (botNavStack.length === 1) { 
+                const subjectName = botNavStack[0];
+                const subjectDoctors = database[subjectName].doctors; 
+                subjectDoctors.forEach(doc => { keyboardArea.appendChild(createButton(doc, () => handleBotNavClick(doc, 'doctor'))); }); 
+            } else { 
+                const currentFolderContent = getBotCurrentContent();
+                if (!currentFolderContent || currentFolderContent.length === 0) {
+                     const emptyBtn = createButton("📂 Empty Folder", () => {}); 
+                    emptyBtn.style.opacity = "0.5"; emptyBtn.style.cursor = "default"; 
+                    keyboardArea.appendChild(emptyBtn);
+                } else {
+                    currentFolderContent.forEach(item => {
+                        if (item.type === 'folder') {
+                            keyboardArea.appendChild(createButton(`📂 ${item.name}`, () => handleBotNavClick(item.name, 'folder'), false, true));
+                        } else {
+                            keyboardArea.appendChild(createButton(`📄 ${item.name}`, () => handleFileClick(item)));
+                        }
+                    });
+                }
+            }
+        }
+
+        function getBotCurrentContent() {
+            if (botNavStack.length < 2) return null;
+            const subject = botNavStack[0];
+            const doctor = botNavStack[1];
+            let currentList = database[subject][doctor].root || [];
+            for (let i = 2; i < botNavStack.length; i++) {
+                const folderName = botNavStack[i];
+                const folder = currentList.find(f => f.name === folderName && f.type === 'folder');
+                if (folder && folder.children) currentList = folder.children;
+                else return [];
+            }
+            return currentList;
+        }
+
+        function handleBotNavClick(name, type) {
+            addMessage(name, 'user');
+            botNavStack.push(name);
+            let replyText = "";
+            if (type === 'subject') replyText = replacePlaceholders(CONFIG.subjectPrompt, name);
+            else if (type === 'doctor') replyText = replacePlaceholders(CONFIG.doctorPrompt, name);
+            else if (type === 'folder') replyText = `Opened folder: <b>${name}</b>`;
+            botReply(replyText, true); 
+            renderKeyboard(); 
+        }
+
+        function handleBotBack() {
+            addMessage("🔙 Back", 'user');
+            botNavStack.pop();
+            let replyText = "";
+            if (botNavStack.length === 0) replyText = CONFIG.backMain;
+            else if (botNavStack.length === 1) replyText = replacePlaceholders(CONFIG.backSubject, botNavStack[0]);
+            else replyText = `Back to <b>${botNavStack[botNavStack.length-1]}</b>`;
+            botReply(replyText, true);
+            renderKeyboard();
+        }
+
+        function handleFileClick(fileObj) {
+            const isNotification = fileObj.type === "notif" || (fileObj.link && fileObj.link.startsWith("content:"));
+            if (isNotification) {
+                const actualMsg = fileObj.type === "notif" ? fileObj.name : fileObj.link.replace("content:", "");
+                const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${botNavStack[1]} (${botNavStack[0]})</div><div>${actualMsg}</div></div>`;
+                addMessage(htmlContent, 'bot', true);
+            } else {
+                addMessage(`Opening: ${fileObj.name}`, 'user');
+                setTimeout(() => {
+                    if (!fileObj.link || fileObj.link.startsWith("javascript:") || fileObj.link === "#") { 
+                        const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div style="background:rgba(239,68,68,0.1); color:#fca5a5; padding:10px; border-radius:8px; border:1px solid rgba(239,68,68,0.2); font-size:13px;"><span>⚠️</span><span>Link not configured</span></div>`; 
+                        addMessage(htmlContent, 'bot', true); 
+                    } else { 
+                        const htmlContent = `<div style="margin-bottom:5px;">📎 <b>${fileObj.name}</b></div><div class="file-link-btn" onclick="window.open('${fileObj.link}', '_blank')"><span>🔗</span><span>Open in Google Drive</span></div>`; 
+                        addMessage(htmlContent, 'bot', true);
+                    }
+                }, 800);
+            }
+        }
+        
         function replacePlaceholders(text, name) { let res = text || ""; if (name) res = res.replace(/{name}/g, name); res = res.replace(/{botName}/g, CONFIG.botName); return res; }
+
         menuBtn.addEventListener('click', (e) => { e.stopPropagation(); menuDropdown.classList.toggle('active'); });
+        document.addEventListener('click', (e) => { if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active'); });
+
         window.clearChat = function() { chatArea.innerHTML = ''; botNavStack = []; menuDropdown.classList.remove('active'); setTimeout(() => { botReply("Chat cleared. 🗑️<br>Welcome back! Choose a subject 👇", true); }, 100); }
         window.resetBot = function() { botNavStack = []; menuDropdown.classList.remove('active'); addMessage("🏠 Reset Bot", 'user'); botReply("Bot restarted. Please select a subject 👇", true); }
-        window.enableNotifications = function() { menuDropdown.classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; } Notification.requestPermission().then(permission => { if (permission === 'granted') { showToast("✅ Notifications Enabled", "success"); new Notification("Enabled", { body: "You will now receive updates." }); } else { showToast("❌ Permission Denied", "error"); } }); };
-        function compressImage(file, maxWidth, quality, callback) { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (event) => { const img = new Image(); img.src = event.target.result; img.onload = () => { let width = img.width; let height = img.height; if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; } const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height); callback(canvas.toDataURL('image/jpeg', quality)); }; }; }
-        document.getElementById('admin-icon-upload').addEventListener('change', function(e) { const file = e.target.files[0]; if(file) { compressImage(file, 150, 0.7, (base64String) => { CONFIG.botImage = base64String; applyConfig(CONFIG); document.getElementById('admin-icon-remove').style.display = 'inline-block'; }); } });
+        window.enableNotifications = function() {
+            menuDropdown.classList.remove('active'); 
+            if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; }
+            Notification.requestPermission().then(permission => { 
+                if (permission === 'granted') { showToast("✅ Notifications Enabled", "success"); new Notification("Enabled", { body: "You will now receive updates." }); } 
+                else { showToast("❌ Permission Denied", "error"); } 
+            });
+        };
+
+        // ==========================================
+        // NOTIFICATION POPUP LOGIC (Updated)
+        // ==========================================
+        
+        function checkForNewNotification() {
+            const lastSeen = localStorage.getItem('lastSeenNotif') || 0;
+            // Check if there is a new notification in the config
+            if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
+                const latest = CONFIG.recentUpdates[0];
+                // If latest update is newer than what user saw
+                if (latest.timestamp > lastSeen) {
+                    pendingNotificationContent = latest.messageBody || "New message available.";
+                    document.getElementById('visual-alert-body').innerText = pendingNotificationContent;
+                    document.getElementById('visual-alert-overlay').classList.add('active');
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                }
+            }
+        }
+
+        window.closeVisualAlert = function() {
+            const overlay = document.getElementById('visual-alert-overlay');
+            overlay.classList.remove('active');
+            
+            // Mark as seen
+            if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) {
+                localStorage.setItem('lastSeenNotif', CONFIG.recentUpdates[0].timestamp);
+            }
+
+            // Action: Send message to chat
+            if (pendingNotificationContent) {
+                addMessage(pendingNotificationContent, 'bot', true);
+                pendingNotificationContent = null;
+            }
+        };
+
+        // ==========================================
+        // IMAGE HANDLING
+        // ==========================================
+
+        function compressImage(file, maxWidth, quality, callback) {
+            const reader = new FileReader(); 
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image(); 
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width; 
+                    let height = img.height;
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    const canvas = document.createElement('canvas'); 
+                    canvas.width = width; 
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d'); 
+                    ctx.drawImage(img, 0, 0, width, height);
+                    callback(canvas.toDataURL('image/jpeg', quality));
+                };
+            };
+        }
+
+        document.getElementById('admin-icon-upload').addEventListener('change', function(e) { 
+            const file = e.target.files[0]; 
+            if(file) { 
+                compressImage(file, 150, 0.7, (base64String) => {
+                    CONFIG.botImage = base64String; 
+                    applyConfig(CONFIG); 
+                    document.getElementById('admin-icon-remove').style.display = 'inline-block'; 
+                }); 
+            } 
+        });
         window.removeBotIcon = function() { CONFIG.botImage = ""; applyConfig(CONFIG); document.getElementById('admin-icon-upload').value = ""; document.getElementById('admin-icon-remove').style.display = 'none'; };
-        document.getElementById('admin-bg-upload').addEventListener('change', function(e) { const file = e.target.files[0]; if(file) { showToast("Compressing image...", "info"); compressImage(file, 1200, 0.5, (base64String) => { if (base64String.length > 700000) { showToast("⚠️ Image too large", "error"); return; } CONFIG.bgImage = base64String; document.getElementById('admin-bg-url').value = ""; applyConfig(CONFIG); document.getElementById('admin-bg-remove').style.display = 'inline-block'; showToast("Background loaded!", "success"); }); } });
-        window.removeBotBg = function() { CONFIG.bgImage = ""; document.getElementById('admin-bg-url').value = ""; applyConfig(CONFIG); document.getElementById('admin-bg-upload').value = ""; document.getElementById('admin-bg-remove').style.display = 'none'; };
-        document.getElementById('admin-bg-url').addEventListener('input', function(e) { CONFIG.bgImage = e.target.value; applyConfig(CONFIG); });
-        function getAdminCurrentContent() { if (adminNavStack.length === 0) return Object.keys(database); if (adminNavStack.length === 1) return database[adminNavStack[0]].doctors; const subject = adminNavStack[0]; const doctor = adminNavStack[1]; if (!database[subject][doctor].root) database[subject][doctor].root = migrateDoctorData(database[subject][doctor]); let currentList = database[subject][doctor].root; for (let i = 2; i < adminNavStack.length; i++) { const folderName = adminNavStack[i]; const folder = currentList.find(f => f.name === folderName && f.type === 'folder'); if (folder && folder.children) currentList = folder.children; else return []; } return currentList; }
-        function migrateDoctorData(doctorObj) { if (doctorObj.root) return doctorObj.root; let newRoot = []; Object.keys(doctorObj).forEach(key => { if (key !== 'doctors' && key !== 'sections' && key !== 'root' && Array.isArray(doctorObj[key])) { newRoot.push({ id: 'migrated_' + Date.now(), name: key, type: 'folder', children: doctorObj[key] }); } }); if (!newRoot.find(f => f.name === "📚 Lectures")) newRoot.push({ id: 'def_lectures', name: "📚 Lectures", type: "folder", children: [] }); if (!newRoot.find(f => f.name === "🔔 Notifications")) newRoot.push({ id: 'def_notif', name: "🔔 Notifications", type: "folder", children: [] }); return newRoot; }
-        function renderAdminDataView() { const pathContainer = document.getElementById('admin-data-path'); const listContainer = document.getElementById('admin-list-items'); const addTypeSelector = document.getElementById('add-type-selector'); const linkGroup = document.getElementById('file-link-input-group'); listContainer.innerHTML = ''; document.getElementById('new-item-name').value = ''; document.getElementById('new-item-link').value = ''; let pathHTML = `<span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(-1)">Home</span>`; adminNavStack.forEach((item, idx) => { pathHTML += ` > <span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(${idx})">${item}</span>`; }); pathContainer.innerHTML = pathHTML; const currentList = getAdminCurrentContent(); if (adminNavStack.length >= 2) { addTypeSelector.style.display = 'flex'; linkGroup.style.display = adminAddType === 'file' ? 'block' : 'none'; } else { addTypeSelector.style.display = 'none'; linkGroup.style.display = 'none'; document.getElementById('new-item-name').placeholder = adminNavStack.length === 0 ? "Subject Name..." : "Doctor Name..."; } if (!currentList || currentList.length === 0) { listContainer.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No items found</div>'; return; } currentList.forEach((item, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('div'); nameSpan.className = 'data-name'; if (adminNavStack.length >= 2) { const icon = item.type === 'folder' ? '<span class="folder-icon">📁</span>' : '<span class="file-icon">📄</span>'; nameSpan.innerHTML = `${icon} ${item.name}`; if (item.type === 'folder') { nameSpan.style.cursor = 'pointer'; nameSpan.onclick = () => { adminNavStack.push(item.name); renderAdminDataView(); }; } } else { nameSpan.innerText = item; nameSpan.onclick = () => { adminNavStack.push(item); renderAdminDataView(); }; } const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions'; const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; delBtn.onclick = () => deleteAdminDataItem(index); actionsDiv.appendChild(delBtn); div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div); }); }
-        window.adminNavTo = function(index) { if (index === -1) adminNavStack = []; else adminNavStack = adminNavStack.slice(0, index + 1); renderAdminDataView(); }
-        window.setAddType = function(type, el) { adminAddType = type; document.querySelectorAll('.radio-label').forEach(l => l.classList.remove('active')); el.classList.add('active'); document.getElementById('file-link-input-group').style.display = type === 'file' ? 'block' : 'none'; }
-        window.addAdminDataItem = function() { const nameInput = document.getElementById('new-item-name'); const linkInput = document.getElementById('new-item-link'); const name = nameInput.value.trim(); if (!name) return showToast("Please enter a name", "error"); if (adminNavStack.length === 0) { if (database[name]) return showToast("Subject exists", "error"); database[name] = { doctors: [] }; } else if (adminNavStack.length === 1) { const sub = adminNavStack[0]; if (!database[sub]) database[sub] = { doctors: [] }; if (database[sub].doctors.includes(name)) return showToast("Doctor exists", "error"); database[sub].doctors.push(name); database[sub][name] = { root: [] }; } else { const currentList = getAdminCurrentContent(); if (adminAddType === 'folder') { if (currentList.find(i => i.name === name)) return showToast("Folder exists", "error"); currentList.push({ id: Date.now().toString(36), name: name, type: "folder", children: [] }); } else { const link = linkInput.value.trim() || "#"; currentList.push({ id: Date.now().toString(36), name: name, type: "file", link: link }); } } renderAdminDataView(); nameInput.value = ''; linkInput.value = ''; initSearchEngine(); }
-        function deleteAdminDataItem(index) { showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => { if(!confirmed) return; if (adminNavStack.length === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } else if (adminNavStack.length === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; } else { const currentList = getAdminCurrentContent(); currentList.splice(index, 1); } saveConfigToBin(CONFIG); renderAdminDataView(); initSearchEngine(); }); }
-        window.forceReload = function() { document.getElementById('menu-dropdown').classList.remove('active'); showConfirmModal("Force Reload", "Do you want to fully reload app?", (confirm) => { if(confirm) { saveToLocalStorage(CONFIG); const currentUrl = new URL(window.location.href); currentUrl.searchParams.set('t', Date.now()); window.location.href = currentUrl.toString(); } }); };
+
+        document.getElementById('admin-bg-upload').addEventListener('change', function(e) { 
+            const file = e.target.files[0]; 
+            if(file) { 
+                showToast("Compressing image...", "info");
+                compressImage(file, 1200, 0.5, (base64String) => {
+                    if (base64String.length > 700000) {
+                        showToast("⚠️ Image too large even after compression.", "error");
+                        return;
+                    }
+                    CONFIG.bgImage = base64String; 
+                    document.getElementById('admin-bg-url').value = ""; 
+                    applyConfig(CONFIG); 
+                    document.getElementById('admin-bg-remove').style.display = 'inline-block'; 
+                    showToast("Background loaded! Save to apply.", "success");
+                }); 
+            } 
+        });
+        window.removeBotBg = function() { 
+            CONFIG.bgImage = ""; 
+            document.getElementById('admin-bg-url').value = ""; 
+            applyConfig(CONFIG); 
+            document.getElementById('admin-bg-upload').value = ""; 
+            document.getElementById('admin-bg-remove').style.display = 'none'; 
+        };
+        
+        document.getElementById('admin-bg-url').addEventListener('input', function(e) {
+            CONFIG.bgImage = e.target.value;
+            applyConfig(CONFIG);
+        });
+
+        // ==========================================
+        // ADMIN PANEL LOGIC
+        // ==========================================
+        
+        function getAdminCurrentContent() {
+            if (adminNavStack.length === 0) return Object.keys(database);
+            if (adminNavStack.length === 1) return database[adminNavStack[0]].doctors;
+            const subject = adminNavStack[0];
+            const doctor = adminNavStack[1];
+            if (!database[subject][doctor].root) database[subject][doctor].root = migrateDoctorData(database[subject][doctor]);
+            let currentList = database[subject][doctor].root;
+            for (let i = 2; i < adminNavStack.length; i++) {
+                const folderName = adminNavStack[i];
+                const folder = currentList.find(f => f.name === folderName && f.type === 'folder');
+                if (folder && folder.children) currentList = folder.children;
+                else return [];
+            }
+            return currentList;
+        }
+
+        function migrateDoctorData(doctorObj) {
+            if (doctorObj.root) return doctorObj.root;
+            let newRoot = [];
+            Object.keys(doctorObj).forEach(key => {
+                if (key !== 'doctors' && key !== 'sections' && key !== 'root' && Array.isArray(doctorObj[key])) {
+                    newRoot.push({ id: 'migrated_' + Date.now(), name: key, type: 'folder', children: doctorObj[key] });
+                }
+            });
+            if (!newRoot.find(f => f.name === "📚 Lectures")) newRoot.push({ id: 'def_lectures', name: "📚 Lectures", type: "folder", children: [] });
+            if (!newRoot.find(f => f.name === "🔔 Notifications")) newRoot.push({ id: 'def_notif', name: "🔔 Notifications", type: "folder", children: [] });
+            return newRoot;
+        }
+
+        function renderAdminDataView() {
+            const pathContainer = document.getElementById('admin-data-path'); 
+            const listContainer = document.getElementById('admin-list-items');
+            const addTypeSelector = document.getElementById('add-type-selector');
+            const linkGroup = document.getElementById('file-link-input-group');
+            
+            listContainer.innerHTML = ''; 
+            document.getElementById('new-item-name').value = ''; 
+            document.getElementById('new-item-link').value = ''; 
+            
+            let pathHTML = `<span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(-1)">Home</span>`;
+            adminNavStack.forEach((item, idx) => {
+                pathHTML += ` > <span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(${idx})">${item}</span>`;
+            });
+            pathContainer.innerHTML = pathHTML;
+
+            const currentList = getAdminCurrentContent();
+
+            if (adminNavStack.length >= 2) {
+                addTypeSelector.style.display = 'flex';
+                linkGroup.style.display = adminAddType === 'file' ? 'block' : 'none';
+            } else {
+                addTypeSelector.style.display = 'none';
+                linkGroup.style.display = 'none';
+                document.getElementById('new-item-name').placeholder = adminNavStack.length === 0 ? "Subject Name..." : "Doctor Name...";
+            }
+
+            if (!currentList || currentList.length === 0) {
+                listContainer.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No items found</div>';
+                return;
+            }
+
+            currentList.forEach((item, index) => {
+                const div = document.createElement('div'); 
+                div.className = 'data-item'; 
+                const nameSpan = document.createElement('div'); 
+                nameSpan.className = 'data-name'; 
+                
+                if (adminNavStack.length >= 2) {
+                    const icon = item.type === 'folder' ? '<span class="folder-icon">📁</span>' : '<span class="file-icon">📄</span>';
+                    nameSpan.innerHTML = `${icon} ${item.name}`;
+                    if (item.type === 'folder') {
+                        nameSpan.style.cursor = 'pointer';
+                        nameSpan.onclick = () => { adminNavStack.push(item.name); renderAdminDataView(); };
+                    }
+                } else {
+                    nameSpan.innerText = item;
+                    nameSpan.onclick = () => { adminNavStack.push(item); renderAdminDataView(); }; 
+                }
+
+                const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions'; 
+                const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; 
+                delBtn.onclick = () => deleteAdminDataItem(index); actionsDiv.appendChild(delBtn);
+                div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div);
+            });
+        }
+
+        window.adminNavTo = function(index) { 
+            if (index === -1) adminNavStack = []; 
+            else adminNavStack = adminNavStack.slice(0, index + 1); 
+            renderAdminDataView(); 
+        }
+
+        window.setAddType = function(type, el) {
+            adminAddType = type;
+            document.querySelectorAll('.radio-label').forEach(l => l.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('file-link-input-group').style.display = type === 'file' ? 'block' : 'none';
+        }
+
+        window.addAdminDataItem = function() {
+            const nameInput = document.getElementById('new-item-name');
+            const linkInput = document.getElementById('new-item-link');
+            const name = nameInput.value.trim();
+            
+            if (!name) return showToast("Please enter a name", "error");
+
+            if (adminNavStack.length === 0) { 
+                if (database[name]) return showToast("Subject exists", "error"); 
+                database[name] = { doctors: [] }; 
+            } else if (adminNavStack.length === 1) { 
+                const sub = adminNavStack[0]; 
+                if (!database[sub]) database[sub] = { doctors: [] }; 
+                if (database[sub].doctors.includes(name)) return showToast("Doctor exists", "error"); 
+                database[sub].doctors.push(name); 
+                database[sub][name] = { root: [] };
+            } else { 
+                const currentList = getAdminCurrentContent();
+                if (adminAddType === 'folder') {
+                    if (currentList.find(i => i.name === name)) return showToast("Folder exists", "error");
+                    currentList.push({ id: Date.now().toString(36), name: name, type: "folder", children: [] });
+                } else {
+                    const link = linkInput.value.trim() || "#";
+                    currentList.push({ id: Date.now().toString(36), name: name, type: "file", link: link });
+                }
+            }
+            renderAdminDataView();
+            nameInput.value = '';
+            linkInput.value = '';
+            initSearchEngine();
+        }
+        
+        function deleteAdminDataItem(index) {
+            showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => {
+                if(!confirmed) return;
+                if (adminNavStack.length === 0) { 
+                    const subKeys = Object.keys(database); 
+                    delete database[subKeys[index]]; 
+                } else if (adminNavStack.length === 1) { 
+                    const sub = adminNavStack[0]; 
+                    const docName = database[sub].doctors[index]; 
+                    database[sub].doctors.splice(index, 1); 
+                    delete database[sub][docName]; 
+                } else {
+                    const currentList = getAdminCurrentContent();
+                    currentList.splice(index, 1);
+                }
+                saveConfigToBin(CONFIG);
+                renderAdminDataView();
+                initSearchEngine();
+            });
+        }
+
+        window.forceReload = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            showConfirmModal("Force Reload", "Do you want to fully reload app?", (confirm) => {
+                if(confirm) {
+                    saveToLocalStorage(CONFIG);
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('t', Date.now());
+                    window.location.href = currentUrl.toString();
+                }
+            });
+        };
+
         function saveToLocalStorage(data) { try { localStorage.setItem('uniBot_db', JSON.stringify(data)); } catch (e) {} }
         function loadFromLocalStorage() { try { const data = localStorage.getItem('uniBot_db'); if (data) return JSON.parse(data); } catch (e) {} return null; }
-        async function fetchConfig() { try { const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } }); if (!response.ok) throw new Error("Failed to fetch"); const cloudData = await response.json(); CONFIG = { ...defaultConfig, ...cloudData }; if (cloudData.database) CONFIG.database = cloudData.database; else CONFIG.database = defaultDatabase; saveToLocalStorage(CONFIG); applyConfig(CONFIG); initSearchEngine(); updateOnlineStatus(true); } catch (error) { console.error("Cloud Sync Failed", error); updateOnlineStatus(false); const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; applyConfig(CONFIG); showToast("📡 Offline Mode: Last update loaded", "info"); initSearchEngine(); } else { CONFIG = { ...defaultConfig }; applyConfig(CONFIG); showToast("⚠️ No Data: Check Internet", "error"); initSearchEngine(); } } }
-        function saveConfigToBin(newConfig) { const btnSave = document.querySelector('.btn-save'); const originalText = btnSave ? btnSave.innerText : "Saving..."; if(btnSave) btnSave.innerText = "Saving..."; fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) }).then(res => { if (!res.ok) return res.json().then(errData => { throw new Error(errData.message || "Save failed"); }); return res.json(); }).then(() => { showToast("✅ Saved Successfully", "success"); database = newConfig.database; CONFIG.database = newConfig.database; saveToLocalStorage(newConfig); if(btnSave) btnSave.innerText = originalText; initSearchEngine(); }).catch(err => { showToast("❌ Error: " + err.message, "error"); if(btnSave) btnSave.innerText = originalText; }); }
-        function updateOnlineStatus(isOnline) { const dot = document.getElementById('connection-dot'); const text = document.getElementById('status-text'); if (isOnline) { dot.classList.remove('offline'); text.innerText = "Online"; } else { dot.classList.add('offline'); text.innerText = "Offline"; } }
-        function applyConfig(newConfig) { CONFIG = newConfig; database = CONFIG.database; document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerHTML = `<div class="sync-dot" id="connection-dot"></div> <span id="status-text">${CONFIG.botStatus}</span>`; const dot = document.getElementById('connection-dot'); const text = document.getElementById('status-text'); if(navigator.onLine) { dot.classList.remove('offline'); text.innerText = "Online"; } else { dot.classList.add('offline'); text.innerText = "Offline"; } const avatarEl = document.getElementById('header-avatar'); if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; } const chatArea = document.getElementById('chat-area'); if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`; else if (DEFAULT_BG_URL) chatArea.style.backgroundImage = `url('${DEFAULT_BG_URL}')`; else chatArea.style.backgroundImage = "none"; document.documentElement.style.setProperty('--font-en', CONFIG.englishFont || "'Inter', sans-serif"); document.documentElement.style.setProperty('--font-ar', CONFIG.arabicFont || "'Cairo', sans-serif"); const primaryHex = CONFIG.themeColor || "#3b82f6"; const botColorHex = CONFIG.botMsgColor || "#ffffff"; const botRgb = hexToRgb(botColorHex); document.documentElement.style.setProperty('--accent-primary', primaryHex); const darkerHex = darkenColor(primaryHex, 30); const userGradient = `linear-gradient(135deg, ${primaryHex} 0%, ${darkerHex} 100%)`; document.documentElement.style.setProperty('--accent-gradient', userGradient); document.documentElement.style.setProperty('--msg-user-bg', userGradient); if (botRgb) document.documentElement.style.setProperty('--msg-bot-bg', `rgba(${botRgb.r}, ${botRgb.g}, ${botRgb.b}, 0.1)`); if(CONFIG.appName || CONFIG.appIcon) updateDynamicManifest(CONFIG.appName, CONFIG.appIcon); window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
-            const lastSeenNotif = localStorage.getItem('uniBot_lastSeenNotif'); if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) { const latestUpdate = CONFIG.recentUpdates[0]; if (!lastSeenNotif || parseInt(latestUpdate.timestamp) > parseInt(lastSeenNotif)) { showVisualAlertWithBody(`📢 ${latestUpdate.doctor} (${latestUpdate.subject}):\n${latestUpdate.message || "New notification available"}`); localStorage.setItem('uniBot_lastSeenNotif', latestUpdate.timestamp); } } if (CONFIG.activeAlerts && CONFIG.activeAlerts.length > 0) { CONFIG.activeAlerts.forEach(alert => { const seenAlerts = JSON.parse(localStorage.getItem('uniBot_seenAlerts') || '[]'); if (!seenAlerts.includes(alert.id)) { showVisualAlertWithBody(`🔔 Reminder (${alert.subject} - ${alert.doctor}):\n${alert.message}`); seenAlerts.push(alert.id); localStorage.setItem('uniBot_seenAlerts', JSON.stringify(seenAlerts)); } }); } }
-        function checkAndShowBroadcast() { const existingBroadcast = document.getElementById('app-broadcast-msg'); if (existingBroadcast) existingBroadcast.remove(); if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { const broadcastHTML = `<div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()"><div class="broadcast-header"><span>📣</span> <span>Message from Batch Rep</span></div><div><b>${CONFIG.generalBroadcast.title}</b></div><div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div><span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span></div>`; chatArea.insertAdjacentHTML('afterbegin', broadcastHTML); } }
-        function showVisualAlertWithBody(bodyText) { const overlay = document.getElementById('visual-alert-overlay'); if (overlay.classList.contains('active')) return; window.currentPendingNotification = bodyText; document.getElementById('visual-alert-body').innerText = bodyText; overlay.classList.add('active'); if (navigator.vibrate) navigator.vibrate([200, 100, 200]); }
-        window.openPendingNotification = function() { window.closeVisualAlert(); const text = window.currentPendingNotification; if (!text) return; try { const lines = text.split('\n'); const headerPart = lines[0]; const messageBody = lines.slice(1).join('\n'); let cleanHeader = headerPart.replace('📢 ', '').replace('🔔 ', '').replace(':', ''); const match = cleanHeader.match(/(.+) \((.+)\)/); if (match) { const docName = match[1]; const subjectName = match[2]; const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${docName} (${subjectName})</div><div>${messageBody}</div></div>`; addMessage(htmlContent, 'bot', true); } else if (cleanHeader.includes('-')) { const match2 = cleanHeader.match(/(.+) - (.+)/); if(match2) { const sName = match2[1]; const dName = match2[2]; const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${dName} (${sName})</div><div>${messageBody}</div></div>`; addMessage(htmlContent, 'bot', true); } else { addMessage(text, 'bot', true); } } else { addMessage(text, 'bot', true); } } catch (e) { addMessage(text, 'bot', true); } };
-        window.closeVisualAlert = function() { document.getElementById('visual-alert-overlay').classList.remove('active'); };
-        window.testNotification = function() { document.getElementById('menu-dropdown').classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; } Notification.requestPermission().then(permission => { if (permission === 'granted') { if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }); showToast("Test notification sent...", "success"); } else { new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: CONFIG.appIcon }); showToast("Test notification sent...", "success"); } } else { showToast("Permission denied.", "error"); } }); };
-        function hexToRgb(hex) { var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
-        function darkenColor(hex, percent) { const rgb = hexToRgb(hex); if (!rgb) return hex; const amt = Math.round(2.55 * percent); const R = (rgb.r - amt) < 0 ? 0 : rgb.r - amt; const G = (rgb.g - amt) < 0 ? 0 : rgb.g - amt; const B = (rgb.b - amt) < 0 ? 0 : rgb.b - amt; return "#" + (0x1000000 + (R << 16) + (G << 8) + B).toString(16).slice(1); }
-        window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none'; if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
+
+        async function fetchConfig() {
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' } });
+                if (!response.ok) throw new Error("Failed to fetch");
+                const cloudData = await response.json();
+                CONFIG = { ...defaultConfig, ...cloudData };
+                if (cloudData.database) CONFIG.database = cloudData.database; 
+                else CONFIG.database = defaultDatabase; 
+                saveToLocalStorage(CONFIG);
+                applyConfig(CONFIG);
+                initSearchEngine(); 
+                updateOnlineStatus(true);
+                checkForNewNotification(); // Check for new notifications on fetch
+            } catch (error) {
+                console.error("Cloud Sync Failed", error);
+                updateOnlineStatus(false);
+                const localData = loadFromLocalStorage();
+                if (localData) { 
+                    CONFIG = localData; 
+                    applyConfig(CONFIG); 
+                    showToast("📡 Offline Mode", "info"); 
+                    initSearchEngine(); 
+                } else { 
+                    CONFIG = { ...defaultConfig }; 
+                    applyConfig(CONFIG); 
+                }
+            }
+        }
+        
+        function saveConfigToBin(newConfig) {
+            const btnSave = document.querySelector('.btn-save'); 
+            const originalText = btnSave ? btnSave.innerText : "Saving...";
+            if(btnSave) btnSave.innerText = "Saving...";
+            
+            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, 
+                body: JSON.stringify(newConfig)
+            })
+            .then(res => { 
+                if (!res.ok) throw new Error("Save failed");
+                showToast("✅ Saved Successfully", "success"); 
+                database = newConfig.database; 
+                CONFIG.database = newConfig.database; 
+                saveToLocalStorage(newConfig); 
+                if(btnSave) btnSave.innerText = originalText;
+                initSearchEngine(); 
+            })
+            .catch(err => { 
+                showToast("❌ Error: " + err.message, "error"); 
+                if(btnSave) btnSave.innerText = originalText; 
+            });
+        }
+
+        function updateOnlineStatus(isOnline) {
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('status-text');
+            if (isOnline) {
+                dot.classList.remove('offline');
+                text.innerText = "Online";
+            } else {
+                dot.classList.add('offline');
+                text.innerText = "Offline";
+            }
+        }
+        
+        function applyConfig(newConfig) {
+            CONFIG = newConfig; database = CONFIG.database; 
+            document.getElementById('header-name').innerText = CONFIG.botName; 
+            document.getElementById('header-status').innerHTML = `<div class="sync-dot" id="connection-dot"></div> <span id="status-text">${CONFIG.botStatus}</span>`; 
+            
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('status-text');
+            if(navigator.onLine) {
+                dot.classList.remove('offline');
+                text.innerText = "Online";
+            } else {
+                dot.classList.add('offline');
+                text.innerText = "Offline";
+            }
+
+            const avatarEl = document.getElementById('header-avatar');
+            if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } 
+            else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; }
+            
+            const chatArea = document.getElementById('chat-area');
+            if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) {
+                chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`;
+            } else if (DEFAULT_BG_URL) {
+                chatArea.style.backgroundImage = `url('${DEFAULT_BG_URL}')`;
+            } else {
+                chatArea.style.backgroundImage = "none";
+            }
+
+            document.documentElement.style.setProperty('--font-en', CONFIG.englishFont || "'Inter', sans-serif");
+            document.documentElement.style.setProperty('--font-ar', CONFIG.arabicFont || "'Cairo', sans-serif");
+            const primaryHex = CONFIG.themeColor || "#3b82f6";
+            const botColorHex = CONFIG.botMsgColor || "#ffffff";
+            const botRgb = hexToRgb(botColorHex);
+            document.documentElement.style.setProperty('--accent-primary', primaryHex);
+            const darkerHex = darkenColor(primaryHex, 30);
+            const userGradient = `linear-gradient(135deg, ${primaryHex} 0%, ${darkerHex} 100%)`;
+            document.documentElement.style.setProperty('--accent-gradient', userGradient);
+            document.documentElement.style.setProperty('--msg-user-bg', userGradient);
+            if (botRgb) document.documentElement.style.setProperty('--msg-bot-bg', `rgba(${botRgb.r}, ${botRgb.g}, ${botRgb.b}, 0.1)`);
+            if(CONFIG.appName || CONFIG.appIcon) updateDynamicManifest(CONFIG.appName, CONFIG.appIcon);
+            window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
+        }
+        
+        function checkAndShowBroadcast() {
+            const existingBroadcast = document.getElementById('app-broadcast-msg');
+            if (existingBroadcast) existingBroadcast.remove();
+            if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) {
+                const broadcastHTML = `
+                    <div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()">
+                        <div class="broadcast-header"><span>📣</span> <span>Message from Batch Rep</span></div>
+                        <div><b>${CONFIG.generalBroadcast.title}</b></div>
+                        <div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div>
+                        <span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span>
+                    </div>`;
+                chatArea.insertAdjacentHTML('afterbegin', broadcastHTML);
+            }
+        }
+        
+        function showVisualAlertWithBody(bodyText) {
+            const overlay = document.getElementById('visual-alert-overlay'); if (overlay.classList.contains('active')) return;
+            document.getElementById('visual-alert-body').innerText = bodyText; overlay.classList.add('active');
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+
+        window.testNotification = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; }
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' });
+                        showToast("Test notification sent...", "success");
+                    } else { new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: CONFIG.appIcon }); showToast("Test notification sent...", "success"); }
+                } else { showToast("Permission denied.", "error"); }
+            });
+        };
+
+        function hexToRgb(hex) {
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+        }
+        function darkenColor(hex, percent) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return hex;
+            const amt = Math.round(2.55 * percent);
+            const R = (rgb.r - amt) < 0 ? 0 : rgb.r - amt;
+            const G = (rgb.g - amt) < 0 ? 0 : rgb.g - amt;
+            const B = (rgb.b - amt) < 0 ? 0 : rgb.b - amt;
+            return "#" + (0x1000000 + (R << 16) + (G << 8) + B).toString(16).slice(1);
+        }
+
+        window.openAdminPanel = function() {
+            stopSync(); 
+            document.getElementById('admin-bot-name').value = CONFIG.botName; 
+            document.getElementById('admin-bot-status').value = CONFIG.botStatus;
+            document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none';
+            
+            document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : "";
+            document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none';
+
+            document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; 
+            document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt;
+            document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; 
+            document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt;
+            const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; 
+            document.getElementById('admin-msg-backs').value = backs.join(' | ');
+            
+            const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL);
+            document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none';
+            document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none';
+            document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; 
+            document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';
+            
+            if (isOwner) {
+                renderAdminList();
+                document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6";
+                document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff";
+            } else document.getElementById('admin-list-container').innerHTML = '';
+            
+            if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { 
+                document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; 
+                document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; 
+            } else { 
+                document.getElementById('broadcast-title').value = ""; 
+                document.getElementById('broadcast-body').value = ""; 
+            }
+            window.populateNotifSubjects(); 
+            renderAdminDataView(); 
+            document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName;
+            document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none';
+            updateAppIconPreview(CONFIG.appIcon);
+            document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif";
+            document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif";
+            document.getElementById('admin-modal').classList.add('active');
+            window.switchAdminTab(0); 
+        }
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
-        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 4) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
-        window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
-        function renderAdminList() { const container = document.getElementById('admin-list-container'); container.innerHTML = ''; if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; } CONFIG.admins.forEach((adminEmail, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); container.appendChild(div); }); }
-        window.addAdmin = function() { const email = document.getElementById('admin-add-input').value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); document.getElementById('admin-add-input').value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
-        window.removeAdmin = function(index) { if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ Only Owner can remove admins.", "error"); return; } showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index,1); renderAdminList(); } }); }
-        window.populateNotifSubjects = function() { const select = document.getElementById('notif-subject-select'); select.innerHTML = '<option value="">-- Select Subject --</option>'; const subjects = Object.keys(database); subjects.forEach(sub => { const opt = document.createElement('option'); opt.value = sub; opt.innerText = sub; select.appendChild(opt); }); };
-        window.populateNotifDoctors = function() { const subject = document.getElementById('notif-subject-select').value; const docSelect = document.getElementById('notif-doctor-select'); docSelect.innerHTML = '<option value="">-- Select Doctor --</option>'; if(subject && database[subject] && database[subject].doctors) { database[subject].doctors.forEach(doc => { const opt = document.createElement('option'); opt.value = doc; opt.innerText = doc; docSelect.appendChild(opt); }); } window.loadNotifPreview(); };
+        
+        window.switchAdminTab = function(index) {
+            if (index === currentAdminTab) return; if(index < 0 || index > 4) return; 
+            const direction = index > currentAdminTab ? 'left' : 'right'; 
+            const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest'][currentAdminTab]}`;
+            const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest'][index]}`;
+            const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId);
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active');
+            nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
+            void nextEl.offsetWidth;
+            const duration = 300; 
+            currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
+            nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
+            currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0';
+            nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1';
+            setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration);
+        };
+        
+        window.saveAdminSettings = function() {
+            const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim());
+            const newConfig = {
+                botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, 
+                botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, 
+                botImage: CONFIG.botImage, 
+                bgImage: CONFIG.bgImage, 
+                welcomeMessage: document.getElementById('admin-msg-welcome').value, 
+                subjectPrompt: document.getElementById('admin-msg-subject').value, 
+                doctorPrompt: document.getElementById('admin-msg-doctor').value, 
+                categoryPrompt: document.getElementById('admin-msg-category').value, 
+                backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, 
+                backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, 
+                generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, 
+                recentUpdates: CONFIG.recentUpdates, scheduledNotifications: CONFIG.scheduledNotifications, database: database,
+                englishFont: document.getElementById('select-en-font').value,
+                arabicFont: document.getElementById('select-ar-font').value,
+                appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion,
+                themeColor: document.getElementById('color-primary-input').value,
+                botMsgColor: document.getElementById('color-bot-input').value
+            };
+            CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig);
+        }
+
+        function renderAdminList() {
+            const container = document.getElementById('admin-list-container'); container.innerHTML = ''; 
+            if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; }
+            CONFIG.admins.forEach((adminEmail, index) => {
+                const div = document.createElement('div'); div.className = 'data-item'; 
+                const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; 
+                const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; 
+                removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); container.appendChild(div);
+            });
+        }
+        window.addAdmin = function() { 
+            const email = document.getElementById('admin-add-input').value.trim(); 
+            if (email && (!CONFIG.admins.includes(email))) { 
+                if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); document.getElementById('admin-add-input').value = ''; renderAdminList(); 
+            } else if (email) showToast("Email already added", "error"); 
+        }
+        window.removeAdmin = function(index) { 
+            if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ Only Owner can remove admins.", "error"); return; } 
+            showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index,1); renderAdminList(); } }); 
+        }
+        
+        window.populateNotifSubjects = function() {
+            const select = document.getElementById('notif-subject-select'); select.innerHTML = '<option value="">-- Select Subject --</option>';
+            const subjects = Object.keys(database); subjects.forEach(sub => { const opt = document.createElement('option'); opt.value = sub; opt.innerText = sub; select.appendChild(opt); });
+        };
+        window.populateNotifDoctors = function() {
+            const subject = document.getElementById('notif-subject-select').value; const docSelect = document.getElementById('notif-doctor-select'); docSelect.innerHTML = '<option value="">-- Select Doctor --</option>';
+            if(subject && database[subject] && database[subject].doctors) { database[subject].doctors.forEach(doc => { const opt = document.createElement('option'); opt.value = doc; opt.innerText = doc; docSelect.appendChild(opt); }); } window.loadNotifPreview();
+        };
         window.loadNotifPreview = function() { };
-        window.sendDoctorNotification = function() { if (!hasAdminAccess()) return showToast("❌ Unauthorized Access.", "error"); const subject = document.getElementById('notif-subject-select').value; const doctor = document.getElementById('notif-doctor-select').value; const message = document.getElementById('notif-message-text').value.trim(); if(!subject || !doctor || !message) return showToast("Please fill all fields", "error"); const day = document.getElementById('notif-day-select').value; const time = document.getElementById('notif-time-input').value; const fullDate = Date.now(); const updateId = fullDate.toString() + "_" + Math.random().toString(36).substr(2,5); const docRoot = database[subject][doctor].root || []; let notifFolder = docRoot.find(f => f.name === "🔔 Notifications" && f.type === 'folder'); if (!notifFolder) { notifFolder = { id: 'def_notif', name: "🔔 Notifications", type: "folder", children: [] }; docRoot.push(notifFolder); } notifFolder.children.unshift({ id: updateId, name: message, date: new Date().toLocaleString(), type: "notif", fullDate: fullDate }); if (!CONFIG.recentUpdates) CONFIG.recentUpdates = []; CONFIG.recentUpdates.unshift({ id: updateId, doctor: doctor, subject: subject, timestamp: fullDate, message: message }); if (CONFIG.recentUpdates.length > 5) CONFIG.recentUpdates = CONFIG.recentUpdates.slice(0, 5); CONFIG.latestNotificationUpdate = fullDate; CONFIG.database = database; if (day !== "" && time !== "") { if (!CONFIG.schedules) CONFIG.schedules = []; CONFIG.schedules.push({ id: 'sched_' + Date.now(), subject: subject, doctor: doctor, message: message, day: parseInt(day), time: time, active: true, lastTriggered: 0 }); } const saveBtn = document.querySelector('#tab-notifications .btn-send'); saveBtn.innerText = "Sending..."; saveBtn.disabled = true; fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) }).then(res => { if (!res.ok) throw new Error("Send failed"); showToast("✅ Notification Scheduled Successfully", "success"); document.getElementById('notif-message-text').value = ""; document.getElementById('notif-day-select').value = ""; document.getElementById('notif-time-input').value = ""; saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; fetchConfig(); }).catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; }); };
-        window.saveBroadcast = function() { const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner; if (!allowed) { showInputModal("Verify Identity", "Password (Owner)", (pass) => { if (pass === "1234") proceedBroadcastSave(); else showToast("Wrong Password", "error"); }); return; } proceedBroadcastSave(); };
-        function proceedBroadcastSave() { const title = document.getElementById('broadcast-title').value.trim(); const body = document.getElementById('broadcast-body').value.trim(); if(!title || !body) return showToast("Please enter title and body", "error"); CONFIG.generalBroadcast = { active: true, title: title, body: body, timestamp: Date.now() }; const saveBtn = document.querySelector('#tab-broadcast .btn-save'); saveBtn.innerText = "Posting..."; fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) }).then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Broadcast Posted", "success"); saveBtn.innerText = "Post Broadcast"; checkAndShowBroadcast(); fetchConfig(); }).catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Post Broadcast"; }); }
-        window.deleteBroadcast = function() { const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner; if (!allowed) { showInputModal("Verify Identity", "Password (Owner)", (pass) => { if (pass === "1234") proceedBroadcastDelete(); else showToast("Wrong Password", "error"); }); return; } proceedBroadcastDelete(); };
-        function proceedBroadcastDelete() { showConfirmModal("Confirm Delete", "Are you sure you want to delete this broadcast?", (confirmed) => { if (!confirmed) return; CONFIG.generalBroadcast = { active: false, title: "", body: "", timestamp: 0 }; document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) }).then(res => { if (!res.ok) throw new Error("Delete failed"); showToast("✅ Deleted Successfully", "success"); const existing = document.getElementById('app-broadcast-msg'); if(existing) existing.remove(); }).catch(err => showToast("❌ Error: " + err.message, " error")); }); }
-        function updateAppIconPreview(base64) { const preview = document.getElementById('manifest-icon-preview'); preview.innerHTML = ''; if(base64 && base64.length > 10) { const img = document.createElement('img'); img.src = base64; preview.appendChild(img); } else { preview.innerHTML = '<span>📲</span>'; } }
-        window.saveAppManifest = function() { const name = document.getElementById('manifest-app-name').value.trim(); if(!name) return showToast("App name cannot be empty", "error"); CONFIG.appVersion = (CONFIG.appVersion || 1) + 1; const newConfig = { ...CONFIG, appName: name, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion }; const saveBtn = document.querySelector('#tab-manifest .btn-save'); const originalText = saveBtn.innerText; saveBtn.innerText = "Updating..."; fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) }).then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Settings Saved! Reloading...", "success"); CONFIG = { ...CONFIG, ...newConfig }; updateDynamicManifest(CONFIG.appName, CONFIG.appIcon); if ('caches' in window) { caches.keys().then(names => { for (let name of names) caches.delete(name); }); } setTimeout(() => { const baseUrl = window.location.href.split('?')[0]; window.location.href = `${baseUrl}?v=${CONFIG.appVersion}`; }, 1500); }).catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = originalText; }); }
-        window.handleMenuAuthClick = async function() { document.getElementById('menu-dropdown').classList.remove('active'); if (!auth) return; const user = auth.currentUser; if (user) { const email = user.email; if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { openAdminPanel(); } else { window.logoutUser(); } return; } try { const provider = new firebase.auth.GoogleAuthProvider(); await auth.signInWithPopup(provider); window.updateAuthUI(); showToast("Login Successful", "success"); } catch (error) { console.error("Login Error:", error); showToast("Login Failed: " + error.message, "error"); } };
+        
+        // --- Schedule UI Toggle ---
+        window.toggleScheduleInput = function() {
+            const isScheduled = document.getElementById('schedule-toggle').checked;
+            const container = document.getElementById('schedule-datetime-container');
+            if (isScheduled) {
+                container.classList.add('active');
+            } else {
+                container.classList.remove('active');
+            }
+        }
+
+        window.sendDoctorNotification = function() {
+            if (!hasAdminAccess()) return showToast("❌ Unauthorized Access.", "error");
+            const subject = document.getElementById('notif-subject-select').value; 
+            const doctor = document.getElementById('notif-doctor-select').value; 
+            const message = document.getElementById('notif-message-text').value.trim();
+            
+            if(!subject || !doctor || !message) return showToast("Please fill all fields", "error");
+
+            const isScheduled = document.getElementById('schedule-toggle').checked;
+            const scheduleTimeStr = document.getElementById('schedule-datetime-input').value;
+
+            if (isScheduled && !scheduleTimeStr) {
+                return showToast("Please select a date and time for the schedule.", "error");
+            }
+
+            const fullDate = Date.now();
+            const updateId = fullDate.toString() + "_" + Math.random().toString(36).substr(2,5);
+            
+            // Notification Payload
+            const notifPayload = {
+                id: updateId,
+                subject: subject,
+                doctor: doctor,
+                messageBody: message,
+                timestamp: isScheduled ? new Date(scheduleTimeStr).getTime() : fullDate,
+                isScheduled: isScheduled
+            };
+
+            const saveBtn = document.querySelector('#tab-notifications .btn-send'); 
+            saveBtn.innerText = "Saving..."; 
+            saveBtn.disabled = true;
+
+            if (isScheduled) {
+                // Add to scheduled notifications
+                if (!CONFIG.scheduledNotifications) CONFIG.scheduledNotifications = [];
+                CONFIG.scheduledNotifications.push(notifPayload);
+                
+                // Sort by time
+                CONFIG.scheduledNotifications.sort((a, b) => a.timestamp - b.timestamp);
+
+                saveConfigToBin(CONFIG).then(() => {
+                    showToast("📅 Notification Scheduled!", "success");
+                    document.getElementById('notif-message-text').value = "";
+                    document.getElementById('schedule-toggle').checked = false;
+                    window.toggleScheduleInput();
+                    saveBtn.innerText = "Send Notification"; 
+                    saveBtn.disabled = false;
+                }).catch(err => {
+                    showToast("❌ Error: " + err.message, "error");
+                    saveBtn.innerText = "Send Notification"; 
+                    saveBtn.disabled = false;
+                });
+            } else {
+                // Send Immediately
+                const docRoot = database[subject][doctor].root || [];
+                let notifFolder = docRoot.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
+                if (!notifFolder) {
+                    notifFolder = { id: 'def_notif', name: "🔔 Notifications", type: "folder", children: [] };
+                    docRoot.push(notifFolder);
+                }
+                
+                notifFolder.children.unshift({ 
+                    id: updateId, 
+                    name: message, 
+                    date: new Date().toLocaleString(), 
+                    type: "notif", 
+                    fullDate: fullDate 
+                });
+                
+                if (!CONFIG.recentUpdates) CONFIG.recentUpdates = [];
+                CONFIG.recentUpdates.unshift({ 
+                    id: updateId, 
+                    doctor: doctor, 
+                    subject: subject, 
+                    timestamp: fullDate,
+                    messageBody: message // Store body for popup
+                });
+                if (CONFIG.recentUpdates.length > 5) CONFIG.recentUpdates = CONFIG.recentUpdates.slice(0, 5);
+                CONFIG.latestNotificationUpdate = fullDate; 
+                CONFIG.database = database;
+
+                fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
+                .then(res => { if (!res.ok) throw new Error("Send failed"); showToast("✅ Notification Sent", "success"); document.getElementById('notif-message-text').value = ""; saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; fetchConfig(); })
+                .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; });
+            }
+        };
+
+        window.saveBroadcast = function() {
+            const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner;
+            if (!allowed) { showInputModal("Verify Identity", "Password (Owner)", (pass) => { if (pass === "1234") proceedBroadcastSave(); else showToast("Wrong Password", "error"); }); return; } proceedBroadcastSave();
+        };
+        function proceedBroadcastSave() {
+            const title = document.getElementById('broadcast-title').value.trim(); const body = document.getElementById('broadcast-body').value.trim();
+            if(!title || !body) return showToast("Please enter title and body", "error");
+            CONFIG.generalBroadcast = { active: true, title: title, body: body, timestamp: Date.now() };
+            const saveBtn = document.querySelector('#tab-broadcast .btn-save'); saveBtn.innerText = "Posting...";
+            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
+            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Broadcast Posted", "success"); saveBtn.innerText = "Post Broadcast"; checkAndShowBroadcast(); fetchConfig(); })
+            .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Post Broadcast"; });
+        }
+        window.deleteBroadcast = function() {
+            const user = auth.currentUser; const email = user ? user.email : null; const isOwner = email === OWNER_EMAIL; let allowed = isOwner;
+            if (!allowed) { showInputModal("Verify Identity", "Password (Owner)", (pass) => { if (pass === "1234") proceedBroadcastDelete(); else showToast("Wrong Password", "error"); }); return; } proceedBroadcastDelete();
+        };
+        function proceedBroadcastDelete() {
+            showConfirmModal("Confirm Delete", "Are you sure you want to delete this broadcast?", (confirmed) => {
+                if (!confirmed) return; CONFIG.generalBroadcast = { active: false, title: "", body: "", timestamp: 0 };
+                document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = "";
+                fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(CONFIG) })
+                .then(res => { if (!res.ok) throw new Error("Delete failed"); showToast("✅ Deleted Successfully", "success"); const existing = document.getElementById('app-broadcast-msg'); if(existing) existing.remove(); })
+                .catch(err => showToast("❌ Error: " + err.message, " error"));
+            });
+        }
+
+        function updateAppIconPreview(base64) {
+            const preview = document.getElementById('manifest-icon-preview'); preview.innerHTML = '';
+            if(base64 && base64.length > 10) { 
+                const img = document.createElement('img'); img.src = base64; preview.appendChild(img); 
+            } else { preview.innerHTML = '<span>📲</span>'; }
+        }
+
+        window.saveAppManifest = function() {
+            const name = document.getElementById('manifest-app-name').value.trim(); if(!name) return showToast("App name cannot be empty", "error");
+            CONFIG.appVersion = (CONFIG.appVersion || 1) + 1;
+            const newConfig = { ...CONFIG, appName: name, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion };
+            const saveBtn = document.querySelector('#tab-manifest .btn-save'); const originalText = saveBtn.innerText; saveBtn.innerText = "Updating...";
+            fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY }, body: JSON.stringify(newConfig) })
+            .then(res => { if (!res.ok) throw new Error("Save failed"); showToast("✅ Settings Saved! Reloading...", "success"); CONFIG = { ...CONFIG, ...newConfig }; updateDynamicManifest(CONFIG.appName, CONFIG.appIcon);
+                if ('caches' in window) { caches.keys().then(names => { for (let name of names) caches.delete(name); }); }
+                setTimeout(() => { const baseUrl = window.location.href.split('?')[0]; window.location.href = `${baseUrl}?v=${CONFIG.appVersion}`; }, 1500);
+            })
+            .catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = originalText; });
+        }
+
+        window.handleMenuAuthClick = async function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            if (!auth) return;
+            const user = auth.currentUser;
+            if (user) {
+                const email = user.email;
+                if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { openAdminPanel(); } 
+                else { window.logoutUser(); }
+                return;
+            }
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await auth.signInWithPopup(provider);
+                window.updateAuthUI(); 
+                showToast("Login Successful", "success");
+            } catch (error) {
+                console.error("Login Error:", error);
+                showToast("Login Failed: " + error.message, "error");
+            }
+        };
+
         window.logoutUser = async function() { if (auth) { await auth.signOut(); window.location.reload(); } };
         function hasAdminAccess() { const user = auth.currentUser; if(!user) return false; if(user.email === OWNER_EMAIL) return true; if(CONFIG.admins && CONFIG.admins.includes(user.email)) return true; return false; }
-        function initFirebaseAuth() { if (!auth) return; auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => { auth.onAuthStateChanged((user) => { isAuthInitialized = true; window.updateAuthUI(); }); }).catch(() => { auth.onAuthStateChanged((user) => { isAuthInitialized = true; window.updateAuthUI(); }); }); }
-        window.updateAuthUI = function() { if (!isAuthInitialized) return; const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon'); const user = auth ? auth.currentUser : null; if (user) { const email = user.email; if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🔓"; } } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; } }
+
+        function initFirebaseAuth() { 
+            if (!auth) return; 
+            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .then(() => { auth.onAuthStateChanged((user) => { isAuthInitialized = true; window.updateAuthUI(); }); })
+            .catch(() => { auth.onAuthStateChanged((user) => { isAuthInitialized = true; window.updateAuthUI(); }); });
+        }
+        window.updateAuthUI = function() {
+            if (!isAuthInitialized) return;
+            const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon');
+            const user = auth ? auth.currentUser : null;
+            if (user) {
+                const email = user.email;
+                if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; }
+                else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; }
+                else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🔓"; }
+            } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; }
+        }
+
         function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
         function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
-        function updateDynamicManifest(name, iconData) { const version = CONFIG.appVersion || 1; const baseUrl = window.location.href.split('?')[0] || window.location.href; const startUrl = `${baseUrl}?v=${version}`; const manifest = { "name": name || CONFIG.botName, "short_name": name || CONFIG.botName, "start_url": startUrl, "id": window.location.origin + "?v=" + version, "display": "standalone", "background_color": "#0f172a", "theme_color": "#0f172a", "icons": [] }; if (iconData && iconData.length > 10) { manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": "image/jpeg" }); } else { manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" }); } const stringManifest = JSON.stringify(manifest); const blob = new Blob([stringManifest], {type: 'application/manifest+json'}); const manifestURL = URL.createObjectURL(blob); const link = document.querySelector('#dynamic-manifest'); if(link.href && link.href.startsWith('blob:')) URL.revokeObjectURL(link.href); link.setAttribute('href', manifestURL); let appleLink = document.querySelector('link[rel="apple-touch-icon"]'); if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); } appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png"; }
+        
+        function updateDynamicManifest(name, iconData) {
+            const version = CONFIG.appVersion || 1;
+            const baseUrl = window.location.href.split('?')[0] || window.location.href;
+            const startUrl = `${baseUrl}?v=${version}`;
+            const manifest = {
+                "name": name || CONFIG.botName, "short_name": name || CONFIG.botName, "start_url": startUrl,
+                "id": window.location.origin + "?v=" + version, "display": "standalone",
+                "background_color": "#0f172a", "theme_color": "#0f172a", "icons": []
+            };
+            if (iconData && iconData.length > 10) { manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": "image/jpeg" }); } 
+            else { manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" }); }
+            const stringManifest = JSON.stringify(manifest);
+            const blob = new Blob([stringManifest], {type: 'application/manifest+json'});
+            const manifestURL = URL.createObjectURL(blob);
+            const link = document.querySelector('#dynamic-manifest');
+            if(link.href && link.href.startsWith('blob:')) URL.revokeObjectURL(link.href);
+            link.setAttribute('href', manifestURL);
+            let appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+            if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); }
+            appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
+        }
+
         window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
-        window.onload = () => { if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch(e){} } const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); } createInlineServiceWorker(); fetchConfig().then(() => { }).catch(err => { console.error("Cloud Sync Failed", err); }); if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').then(reg => console.log("External SW Registered", reg)).catch(err => console.log("External SW Fail (Using Inline)", err)); } initFirebaseAuth(); const loadingScreen = document.getElementById('loading-screen'); setTimeout(() => { loadingScreen.style.opacity = '0'; setTimeout(() => { loadingScreen.style.display = 'none'; }, 300); }, 1500); const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); startSync(); };
+
+        window.onload = () => {
+            if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch(e){} }
+            const currentUrl = window.location.href;
+            if (currentUrl.includes('/__/auth/handler')) {
+                document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>";
+                auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); });
+                return; 
+            }
+
+            const localData = loadFromLocalStorage();
+            if (localData) {
+                CONFIG = localData;
+                database = CONFIG.database; 
+                applyConfig(CONFIG);
+                initSearchEngine();
+                checkForNewNotification();
+            }
+
+            createInlineServiceWorker();
+
+            fetchConfig().then(() => { }).catch(err => { console.error("Cloud Sync Failed", err); });
+
+            if ('serviceWorker' in navigator) { 
+                navigator.serviceWorker.register('sw.js').then(reg => console.log("External SW Registered", reg)).catch(err => console.log("External SW Fail (Using Inline)", err)); 
+            }
+            
+            initFirebaseAuth(); 
+            
+            const loadingScreen = document.getElementById('loading-screen');
+            setTimeout(() => { loadingScreen.style.opacity = '0'; setTimeout(() => { loadingScreen.style.display = 'none'; }, 300); }, 1500);
+            
+            const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null);
+            botReply(welcomeMsg, true); 
+            
+            renderKeyboard(); 
+            startSync();
+        };
     </script>
 </body>
 </html>

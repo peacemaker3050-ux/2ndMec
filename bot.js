@@ -14,7 +14,8 @@ const { pipeline } = require('stream/promises');
 // 2. الإعدادات والتهيئة
 // ==========================================
 
-const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
+// REPLACE WITH YOUR ENVIRONMENT VARIABLES
+const token = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TELEGRAM_TOKEN';
 
 const AUTHORIZED_USERS = [
     5605597142,
@@ -22,13 +23,13 @@ const AUTHORIZED_USERS = [
     6732616473,
 ];
 
-const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
-const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
+const JSONBIN_BIN_ID = process.env.JSONBIN_ID || "696e77bfae596e708fe71e9d";
+const JSONBIN_ACCESS_KEY = process.env.JSONBIN_KEY || "YOUR_JSONBIN_KEY";
 
 // إعدادات Google Drive
-const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
-const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U';
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_CLIENT_ID';
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'YOUR_CLIENT_SECRET';
+const DRIVE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN || 'YOUR_REFRESH_TOKEN';
 const REDIRECT_URI = 'http://localhost';
 
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
@@ -98,7 +99,6 @@ async function ensureValidToken() {
     }
 }
 
-// دالة لإنشاء أو البحث عن مجلد
 async function findOrCreateFolder(folderName, parentId) {
     try {
         const res = await drive.files.list({
@@ -160,7 +160,6 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
 
         console.log(`[Drive] Upload successful. ID: ${file.data.id}`);
 
-        // منح صلاحية الوصول للجميع
         await drive.permissions.create({
             fileId: file.data.id,
             requestBody: {
@@ -250,7 +249,7 @@ function getCurrentFolderContent(db, subject, doctor, pathIds) {
 }
 
 // ==========================================
-// 6. وظيفة الرفع الرئيسية (الحل النهائي للمشاكل)
+// 6. وظيفة الرفع الرئيسية
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -283,7 +282,7 @@ async function executeUpload(chatId) {
             } catch (e) { console.log("Edit msg error (user might have deleted it):", e.message); }
         };
 
-        // 1. تحميل الملف (مع التعديل الجديد للوقت والتحقق)
+        // 1. تحميل الملف
         updateText("⏳ Downloading From Telegram...");
         
         try {
@@ -294,17 +293,15 @@ async function executeUpload(chatId) {
             
             const writer = fs.createWriteStream(tempFilePath);
             
-            // === التعديل الحاسم: زيادة التايم أوت إلى 15 دقيقة ===
             const tgStream = await axios({ 
                 url: encodedFileLink, 
                 responseType: 'stream',
-                timeout: 900000 // 15 دقيقة (900000 ms)
+                timeout: 900000 
             });
             
             await pipeline(tgStream.data, writer);
             console.log(`[Download] File saved to: ${tempFilePath}`);
 
-            // === التعديل الإضافي: التأكد من أن الملف ليس فارغاً ===
             const stats = fs.statSync(tempFilePath);
             if (stats.size === 0) {
                  throw new Error("Downloaded file is empty (0 bytes). Telegram file might be corrupted or download failed silently.");
@@ -313,8 +310,6 @@ async function executeUpload(chatId) {
             
         } catch (downloadError) {
             console.error('[Download Error]', downloadError.message);
-            
-            // رسالة خطأ محددة تحدد السبب
             let errorMsg = "Failed to download file. Connection timeout or invalid file.";
             if (downloadError.code === 'ECONNABORTED') {
                 errorMsg = "⏱️ **Download Aborted:** The file download was cancelled or connection was reset.";
@@ -343,12 +338,12 @@ async function executeUpload(chatId) {
             currentDriveId = await findOrCreateFolder(name, currentDriveId);
         }
 
-        // 4. رفع الملف (مع تايم أوت 10 دقائق)
+        // 4. رفع الملف
         console.log(`[Upload] Initiating Drive upload...`);
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, currentDriveId);
         
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Upload Timeout (10 mins)")), 600000) // 10 دقائق
+            setTimeout(() => reject(new Error("Upload Timeout (10 mins)")), 600000) 
         );
 
         let driveResult;
@@ -374,7 +369,6 @@ async function executeUpload(chatId) {
             driveId: driveResult.id
         });
 
-        // معالجة فشل الحفظ في قاعدة البيانات بشكل منفصل
         try {
             await saveDatabase(db);
             const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
@@ -383,16 +377,13 @@ async function executeUpload(chatId) {
             await updateText(finalText);
         } catch (dbError) {
             console.error('[DB Save Error]', dbError.message);
-            // حالة فشل جزئي
             await updateText(`⚠️ **Upload Partially Failed**\n\n✅ Uploaded to Drive successfully.\n❌ Failed to update Site Database.\n\n🔗 Drive Link: ${driveResult.link}\n\n*Please try saving again or contact admin.*`);
         }
 
     } catch (error) {
         console.error('[Upload Fatal Error]', error);
-        // رسالة خطأ واضحة جداً
         await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}\n\nPlease try sending the file again.`);
     } finally {
-        // التنظيف وإلغاء القفل
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
@@ -402,10 +393,84 @@ async function executeUpload(chatId) {
 }
 
 // ==========================================
-// 7. API للحذف
+// 7. Scheduler Logic (NEW)
+// ==========================================
+
+async function checkScheduledNotifications() {
+    try {
+        const db = await getDatabase();
+        if (!db.scheduledNotifications || db.scheduledNotifications.length === 0) return;
+
+        const now = Date.now();
+        const dueNotifications = db.scheduledNotifications.filter(n => n.timestamp <= now && !n.sent);
+
+        if (dueNotifications.length > 0) {
+            console.log(`[Scheduler] Found ${dueNotifications.length} due notifications.`);
+            
+            for (const notif of dueNotifications) {
+                // 1. Add to Doctor's Notification Folder
+                const { subject, doctor, messageBody, id } = notif;
+                
+                if (db.database[subject] && db.database[subject][doctor]) {
+                    const docRoot = db.database[subject][doctor].root || [];
+                    let notifFolder = docRoot.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
+                    
+                    if (!notifFolder) {
+                        notifFolder = { id: 'def_notif_' + Date.now(), name: "🔔 Notifications", type: "folder", children: [] };
+                        docRoot.push(notifFolder);
+                    }
+
+                    notifFolder.children.unshift({
+                        id: id,
+                        name: messageBody,
+                        date: new Date().toLocaleString(),
+                        type: "notif",
+                        fullDate: now
+                    });
+                }
+
+                // 2. Add to Recent Updates (Triggers SW/Popup)
+                if (!db.recentUpdates) db.recentUpdates = [];
+                
+                db.recentUpdates.unshift({
+                    id: id,
+                    doctor: doctor,
+                    subject: subject,
+                    timestamp: now,
+                    messageBody: messageBody // Critical for popup
+                });
+                
+                // Keep recent updates limited to 5
+                if (db.recentUpdates.length > 5) db.recentUpdates = db.recentUpdates.slice(0, 5);
+                db.latestNotificationUpdate = now;
+
+                // 3. Mark as sent in scheduled list so we don't process it again
+                const scheduledIndex = db.scheduledNotifications.findIndex(n => n.id === id);
+                if (scheduledIndex !== -1) {
+                    db.scheduledNotifications[scheduledIndex].sent = true;
+                }
+            }
+
+            // Clean up sent scheduled notifications (optional, keeps DB clean)
+            db.scheduledNotifications = db.scheduledNotifications.filter(n => !n.sent);
+
+            await saveDatabase(db);
+            console.log("[Scheduler] Processed and saved notifications.");
+        }
+    } catch (error) {
+        console.error("[Scheduler] Error:", error.message);
+    }
+}
+
+// Run Scheduler every 60 seconds
+setInterval(checkScheduledNotifications, 60000);
+
+// ==========================================
+// 8. API للحذف
 // ==========================================
 
 app.post('/delete-drive-file', async (req, res) => {
+    // WARNING: No auth check on this endpoint. Fix this in production.
     const { fileId } = req.body;
     if (fileId) {
         await deleteFileFromDrive(fileId);
@@ -416,7 +481,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 8. معالجة الرسائل والأوامر
+// 9. معالجة الرسائل والأوامر
 // ==========================================
 
 bot.onText(/\/start/, (msg) => {
@@ -434,10 +499,8 @@ bot.on('photo', async (msg) => {
 async function handleFile(msg) {
     const chatId = msg.chat.id;
     
-    // التحقق من الصلاحيات
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
-    // === الحل الجذري للتهنيج (Lock) ===
     if (userStates[chatId]) {
         bot.sendMessage(chatId, "⚠️ **Busy!**\n\nيرجى الانتظار حتى انتهاء الرفع الحالي قبل إرسال ملف جديد.\n\nSending multiple files quickly will cause the bot to freeze.");
         return;
@@ -452,7 +515,6 @@ async function handleFile(msg) {
         timestamp: Date.now()
     };
 
-    // تهيئة الحالة الجديدة
     userStates[chatId] = {
         step: 'select_subject',
         type: 'file',
@@ -485,7 +547,6 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // حماية الحالة النشطة (Lock)
     if (state) {
         if (state.step === 'waiting_for_new_name') {
             console.log(`[Action] User sent new name: "${text}"`);
@@ -493,13 +554,11 @@ bot.on('message', async (msg) => {
             state.step = 'uploading'; 
             executeUpload(chatId);
         } else {
-            // تجاهل النصوص العشوائية أثناء الرفع
             console.log(`[Ignored] User sent text while busy in step: ${state.step}`);
         }
         return; 
     }
 
-    // حالة: لا توجد حالة (إشعار جديد)
     if (!state) {
         console.log(`[Action] New Notification started`);
         
@@ -527,7 +586,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 9. معالجة الأزرار (Callback Query)
+// 10. معالجة الأزرار (Callback Query)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -541,7 +600,6 @@ bot.on('callback_query', async (query) => {
     }
 
     try {
-        // --- اختيار المادة ---
         if (state && state.step === 'select_subject' && data.startsWith('sub_')) {
             const subjectName = data.replace('sub_', '');
             state.subject = subjectName; 
@@ -557,7 +615,6 @@ bot.on('callback_query', async (query) => {
             });
         }
         
-        // --- اختيار الدكتور ---
         else if (state && state.step === 'select_doctor' && data.startsWith('doc_')) {
             const doctorName = data.replace('doc_', '');
             state.doctor = doctorName;
@@ -571,10 +628,8 @@ bot.on('callback_query', async (query) => {
             await renderFolderContents(chatId, query.message.message_id, state);
         }
 
-        // --- التنقل داخل الفولدرات ---
         else if (state && state.step === 'navigate_folder') {
             
-            // زر رجوع
             if (data === 'back') {
                 if (state.folderPathIds.length > 0) {
                     state.folderPathIds.pop();
@@ -594,7 +649,6 @@ bot.on('callback_query', async (query) => {
                 }
             }
             
-            // الدخول لمجلد فرعي
             else if (data.startsWith('folder_')) {
                 const folderId = data.replace('folder_', '');
                 const db = await getDatabase();
@@ -608,7 +662,6 @@ bot.on('callback_query', async (query) => {
                 }
             }
             
-            // زر الرفع في المكان الحالي
             else if (data === 'upload_here') {
                 state.step = 'confirm_name';
                 const nameKeyboard = [
@@ -628,7 +681,6 @@ bot.on('callback_query', async (query) => {
             }
         }
 
-        // --- تأكيد الاسم ---
         else if (state && state.step === 'confirm_name') {
             if (data === 'act_same') {
                 executeUpload(chatId);
@@ -643,7 +695,6 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// دالة مساعدة لعرض محتويات المجلد
 async function renderFolderContents(chatId, messageId, state) {
     try {
         const db = await getDatabase();
@@ -705,6 +756,17 @@ async function processTextNotification(chatId, state, messageId) {
             type: "notif"
         });
 
+        // Also add to Recent Updates for SW/Popup
+        if (!db.recentUpdates) db.recentUpdates = [];
+        db.recentUpdates.unshift({
+            id: Date.now().toString(36),
+            doctor: state.doctor,
+            subject: state.subject,
+            timestamp: Date.now(),
+            messageBody: state.content
+        });
+        db.latestNotificationUpdate = Date.now();
+
         await saveDatabase(db);
         await bot.editMessageText(`✅ Notification Send Successfully`, { chat_id: chatId, message_id: messageId });
         delete userStates[chatId];
@@ -715,75 +777,7 @@ async function processTextNotification(chatId, state, messageId) {
     }
 }
 
-// ==========================================
-// 10. Scheduled Reminders System (Cron Job)
-// ==========================================
-
-// دالة مساعدة لتحويل اليوم والوقت إلى التوقيت المحلي للسيرفر
-function checkSchedules() {
-    (async () => {
-        try {
-            const db = await getDatabase();
-            if (!db.schedules || db.schedules.length === 0) return;
-
-            const now = new Date();
-            const currentDay = now.getDay(); // 0 (Sunday) to 6 (Saturday)
-            const currentHours = String(now.getHours()).padStart(2, '0');
-            const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-            const currentTime = `${currentHours}:${currentMinutes}`;
-            
-            let dbUpdated = false;
-
-            db.schedules.forEach(sch => {
-                if (sch.active) {
-                    // 1. التحقق من تطابق اليوم والوقت
-                    if (sch.day === currentDay && sch.time === currentTime) {
-                        
-                        // 2. التحقق من أنه لم يتم إرساله اليوم بالفعل
-                        const lastTriggeredDate = new Date(sch.lastTriggered || 0);
-                        const isDifferentDay = lastTriggeredDate.getDate() !== now.getDate() || 
-                                               lastTriggeredDate.getMonth() !== now.getMonth();
-
-                        if (isDifferentDay) {
-                            console.log(`[Scheduler] Triggering reminder for ${sch.doctor} (${sch.subject})`);
-
-                            // 3. إنشاء Active Alert ليظهر للطلاب فوراً
-                            if (!db.activeAlerts) db.activeAlerts = [];
-                            db.activeAlerts.push({
-                                id: 'alert_' + Date.now() + Math.random(),
-                                subject: sch.subject,
-                                doctor: sch.doctor,
-                                message: sch.message,
-                                timestamp: Date.now()
-                            });
-
-                            // تنظيف الإشعارات القديمة (اختياري، ابقاء آخر 20 فقط)
-                            if (db.activeAlerts.length > 20) db.activeAlerts.shift();
-
-                            // 4. تحديث آخر وقت إرسال
-                            sch.lastTriggered = Date.now();
-                            dbUpdated = true;
-                        }
-                    }
-                }
-            });
-
-            if (dbUpdated) {
-                await saveDatabase(db);
-                console.log("[Scheduler] Database updated with new alerts.");
-            }
-
-        } catch (error) {
-            console.error("[Scheduler Error]", error.message);
-        }
-    })();
-}
-
-// تشغيل الفحص كل 60 ثانية
-setInterval(checkSchedules, 60000);
-
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
-    console.log("📅 Scheduler Started: Checking for reminders every minute.");
 });
