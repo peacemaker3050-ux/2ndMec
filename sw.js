@@ -21,7 +21,7 @@ const messaging = firebase.messaging();
 // CONSTANTS
 const BIN_ID = "696e77bfae596e708fe71e9d";
 const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-const CACHE_NAME = 'uni-bot-cache-v6'; // Ensure this matches or is managed well
+const CACHE_NAME = 'uni-bot-cache-v6';
 
 // 2. INDEXEDDB SETUP
 let db;
@@ -76,13 +76,14 @@ self.addEventListener('install', (event) => {
         Promise.all([
             initDB(),
             caches.open(CACHE_NAME).then(cache => {
+                // حفظ الصفحة الرئيسية لضمان عمل التطبيق Offline
                 return cache.addAll(['./', 'index.html']);
             })
         ])
     );
 });
 
-// 4. SW ACTIVATE
+// 4. SW ACTIVATE (تم التعديل هنا لتحسين استقبال الإشعارات)
 self.addEventListener('activate', (event) => { 
     console.log("[SW] Activated");
     
@@ -100,10 +101,11 @@ self.addEventListener('activate', (event) => {
                 );
             }),
             (async () => {
+                // محاولة تسجيل Periodic Sync (يعمل فقط على Android Chrome المثبت)
                 if ('periodicSync' in self.registration) {
                     try {
                         await self.registration.periodicSync.register('check-doctor-msg', {
-                            minInterval: 15 * 60 * 1000 
+                            minInterval: 15 * 60 * 1000 // كل 15 دقيقة
                         });
                         console.log("[SW] Periodic Sync Registered");
                     } catch (err) {
@@ -111,20 +113,24 @@ self.addEventListener('activate', (event) => {
                     }
                 }
             })()
-        ])
+        ]).then(() => {
+            // === التعديل الجديد ===
+            // بعد انتهاء التفعيل، قم بفحص الإشعارات فوراً
+            console.log("[SW] Activation complete. Running immediate check for notifications.");
+            return checkNotifications();
+        })
     ); 
 
-    // بدء الـ Polling يدوياً كـ Fallback للمتصفحات التي لا تدعم Periodic Sync
+    // بدء الـ Polling يدوياً كل 60 ثانية كـ Backup
     if (!isPolling) {
         isPolling = true;
-        checkNotifications(); // Run once immediately
         setInterval(() => {
             checkNotifications();
         }, 60 * 1000); 
     }
 });
 
-// 5. FETCH HANDLER (تم التعديل هنا لدعم وضع عدم الاتصال)
+// 5. FETCH HANDLER (يدعم Offline للـ API والموارد)
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
@@ -144,13 +150,14 @@ self.addEventListener('fetch', (event) => {
                 })
                 .catch(() => {
                     // في حالة فشل الاتصال، جلب البيانات من الكاش
+                    console.log("[SW] Network failed, serving from cache");
                     return caches.match(event.request);
                 })
         );
         return;
     }
 
-    // Cache First for Assets
+    // Cache First for Assets (الصور، الخطوط، إلخ)
     event.respondWith(
         caches.match(event.request).then(cached => {
             return cached || fetch(event.request).then(response => {
@@ -160,6 +167,7 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response;
             }).catch(() => {
+                // إذا فشل التحميل وكان طلباً لصفحة، أرجع الصفحة الرئيسية
                 if (event.request.mode === 'navigate') {
                     return caches.match('./');
                 }
@@ -181,7 +189,7 @@ messaging.onBackgroundMessage((payload) => {
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// 7. NOTIFICATION CLICKS (تم إصلاح خطأ window)
+// 7. NOTIFICATION CLICKS
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const url = event.notification.data.click_action || '/';
@@ -206,13 +214,13 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// 8. APP MESSAGES (تمت إضافة استماع لرسالة INIT_POLLING)
+// 8. APP MESSAGES
 self.addEventListener('message', (event) => {
     const data = event.data;
     
-    // استقبال أمر البدء من الـ Inline Service Worker
+    // استقبال أمر البدء من الـ Inline Service Worker أو الصفحة
     if (data && data.type === 'INIT_POLLING') {
-        console.log("[SW] Received INIT_POLLING signal from Page/InlineSW");
+        console.log("[SW] Received INIT_POLLING signal");
         if (!isPolling) {
             isPolling = true;
             checkNotifications();
