@@ -21,7 +21,7 @@ const messaging = firebase.messaging();
 // CONSTANTS
 const BIN_ID = "696e77bfae596e708fe71e9d";
 const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-const CACHE_NAME = 'uni-bot-cache-v7'; // Updated to force refresh
+const CACHE_NAME = 'uni-bot-cache-v6'; // Ensure this matches or is managed well
 
 // 2. INDEXEDDB SETUP
 let db;
@@ -114,21 +114,39 @@ self.addEventListener('activate', (event) => {
         ])
     ); 
 
+    // بدء الـ Polling يدوياً كـ Fallback للمتصفحات التي لا تدعم Periodic Sync
     if (!isPolling) {
         isPolling = true;
+        checkNotifications(); // Run once immediately
         setInterval(() => {
             checkNotifications();
         }, 60 * 1000); 
     }
 });
 
-// 5. FETCH HANDLER (Network First for JSON, Cache First for Assets)
+// 5. FETCH HANDLER (تم التعديل هنا لدعم وضع عدم الاتصال)
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Network First for API
+    // Network First for API (مع دعم Offline)
     if (url.hostname.includes('jsonbin.io')) {
-        event.respondWith(fetch(event.request));
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // تخزين النسخة الجديدة
+                    if (response && response.status === 200) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // في حالة فشل الاتصال، جلب البيانات من الكاش
+                    return caches.match(event.request);
+                })
+        );
         return;
     }
 
@@ -163,7 +181,7 @@ messaging.onBackgroundMessage((payload) => {
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// 7. NOTIFICATION CLICKS
+// 7. NOTIFICATION CLICKS (تم إصلاح خطأ window)
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const url = event.notification.data.click_action || '/';
@@ -173,9 +191,11 @@ self.addEventListener('notificationclick', (event) => {
             type: 'window',
             includeUncontrolled: true
         }).then((clientList) => {
+            // استخدام self.location بدلاً من window
+            const origin = self.location.origin;
+            
             for (const client of clientList) {
-                if (client.url.includes(window.location.origin) && 'focus' in client) { 
-                     // Fixed typo: finish -> focus
+                if (client.url.includes(origin) && 'focus' in client) { 
                      return client.focus();
                 }
             }
@@ -186,9 +206,19 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// 8. APP MESSAGES
+// 8. APP MESSAGES (تمت إضافة استماع لرسالة INIT_POLLING)
 self.addEventListener('message', (event) => {
     const data = event.data;
+    
+    // استقبال أمر البدء من الـ Inline Service Worker
+    if (data && data.type === 'INIT_POLLING') {
+        console.log("[SW] Received INIT_POLLING signal from Page/InlineSW");
+        if (!isPolling) {
+            isPolling = true;
+            checkNotifications();
+        }
+    }
+
     if (data.type === 'SYNCED_NOTIF_DOCTOR' || data.type === 'TEST_NOTIF') {
         if (Notification.permission === 'granted') {
             self.registration.showNotification(data.type === 'TEST_NOTIF' ? '🧪 Test Successful' : '📢 Update Available', { 
@@ -205,8 +235,13 @@ self.addEventListener('message', (event) => {
 async function checkNotifications() {
     if (!dbReady) {
         console.log("[SW] DB not ready, initializing...");
-        await initDB();
-        if(!dbReady) return;
+        try {
+            await initDB();
+            if(!dbReady) return;
+        } catch(e) {
+            console.error("[SW] Failed to init DB during poll", e);
+            return;
+        }
     }
 
     try {
@@ -234,13 +269,10 @@ async function checkNotifications() {
                 setLastTime(updateTimestamp);
 
                 if (Notification.permission === 'granted') {
-                    // FIX: Use messageBody if available (for scheduled/standard notifs)
-                    const notificationBody = newestUpdate.messageBody || `From ${newestUpdate.doctor} (${newestUpdate.subject})`;
-                    
                     const deepLink = `/?subject=${encodeURIComponent(newestUpdate.subject)}&doctor=${encodeURIComponent(newestUpdate.doctor)}&action=open_notification`;
 
                     self.registration.showNotification('📢 New Message', { 
-                        body: notificationBody, 
+                        body: `From ${newestUpdate.doctor} (${newestUpdate.subject})`, 
                         icon: data.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', 
                         requireInteraction: true, 
                         tag: 'latest-update', 
