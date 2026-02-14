@@ -720,6 +720,7 @@ async function processTextNotification(chatId, state, messageId) {
 // ==========================================
 
 // دالة مساعدة لتحويل اليوم والوقت إلى التوقيت المحلي للسيرفر
+process.env.TZ= "Africa/Cairo";
 function checkSchedules() {
     (async () => {
         try {
