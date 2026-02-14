@@ -279,7 +279,6 @@ async function executeUpload(chatId) {
             } catch (e) { console.log("Edit msg error:", e.message); }
         };
 
-        // 1. تحميل الملف
         updateText("⏳ Downloading From Telegram...");
         
         try {
@@ -301,7 +300,7 @@ async function executeUpload(chatId) {
 
             const stats = fs.statSync(tempFilePath);
             if (stats.size === 0) {
-                 throw new Error("Downloaded file is empty.");
+                 throw new Error("Downloaded file is empty (0 bytes).");
             }
             
         } catch (downloadError) {
@@ -315,28 +314,25 @@ async function executeUpload(chatId) {
 
         await new Promise(resolve => setTimeout(resolve, 1000)); 
 
-        // 2. تجهيز البيانات
         updateText("⏳ Preparing Drive Structure...");
         const [rootId, db] = await Promise.all([
             getRootFolderId(),
             getDatabase()
         ]);
 
-        // 3. بناء هيكل المجلدات في Drive
         let folderNames = [state.subject, state.doctor, ...state.folderPathNames];
         let currentDriveId = rootId;
 
-        updateText(`⏳ Uploading to: ${state.folderPathNames.length > 0 ? state.folderPathNames[state.folderPathNames.length-1] : 'Root'}`);
+        updateText(`⏳ Creating Folders & Uploading to: ${state.folderPathNames.length > 0 ? state.folderPathNames[state.folderPathNames.length-1] : 'Root'}`);
         
         for (let name of folderNames) {
             currentDriveId = await findOrCreateFolder(name, currentDriveId);
         }
 
-        // 4. رفع الملف
         console.log(`[Upload] Initiating Drive upload...`);
         const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, currentDriveId);
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Upload Timeout")), 600000)
+            setTimeout(() => reject(new Error("Upload Timeout (10 mins)")), 600000)
         );
 
         let driveResult;
@@ -406,16 +402,7 @@ app.post('/delete-drive-file', async (req, res) => {
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
-    
-    const keyboard = [
-        [{ text: "📄 Upload File", callback_data: 'cmd_upload' }],
-        [{ text: "📝 Send Notification", callback_data: 'cmd_notify' }],
-        [{ text: "📅 Set Reminder", callback_data: 'cmd_schedule' }]
-    ];
-
-    bot.sendMessage(chatId, "👋 Welcome to Peace Maker Bot\n\nChoose an action:", {
-        reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
-    });
+    bot.sendMessage(chatId, "👋 Peace Maker Welcomes You\n\n ✨ We're Glad To Have You Here\n📄 Send File OR Text To Begin", { parse_mode: 'Markdown' });
 });
 
 bot.on('document', async (msg) => handleFile(msg));
@@ -429,7 +416,7 @@ async function handleFile(msg) {
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     if (userStates[chatId]) {
-        bot.sendMessage(chatId, "⚠️ **Busy!**\n\nPlease wait for the current process to finish.");
+        bot.sendMessage(chatId, "⚠️ **Busy!**\n\nيرجى الانتظار حتى انتهاء الرفع الحالي قبل إرسال ملف جديد.");
         return;
     }
 
@@ -468,48 +455,40 @@ bot.on('message', async (msg) => {
 
     const state = userStates[chatId];
 
-    // التعامل مع الحالات النشطة (Lock)
     if (state) {
         if (state.step === 'waiting_for_new_name') {
             state.file.name = text.trim();
             state.step = 'uploading'; 
             executeUpload(chatId);
         }
-        // === جديد: استقبال نص التذكير ===
-        else if (state.step === 'schedule_message') {
-            state.content = text.trim();
-            state.step = 'select_subject';
-            bot.sendMessage(chatId, `Message: "${text}"\n\nSelect Subject:`);
-            // (سيتولى الكود أدناه إرسال قائمة المواد لأننا عدلنا state.step)
-            // لذا نحتاج لإرسال الكيبورد يدوياً أو الاعتماد على رد المستخدم التالي
-            // الأفضل هنا إرسال الكيبورد فوراً:
-            getDatabase().then(data => {
-                const subjects = Object.keys(data.database);
-                const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-                bot.sendMessage(chatId, "Select Subject:", { reply_markup: { inline_keyboard: keyboard } });
-            });
-        }
-        // === جديد: استقبال الوقت ===
-        else if (state.step === 'schedule_time') {
-            // تحقق من صيغة الوقت (HH:MM)
-            const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-            if (!timeRegex.test(text)) {
-                bot.sendMessage(chatId, "❌ Invalid time format. Please use HH:MM (e.g., 14:30)");
-                return;
-            }
-            state.time = text.trim();
-            await saveSchedule(chatId, state);
-        }
-        else {
-            console.log(`[Ignored] User sent text while busy in step: ${state.step}`);
-        }
         return; 
     }
 
-    // حالة: لا توجد حالة (إشعار فوري جديد)
-    // ملاحظة: تم إزالة هذا الاستدعاء التلقائي لأننا نستخدم القائمة الآن
-    // إذا أردت البقاء على الميزة القديمة (كتابة نص يرسل فوراً)، يمكنك إعادته.
-    // حالياً سيتم تجاهل النصوص إذا لم يبدأ المستخدم عملية من القائمة.
+    // حالة: لا توجد حالة (إشعار جديد)
+    if (!state) {
+        console.log(`[Action] New Notification started`);
+        
+        userStates[chatId] = {
+            step: 'select_subject',
+            type: 'text',
+            content: text,
+            folderPathIds: [], 
+            folderPathNames: []
+        };
+
+        try {
+            const data = await getDatabase();
+            const subjects = Object.keys(data.database);
+            const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+            
+            bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
+                reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+            });
+        } catch (e) {
+             delete userStates[chatId];
+             bot.sendMessage(chatId, "❌ Failed to load database.");
+        }
+    }
 });
 
 // ==========================================
@@ -527,43 +506,8 @@ bot.on('callback_query', async (query) => {
     }
 
     try {
-        // --- أوامر القائمة الرئيسية ---
-        if (!state) {
-            if (data === 'cmd_upload') {
-                bot.sendMessage(chatId, "📤 Please send the file now.");
-                return;
-            }
-            if (data === 'cmd_notify') {
-                userStates[chatId] = {
-                    step: 'notify_message',
-                    type: 'text',
-                    folderPathIds: [],
-                    folderPathNames: []
-                };
-                bot.editMessageText("📝 Send the Notification Text:", {
-                    chat_id: chatId, message_id: query.message.message_id
-                });
-                return;
-            }
-            if (data === 'cmd_schedule') {
-                userStates[chatId] = {
-                    step: 'schedule_message',
-                    type: 'schedule',
-                    folderPathIds: [],
-                    folderPathNames: []
-                };
-                bot.editMessageText("📅 Send the Reminder Message:", {
-                    chat_id: chatId, message_id: query.message.message_id
-                });
-                return;
-            }
-        }
-
-        // --- اختيار المادة (مشترك بين الفايل، الإشعار، والتذكير) ---
-        if (state && (state.step === 'select_subject' || state.step === 'notify_message') && data.startsWith('sub_')) {
-            // إذا كنا في مرحلة "كتابة نص الإشعار" وجاءنا رد بكبشن "Sub" فهذا خطأ، لذا نتأكد
-            if(state.step === 'notify_message') return; 
-
+        // --- اختيار المادة ---
+        if (state && state.step === 'select_subject' && data.startsWith('sub_')) {
             const subjectName = data.replace('sub_', '');
             state.subject = subjectName; 
             state.step = 'select_doctor';
@@ -582,29 +526,73 @@ bot.on('callback_query', async (query) => {
         else if (state && state.step === 'select_doctor' && data.startsWith('doc_')) {
             const doctorName = data.replace('doc_', '');
             state.doctor = doctorName;
-            
-            // تصريف الأنواع
+
             if (state.type === 'text') {
-                await processTextNotification(chatId, state, query.message.message_id);
-                return;
-            } else if (state.type === 'schedule') {
-                await showDaySelectionKeyboard(chatId, query.message.message_id);
+                // === التعديل الجديد ===
+                // لا نرسل فوراً، بل نعرض قائمة الخيارات
+                state.step = 'choose_action';
+                
+                const actionKeyboard = [
+                    [{ text: "✉️ Send Now", callback_data: 'act_send_now' }],
+                    [{ text: "⏰ Set Reminder", callback_data: 'act_set_reminder' }]
+                ];
+                
+                await bot.editMessageText(`Doctor: *${doctorName}*\n\nChoose Action:`, {
+                    chat_id: chatId, 
+                    message_id: query.message.message_id,
+                    reply_markup: { inline_keyboard: actionKeyboard }, 
+                    parse_mode: 'Markdown'
+                });
                 return;
             }
 
-            // For files
+            // For Files
             state.step = 'navigate_folder';
             await renderFolderContents(chatId, query.message.message_id, state);
         }
 
-        // --- اختيار اليوم (للتذكير) ===
+        // === المنطق الجديد للإشعارات ===
+        
+        // 1. اختيار الإرسال الفوري
+        else if (state && state.step === 'choose_action' && data === 'act_send_now') {
+            await processTextNotification(chatId, state, query.message.message_id);
+        }
+        
+        // 2. اختيار التذكير (البدء)
+        else if (state && state.step === 'choose_action' && data === 'act_set_reminder') {
+            state.step = 'schedule_day';
+            await showDaySelectionKeyboard(chatId, query.message.message_id);
+        }
+        
+        // 3. اختيار اليوم
         else if (state && state.step === 'schedule_day' && data.startsWith('day_')) {
             const dayIndex = parseInt(data.replace('day_', ''));
             state.day = dayIndex;
-            state.step = 'schedule_time';
-            await bot.editMessageText(`Selected Day: ${getDayName(dayIndex)}\n\nPlease send the Time in HH:MM format (e.g., 14:30)`, {
-                chat_id: chatId, message_id: query.message.message_id
-            });
+            state.step = 'schedule_hour';
+            await showHourSelectionKeyboard(chatId, query.message.message_id);
+        }
+        
+        // 4. اختيار الساعة
+        else if (state && state.step === 'schedule_hour' && data.startsWith('hour_')) {
+            const hour = parseInt(data.replace('hour_', ''));
+            state.hour = hour;
+            state.step = 'schedule_ampm';
+            await showAmPmSelectionKeyboard(chatId, query.message.message_id);
+        }
+        
+        // 5. اختيار AM/PM والحفظ
+        else if (state && state.step === 'schedule_ampm' && (data === 'act_AM' || data === 'act_PM')) {
+            const isAM = (data === 'act_AM');
+            
+            // تحويل الوقت لصيغة 24 ساعة
+            let hour24 = state.hour;
+            if (!isAM && hour24 !== 12) hour24 += 12;
+            if (isAM && hour24 === 12) hour24 = 0;
+            
+            const timeString = `${String(hour24).padStart(2, '0')}:00`;
+            state.time = timeString;
+            
+            await saveSchedule(chatId, state);
         }
 
         // --- التنقل داخل الفولدرات (للفايلات) ---
@@ -675,7 +663,6 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// دالة مساعدة لعرض محتويات المجلد
 async function renderFolderContents(chatId, messageId, state) {
     try {
         const db = await getDatabase();
@@ -713,7 +700,8 @@ async function renderFolderContents(chatId, messageId, state) {
     }
 }
 
-// دالة مساعدة لإظهار كيبورد الأيام
+// === دوال مساعدة للواجهات الجديدة (Keyboards) ===
+
 function showDaySelectionKeyboard(chatId, messageId) {
     const days = [
         { name: 'Sunday', val: 0 },
@@ -725,9 +713,48 @@ function showDaySelectionKeyboard(chatId, messageId) {
         { name: 'Saturday', val: 6 }
     ];
 
-    const keyboard = days.map(d => [{ text: d.name, callback_data: `day_${d.val}` }]);
+    // تقسيم الأيام لصفين
+    const keyboard = [];
+    for (let i = 0; i < days.length; i += 2) {
+        let row = [{ text: days[i].name, callback_data: `day_${days[i].val}` }];
+        if (days[i+1]) {
+            row.push({ text: days[i+1].name, callback_data: `day_${days[i+1].val}` });
+        }
+        keyboard.push(row);
+    }
     
     bot.editMessageText("Select the Day:", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: keyboard }
+    });
+}
+
+function showHourSelectionKeyboard(chatId, messageId) {
+    const keyboard = [];
+    // عرض الساعات في صفوف
+    for (let i = 1; i <= 12; i += 2) {
+        let row = [{ text: `${i}`, callback_data: `hour_${i}` }];
+        if (i + 1 <= 12) {
+            row.push({ text: `${i + 1}`, callback_data: `hour_${i+1}` });
+        }
+        keyboard.push(row);
+    }
+    
+    bot.editMessageText("Select Hour:", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: keyboard }
+    });
+}
+
+function showAmPmSelectionKeyboard(chatId, messageId) {
+    const keyboard = [
+        [{ text: "AM", callback_data: 'act_AM' }],
+        [{ text: "PM", callback_data: 'act_PM' }]
+    ];
+    
+    bot.editMessageText("Select Time Period:", {
         chat_id: chatId,
         message_id: messageId,
         reply_markup: { inline_keyboard: keyboard }
@@ -768,7 +795,10 @@ async function saveSchedule(chatId, state) {
     }
 }
 
-// دالة معالجة الإشعارات الفورية
+// ==========================================
+// 10. دالة معالجة الإشعارات (تم التعديل)
+// ==========================================
+
 async function processTextNotification(chatId, state, messageId) {
     try {
         const db = await getDatabase();
@@ -818,7 +848,7 @@ async function processTextNotification(chatId, state, messageId) {
 }
 
 // ==========================================
-// 10. Scheduled Reminders System
+// 11. Scheduled Reminders System
 // ==========================================
 
 process.env.TZ = "Africa/Cairo";
@@ -859,7 +889,6 @@ function checkSchedules() {
 
                             if (db.activeAlerts.length > 20) db.activeAlerts.shift();
 
-                            // إضافة لـ recentUpdates
                             if (!db.recentUpdates) db.recentUpdates = [];
                             db.recentUpdates.unshift({
                                 id: 'sched_' + Date.now(),
