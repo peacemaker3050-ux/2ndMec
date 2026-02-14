@@ -576,6 +576,14 @@ bot.on('callback_query', async (query) => {
         else if (state && state.step === 'schedule_hour' && data.startsWith('hour_')) {
             const hour = parseInt(data.replace('hour_', ''));
             state.hour = hour;
+            state.step = 'schedule_minute'; // التعديل: الانتقال لاختيار الدقائق
+            await showMinuteSelectionKeyboard(chatId, query.message.message_id); // دالة الدقائق الجديدة
+        }
+        
+        // 4.5 اختيار الدقائق (جديد)
+        else if (state && state.step === 'schedule_minute' && data.startsWith('min_')) {
+            const minute = parseInt(data.replace('min_', ''));
+            state.minute = minute;
             state.step = 'schedule_ampm';
             await showAmPmSelectionKeyboard(chatId, query.message.message_id);
         }
@@ -589,7 +597,9 @@ bot.on('callback_query', async (query) => {
             if (!isAM && hour24 !== 12) hour24 += 12;
             if (isAM && hour24 === 12) hour24 = 0;
             
-            const timeString = `${String(hour24).padStart(2, '0')}:00`;
+            // إضافة الدقائق للوقت
+            const minVal = state.minute || 0; 
+            const timeString = `${String(hour24).padStart(2, '0')}:${String(minVal).padStart(2, '0')}`;
             state.time = timeString;
             
             await saveSchedule(chatId, state);
@@ -713,7 +723,6 @@ function showDaySelectionKeyboard(chatId, messageId) {
         { name: 'Saturday', val: 6 }
     ];
 
-    // تقسيم الأيام لصفين
     const keyboard = [];
     for (let i = 0; i < days.length; i += 2) {
         let row = [{ text: days[i].name, callback_data: `day_${days[i].val}` }];
@@ -732,7 +741,6 @@ function showDaySelectionKeyboard(chatId, messageId) {
 
 function showHourSelectionKeyboard(chatId, messageId) {
     const keyboard = [];
-    // عرض الساعات في صفوف
     for (let i = 1; i <= 12; i += 2) {
         let row = [{ text: `${i}`, callback_data: `hour_${i}` }];
         if (i + 1 <= 12) {
@@ -742,6 +750,28 @@ function showHourSelectionKeyboard(chatId, messageId) {
     }
     
     bot.editMessageText("Select Hour:", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: keyboard }
+    });
+}
+
+// دالة جديدة لاختيار الدقائق
+function showMinuteSelectionKeyboard(chatId, messageId) {
+    const keyboard = [];
+    let row = [];
+    for (let i = 0; i < 60; i += 5) {
+        const minStr = String(i).padStart(2, '0');
+        row.push({ text: minStr, callback_data: `min_${i}` });
+        
+        if (row.length === 5) {
+            keyboard.push(row);
+            row = [];
+        }
+    }
+    if (row.length > 0) keyboard.push(row);
+    
+    bot.editMessageText("Select Minutes:", {
         chat_id: chatId,
         message_id: messageId,
         reply_markup: { inline_keyboard: keyboard }
@@ -766,11 +796,12 @@ function getDayName(dayIndex) {
     return days[dayIndex];
 }
 
-// دالة حفظ التذكير
+// دالة حفظ التذكير (تم التعديل لإرسال الرسالة فوراً أيضاً)
 async function saveSchedule(chatId, state) {
     try {
         const db = await getDatabase();
         
+        // 1. حفظ التذكير للمستقبل (في المصفوفة schedules)
         if (!db.schedules) db.schedules = [];
 
         db.schedules.push({
@@ -784,9 +815,61 @@ async function saveSchedule(chatId, state) {
             lastTriggered: 0
         });
 
+        // 2. الإرسال الفوري (الإصلاح المطلوب)
+        // نقوم بنفس خطوات processTextNotification لضمان ظهور الرسالة الآن
+
+        if (!db.database[state.subject]) db.database[state.subject] = {};
+        if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
+        
+        const docData = db.database[state.subject][state.doctor];
+        if (!docData.root) docData.root = [];
+        
+        // التأكد من وجود مجلد الإشعارات
+        let notifFolder = docData.root.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
+        
+        if (!notifFolder) {
+            notifFolder = { id: 'def_notif_' + Date.now(), name: "🔔 Notifications", type: "folder", children: [] };
+            docData.root.push(notifFolder);
+        }
+
+        // إضافة للإشعارات داخل المجلد
+        notifFolder.children.unshift({
+            id: Date.now().toString(36),
+            name: state.content,
+            date: new Date().toLocaleString(),
+            type: "notif"
+        });
+
+        // إضافة لـ activeAlerts (يظهر كـ Alert في التطبيق الآن)
+        if (!db.activeAlerts) db.activeAlerts = [];
+        db.activeAlerts.push({
+            id: 'alert_' + Date.now() + Math.random(),
+            subject: state.subject,
+            doctor: state.doctor,
+            message: state.content,
+            timestamp: Date.now()
+        });
+
+        if (db.activeAlerts.length > 20) db.activeAlerts.shift();
+
+        // إضافة لـ recentUpdates (يظهر في الـ News Feed الآن)
+        if (!db.recentUpdates) db.recentUpdates = [];
+        db.recentUpdates.unshift({
+            id: 'sched_' + Date.now(),
+            doctor: state.doctor,
+            subject: state.subject,
+            message: state.content,
+            timestamp: Date.now()
+        });
+        
+        if (db.recentUpdates.length > 5) db.recentUpdates = db.recentUpdates.slice(0, 5);
+
+        db.latestNotificationUpdate = Date.now();
+
+        // حفظ التغييرات
         await saveDatabase(db);
         
-        bot.sendMessage(chatId, `✅ **Reminder Set Successfully**\n\n📅 Day: ${getDayName(state.day)}\n⏰ Time: ${state.time}\n📝 Message: "${state.content}"\n\nTarget: ${state.doctor} (${state.subject})`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `✅ **Reminder Set Successfully**\n\n📅 Day: ${getDayName(state.day)}\n⏰ Time: ${state.time}\n📝 Message: "${state.content}"\n\nTarget: ${state.doctor} (${state.subject})\n\n*⚡ Message sent now and scheduled for later.*`, { parse_mode: 'Markdown' });
         delete userStates[chatId];
     } catch (err) {
         console.error("Save Schedule Error:", err);
@@ -796,7 +879,7 @@ async function saveSchedule(chatId, state) {
 }
 
 // ==========================================
-// 10. دالة معالجة الإشعارات (تم التعديل)
+// 10. دالة معالجة الإشعارات (للإرسال الفوري المباشر)
 // ==========================================
 
 async function processTextNotification(chatId, state, messageId) {
