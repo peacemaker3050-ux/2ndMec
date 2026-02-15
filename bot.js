@@ -26,16 +26,25 @@ const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
 // --- إعدادات الدرايف الإضافي ---
-const SECOND_DRIVE_FOLDER_ID = "14JEnt51iWtaLI3QFT8_jhxG4SMI3daBW"; 
-const SECOND_DRIVE_ENABLED = true; 
+const SECOND_DRIVE_FOLDER_ID = ""; 
+const SECOND_DRIVE_ENABLED = false; 
 
-// --- إعدادات Google Drive (تم التعديل للعمل بـ Service Account) ---
-// تأكد أن ملف الـ JSON المسمى credentials.json موجود في نفس مجلد المشروع
-const KEYFILEPATH = path.join(__dirname, 'credentials.json');
+// --- إعدادات Google Drive (تم التعديل للعمل مع Environment Variables في Railway) ---
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 
+// قراءة المفتاح من متغير البيئة الموجود في إعدادات Railway
+const credentialsJson = process.env.GOOGLE_CREDENTIALS;
+
+if (!credentialsJson) {
+    console.error("❌ FATAL ERROR: GOOGLE_CREDENTIALS environment variable is missing.");
+    console.error("Please add the JSON content to the 'GOOGLE_CREDENTIALS' variable in Railway settings.");
+    process.exit(1); // إيقاف التطبيق فوراً إذا لم يجد المفتاح
+}
+
+const credentials = JSON.parse(credentialsJson);
+
 const auth = new google.auth.GoogleAuth({
-    keyFile: KEYFILEPATH,
+    credentials: credentials, // استخدام المفتاح من المتغير مباشرة
     scopes: SCOPES
 });
 
@@ -64,16 +73,14 @@ async function getRootFolderId() {
     if (ROOT_FOLDER_ID) return ROOT_FOLDER_ID;
 
     try {
-        // التأكد من أن التوكن صالح (يتم تجديده تلقائياً في Service Account)
         const authClient = await auth.getClient();
-        // لا نحتاج لـ getAccessToken يدوياً هنا، الـ GoogleAuth يديرها
 
         const res = await drive.files.list({
             q: `mimeType='application/vnd.google-apps.folder' and name='${DRIVE_ROOT_FOLDER_NAME}' and trashed=false`,
             fields: 'files(id, name)',
             spaces: 'drive',
             supportsAllDrives: true,
-            auth: authClient // تمرير التوكن المعتمد
+            auth: authClient
         });
 
         if (res.data.files.length > 0) {
