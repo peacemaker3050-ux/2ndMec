@@ -371,12 +371,18 @@ async function executeUpload(chatId) {
 
     } catch (error) {
         console.error('[Upload Fatal Error]', error);
-        await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
+        // Only send error if we haven't cleaned up (user might have cancelled)
+        if (userStates[chatId]) {
+            await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
+        }
     } finally {
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
-        delete userStates[chatId];
+        // Clean up state only if it still exists and belongs to this process
+        if (userStates[chatId] && userStates[chatId].file === state.file) {
+            delete userStates[chatId];
+        }
         console.log(`[Upload] Cleaned up state for ${chatId}`);
     }
 }
@@ -399,10 +405,32 @@ app.post('/delete-drive-file', async (req, res) => {
 // 8. معالجة الرسائل والأوامر
 // ==========================================
 
+// إعداد قائمة الأوامر لتظهر دائماً
+bot.setMyCommands([
+    { command: 'start', description: 'Start Bot / Reset' },
+    { command: 'cancel', description: 'Cancel Current Operation' }
+]);
+
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
+    
+    // إلغاء أي عملية سابقة
+    delete userStates[chatId];
+    
     bot.sendMessage(chatId, "👋 Peace Maker Welcomes You\n\n ✨ We're Glad To Have You Here\n📄 Send File OR Text To Begin", { parse_mode: 'Markdown' });
+});
+
+bot.onText(/\/cancel/, (msg) => {
+    const chatId = msg.chat.id;
+    if (!AUTHORIZED_USERS.includes(chatId)) return;
+    
+    if (userStates[chatId]) {
+        delete userStates[chatId];
+        bot.sendMessage(chatId, "❌ **Operation Cancelled Successfully**", { parse_mode: 'Markdown' });
+    } else {
+        bot.sendMessage(chatId, "ℹ️ No active operation to cancel.", { parse_mode: 'Markdown' });
+    }
 });
 
 bot.on('document', async (msg) => handleFile(msg));
@@ -415,9 +443,11 @@ async function handleFile(msg) {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
+    // --- التعديل الجديد: إلغاء تلقائي للعملية القديمة ---
     if (userStates[chatId]) {
-        bot.sendMessage(chatId, "⚠️ **Busy!**\n\nيرجى الانتظار حتى انتهاء الرفع الحالي قبل إرسال ملف جديد.");
-        return;
+        console.log(`[Auto-Cancel] User sent new file. Cancelling previous stuck operation for ${chatId}.`);
+        delete userStates[chatId];
+        // لا نرسل رسالة خطأ هنا لكي لا نزعج المستخدم، نبدأ العملية الجديدة فوراً
     }
 
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
@@ -435,6 +465,9 @@ async function handleFile(msg) {
         const API = await getDatabase();
         const subjects = Object.keys(API.database);
         const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+        
+        // إضافة زر الإلغاء
+        keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
         
         bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
             reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
@@ -481,6 +514,9 @@ bot.on('message', async (msg) => {
             const subjects = Object.keys(data.database);
             const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
             
+            // إضافة زر الإلغاء
+            keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+            
             bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
             });
@@ -506,6 +542,17 @@ bot.on('callback_query', async (query) => {
     }
 
     try {
+        // --- معالجة زر الإلغاء الجديد ---
+        if (data === 'cancel_op') {
+            delete userStates[chatId];
+            await bot.editMessageText("❌ **Operation Cancelled**", {
+                chat_id: chatId,
+                message_id: query.message.message_id,
+                parse_mode: 'Markdown'
+            });
+            return;
+        }
+
         // --- اختيار المادة ---
         if (state && state.step === 'select_subject' && data.startsWith('sub_')) {
             const subjectName = data.replace('sub_', '');
@@ -516,6 +563,9 @@ bot.on('callback_query', async (query) => {
             const doctors = db.database[subjectName] ? db.database[subjectName].doctors : [];
             const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
             
+            // إضافة زر الإلغاء
+            keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+
             await bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
                 chat_id: chatId, message_id: query.message.message_id,
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
@@ -534,7 +584,8 @@ bot.on('callback_query', async (query) => {
                 
                 const actionKeyboard = [
                     [{ text: "✉️ Send Now", callback_data: 'act_send_now' }],
-                    [{ text: "⏰ Set Reminder", callback_data: 'act_set_reminder' }]
+                    [{ text: "⏰ Set Reminder", callback_data: 'act_set_reminder' }],
+                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // زر إلغاء
                 ];
                 
                 await bot.editMessageText(`Doctor: *${doctorName}*\n\nChoose Action:`, {
@@ -620,6 +671,9 @@ bot.on('callback_query', async (query) => {
                     const doctors = db.database[state.subject] ? db.database[state.subject].doctors : [];
                     const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
                     
+                    // إضافة زر الإلغاء
+                    keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+
                     await bot.editMessageText(`Subject : *${state.subject}*\n\ Select Doctor :`, {
                         chat_id: chatId, message_id: query.message.message_id,
                         reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
@@ -644,7 +698,8 @@ bot.on('callback_query', async (query) => {
                 state.step = 'confirm_name';
                 const nameKeyboard = [
                     [{ text: "✅ Same Name", callback_data: 'act_same' }],
-                    [{ text: "✏️ Rename", callback_data: 'act_rename' }]
+                    [{ text: "✏️ Rename", callback_data: 'act_rename' }],
+                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // زر إلغاء
                 ];
 
                 let pathText = state.folderPathNames.join(' / ');
@@ -664,7 +719,7 @@ bot.on('callback_query', async (query) => {
                 executeUpload(chatId);
             } else if (data === 'act_rename') {
                 state.step = 'waiting_for_new_name';
-                await bot.sendMessage(chatId, "✏️ Send the *new file name* now.", { parse_mode: 'Markdown' });
+                await bot.sendMessage(chatId, "✏️ Send the *new file name* now.\n(Or send /cancel to abort)", { parse_mode: 'Markdown' });
             }
         }
 
@@ -693,6 +748,9 @@ async function renderFolderContents(chatId, messageId, state) {
         if (state.folderPathIds.length > 0 || state.step === 'navigate_folder') {
              keyboard.push([{ text: `🔙 Back`, callback_data: 'back' }]);
         }
+
+        // إضافة زر الإلغاء دائماً في أسفل القائمة
+        keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
         let pathText = state.folderPathNames.join(' / ');
         let headerText = `Doctor : *${state.doctor}*`;
@@ -732,6 +790,9 @@ function showDaySelectionKeyboard(chatId, messageId) {
         keyboard.push(row);
     }
     
+    // إضافة زر الإلغاء
+    keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+
     bot.editMessageText("Select the Day:", {
         chat_id: chatId,
         message_id: messageId,
@@ -749,6 +810,9 @@ function showHourSelectionKeyboard(chatId, messageId) {
         keyboard.push(row);
     }
     
+    // إضافة زر الإلغاء
+    keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+
     bot.editMessageText("Select Hour:", {
         chat_id: chatId,
         message_id: messageId,
@@ -771,6 +835,9 @@ function showMinuteSelectionKeyboard(chatId, messageId) {
     }
     if (row.length > 0) keyboard.push(row);
     
+    // إضافة زر الإلغاء
+    keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+
     bot.editMessageText("Select Minutes:", {
         chat_id: chatId,
         message_id: messageId,
@@ -781,7 +848,8 @@ function showMinuteSelectionKeyboard(chatId, messageId) {
 function showAmPmSelectionKeyboard(chatId, messageId) {
     const keyboard = [
         [{ text: "AM", callback_data: 'act_AM' }],
-        [{ text: "PM", callback_data: 'act_PM' }]
+        [{ text: "PM", callback_data: 'act_PM' }],
+        [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // إلغاء
     ];
     
     bot.editMessageText("Select Time Period:", {
