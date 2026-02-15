@@ -25,28 +25,21 @@ const AUTHORIZED_USERS = [
 const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-// --- إعدادات الدرايف الإضافي (جديد) ---
-// ضع ID فولدر "الترم التاني - تانية ميكانيكا" هنا
+// --- إعدادات الدرايف الإضافي ---
 const SECOND_DRIVE_FOLDER_ID = "14JEnt51iWtaLI3QFT8_jhxG4SMI3daBW"; 
-// قم بتغيير هذه القيمة إلى true بعد وضع الـ ID
 const SECOND_DRIVE_ENABLED = true; 
 
-// إعدادات Google Drive الأساسية
-const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
-const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U';
-const REDIRECT_URI = 'http://localhost';
+// --- إعدادات Google Drive (تم التعديل للعمل بـ Service Account) ---
+// تأكد أن ملف الـ JSON المسمى credentials.json موجود في نفس مجلد المشروع
+const KEYFILEPATH = path.join(__dirname, 'credentials.json');
+const SCOPES = ['https://www.googleapis.com/auth/drive'];
 
-const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
-oAuth2Client.setCredentials({ refresh_token: DRIVE_REFRESH_TOKEN });
-
-oAuth2Client.on('tokens', (tokens) => {
-    if (tokens.refresh_token) {
-        console.log('Google Refresh Token updated.');
-    }
+const auth = new google.auth.GoogleAuth({
+    keyFile: KEYFILEPATH,
+    scopes: SCOPES
 });
 
-const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+const drive = google.drive({ version: 'v3', auth });
 
 const bot = new TelegramBot(token, { polling: true });
 const app = express();
@@ -71,11 +64,16 @@ async function getRootFolderId() {
     if (ROOT_FOLDER_ID) return ROOT_FOLDER_ID;
 
     try {
+        // التأكد من أن التوكن صالح (يتم تجديده تلقائياً في Service Account)
+        const authClient = await auth.getClient();
+        // لا نحتاج لـ getAccessToken يدوياً هنا، الـ GoogleAuth يديرها
+
         const res = await drive.files.list({
             q: `mimeType='application/vnd.google-apps.folder' and name='${DRIVE_ROOT_FOLDER_NAME}' and trashed=false`,
             fields: 'files(id, name)',
             spaces: 'drive',
-            supportsAllDrives: true
+            supportsAllDrives: true,
+            auth: authClient // تمرير التوكن المعتمد
         });
 
         if (res.data.files.length > 0) {
@@ -84,7 +82,8 @@ async function getRootFolderId() {
             const folder = await drive.files.create({
                 resource: { 'name': DRIVE_ROOT_FOLDER_NAME, 'mimeType': 'application/vnd.google-apps.folder' },
                 fields: 'id',
-                supportsAllDrives: true
+                supportsAllDrives: true,
+                auth: authClient
             });
             ROOT_FOLDER_ID = folder.data.id;
         }
@@ -95,22 +94,15 @@ async function getRootFolderId() {
     }
 }
 
-async function ensureValidToken() {
-    try {
-        await oAuth2Client.getAccessToken();
-    } catch (e) {
-        const { credentials } = await oAuth2Client.refreshAccessToken();
-        oAuth2Client.setCredentials(credentials);
-    }
-}
-
 async function findOrCreateFolder(folderName, parentId) {
     try {
+        const authClient = await auth.getClient();
         const res = await drive.files.list({
             q: `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false and '${parentId}' in parents`,
             fields: 'files(id, name)',
             spaces: 'drive',
-            supportsAllDrives: true
+            supportsAllDrives: true,
+            auth: authClient
         });
 
         if (res.data.files.length > 0) {
@@ -125,7 +117,8 @@ async function findOrCreateFolder(folderName, parentId) {
         const folder = await drive.files.create({
             resource: fileMetadata,
             fields: 'id',
-            supportsAllDrives: true
+            supportsAllDrives: true,
+            auth: authClient
         });
         return folder.data.id;
     } catch (error) {
@@ -136,7 +129,7 @@ async function findOrCreateFolder(folderName, parentId) {
 
 async function uploadFileToDrive(filePath, fileName, folderId) {
     try {
-        await ensureValidToken();
+        const authClient = await auth.getClient();
 
         const fileMetadata = {
             'name': fileName,
@@ -160,12 +153,13 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             media: media,
             fields: 'id, webViewLink',
             supportsAllDrives: true,
-            supportsTeamDrives: true
+            supportsTeamDrives: true,
+            auth: authClient
         });
 
         console.log(`[Drive] Upload successful. ID: ${file.data.id}`);
 
-        // محاولة جعل الملف عاماً (قد تفشل في بعض الدرايفرات المؤسسية المقيدة)
+        // محاولة جعل الملف عاماً
         try {
             await drive.permissions.create({
                 fileId: file.data.id,
@@ -173,7 +167,8 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
                     role: 'reader',
                     type: 'anyone'
                 },
-                supportsAllDrives: true
+                supportsAllDrives: true,
+                auth: authClient
             });
         } catch (permErr) {
             console.warn('[Drive] Permission warning (might be restricted drive):', permErr.message);
@@ -194,9 +189,11 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
 async function deleteFileFromDrive(fileId) {
     if (!fileId) return;
     try {
+        const authClient = await auth.getClient();
         await drive.files.delete({ 
             fileId: fileId,
-            supportsAllDrives: true
+            supportsAllDrives: true,
+            auth: authClient
         });
     } catch (error) {
         console.error('[Drive] Delete Error:', error.message);
@@ -259,7 +256,7 @@ function getCurrentFolderContent(db, subject, doctor, pathIds) {
 }
 
 // ==========================================
-// 6. وظيفة الرفع الرئيسية (تم التعديل لنسخ الهيكل في الدرايف الإضافي)
+// 6. وظيفة الرفع الرئيسية
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -331,11 +328,9 @@ async function executeUpload(chatId) {
             getDatabase()
         ]);
 
-        // --- تحضير قائمة الفولدرات (التسلسل) ---
-        // هذه القائمة ستستخدم لإنشاء الهيكل في الدرايف الأساسي والإضافي
         const folderNames = [state.subject, state.doctor, ...state.folderPathNames];
         
-        // 1. تجهيز الدرايف الأساسي
+        // 1. Primary Drive
         let currentPrimaryId = rootId;
         for (let name of folderNames) {
             currentPrimaryId = await findOrCreateFolder(name, currentPrimaryId);
@@ -356,14 +351,12 @@ async function executeUpload(chatId) {
             throw new Error(`Primary Drive Upload Failed: ${err.message}`);
         }
 
-        // 2. تجهيز ورفع الدرايف الإضافي (بنفس الترتيب)
+        // 2. Secondary Drive
         let secondaryDriveResult = null;
         if (SECOND_DRIVE_ENABLED && SECOND_DRIVE_FOLDER_ID) {
             try {
                 updateText("⏳ Creating Folders in Secondary Drive...");
                 let currentSecondaryId = SECOND_DRIVE_FOLDER_ID;
-                
-                // نكرر نفس حلقة التكرار لإنشاء نفس التسلسل داخل الفولدر الإضافي
                 for (let name of folderNames) {
                     currentSecondaryId = await findOrCreateFolder(name, currentSecondaryId);
                 }
@@ -373,11 +366,10 @@ async function executeUpload(chatId) {
                 console.log(`[Upload] Secondary Drive upload successful.`);
             } catch (secErr) {
                 console.error('[Upload] Secondary Drive Error:', secErr.message);
-                // لا نوقف العملية إذا فشل الثاني
             }
         }
 
-        // 3. الحفظ في قاعدة البيانات (نحفظ رابط الدرايب الأساسي فقط)
+        // 3. Save to DB
         let currentList = db.database[state.subject][state.doctor].root;
         for (let folderId of state.folderPathIds) {
             const folder = currentList.find(i => i.id === folderId && i.type === 'folder');
@@ -825,7 +817,6 @@ async function saveSchedule(chatId, state) {
             lastTriggered: 0
         });
 
-        // إرسال فوري
         if (!db.database[state.subject]) db.database[state.subject] = {};
         if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
         const docData = db.database[state.subject][state.doctor];
@@ -979,6 +970,8 @@ setInterval(checkSchedules, 60000);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
+    // Test connection on startup
+    getRootFolderId().then(() => console.log("Drive Connected (Service Account Mode)"))
+    .catch(err => console.error("Drive Connection Failed:", err.message));
     console.log("📅 Scheduler Started: Checking for reminders every minute.");
 });
