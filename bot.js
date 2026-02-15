@@ -25,30 +25,22 @@ const AUTHORIZED_USERS = [
 const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
 const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-// --- إعدادات الدرايف الإضافي ---
-const SECOND_DRIVE_FOLDER_ID = ""; 
-const SECOND_DRIVE_ENABLED = false; 
+// إعدادات Google Drive
+const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
+const DRIVE_REFRESH_TOKEN = '1//03QItIOwcTAOUCgYIARAAGAMSNwF-L9Ir2w0GCrRxk65kRG9pTXDspB--Njlyl3ubMFn3yVjSDuF07fLdOYWjB9_jSbR-ybkzh9U';
+const REDIRECT_URI = 'http://localhost';
 
-// --- إعدادات Google Drive (تم التعديل للعمل مع Environment Variables في Railway) ---
-const SCOPES = ['https://www.googleapis.com/auth/drive'];
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+oAuth2Client.setCredentials({ refresh_token: DRIVE_REFRESH_TOKEN });
 
-// قراءة المفتاح من متغير البيئة الموجود في إعدادات Railway
-const credentialsJson = process.env.GOOGLE_CREDENTIALS;
-
-if (!credentialsJson) {
-    console.error("❌ FATAL ERROR: GOOGLE_CREDENTIALS environment variable is missing.");
-    console.error("Please add the JSON content to the 'GOOGLE_CREDENTIALS' variable in Railway settings.");
-    process.exit(1); // إيقاف التطبيق فوراً إذا لم يجد المفتاح
-}
-
-const credentials = JSON.parse(credentialsJson);
-
-const auth = new google.auth.GoogleAuth({
-    credentials: credentials, // استخدام المفتاح من المتغير مباشرة
-    scopes: SCOPES
+oAuth2Client.on('tokens', (tokens) => {
+    if (tokens.refresh_token) {
+        console.log('Google Refresh Token updated.');
+    }
 });
 
-const drive = google.drive({ version: 'v3', auth });
+const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
 const bot = new TelegramBot(token, { polling: true });
 const app = express();
@@ -73,14 +65,11 @@ async function getRootFolderId() {
     if (ROOT_FOLDER_ID) return ROOT_FOLDER_ID;
 
     try {
-        const authClient = await auth.getClient();
-
         const res = await drive.files.list({
             q: `mimeType='application/vnd.google-apps.folder' and name='${DRIVE_ROOT_FOLDER_NAME}' and trashed=false`,
             fields: 'files(id, name)',
             spaces: 'drive',
-            supportsAllDrives: true,
-            auth: authClient
+            supportsAllDrives: true
         });
 
         if (res.data.files.length > 0) {
@@ -89,8 +78,7 @@ async function getRootFolderId() {
             const folder = await drive.files.create({
                 resource: { 'name': DRIVE_ROOT_FOLDER_NAME, 'mimeType': 'application/vnd.google-apps.folder' },
                 fields: 'id',
-                supportsAllDrives: true,
-                auth: authClient
+                supportsAllDrives: true
             });
             ROOT_FOLDER_ID = folder.data.id;
         }
@@ -101,15 +89,22 @@ async function getRootFolderId() {
     }
 }
 
+async function ensureValidToken() {
+    try {
+        await oAuth2Client.getAccessToken();
+    } catch (e) {
+        const { credentials } = await oAuth2Client.refreshAccessToken();
+        oAuth2Client.setCredentials(credentials);
+    }
+}
+
 async function findOrCreateFolder(folderName, parentId) {
     try {
-        const authClient = await auth.getClient();
         const res = await drive.files.list({
             q: `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false and '${parentId}' in parents`,
             fields: 'files(id, name)',
             spaces: 'drive',
-            supportsAllDrives: true,
-            auth: authClient
+            supportsAllDrives: true
         });
 
         if (res.data.files.length > 0) {
@@ -124,8 +119,7 @@ async function findOrCreateFolder(folderName, parentId) {
         const folder = await drive.files.create({
             resource: fileMetadata,
             fields: 'id',
-            supportsAllDrives: true,
-            auth: authClient
+            supportsAllDrives: true
         });
         return folder.data.id;
     } catch (error) {
@@ -136,7 +130,7 @@ async function findOrCreateFolder(folderName, parentId) {
 
 async function uploadFileToDrive(filePath, fileName, folderId) {
     try {
-        const authClient = await auth.getClient();
+        await ensureValidToken();
 
         const fileMetadata = {
             'name': fileName,
@@ -153,33 +147,26 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
             body: fs.createReadStream(filePath)
         };
 
-        console.log(`[Drive] Uploading ${fileName} to ${folderId}...`);
+        console.log(`[Drive] Uploading ${fileName}...`);
 
         const file = await drive.files.create({
             resource: fileMetadata,
             media: media,
             fields: 'id, webViewLink',
             supportsAllDrives: true,
-            supportsTeamDrives: true,
-            auth: authClient
+            supportsTeamDrives: true
         });
 
         console.log(`[Drive] Upload successful. ID: ${file.data.id}`);
 
-        // محاولة جعل الملف عاماً
-        try {
-            await drive.permissions.create({
-                fileId: file.data.id,
-                requestBody: {
-                    role: 'reader',
-                    type: 'anyone'
-                },
-                supportsAllDrives: true,
-                auth: authClient
-            });
-        } catch (permErr) {
-            console.warn('[Drive] Permission warning (might be restricted drive):', permErr.message);
-        }
+        await drive.permissions.create({
+            fileId: file.data.id,
+            requestBody: {
+                role: 'reader',
+                type: 'anyone'
+            },
+            supportsAllDrives: true
+        });
 
         let finalLink = file.data.webViewLink;
         if (!finalLink.includes('usp=sharing')) {
@@ -196,11 +183,9 @@ async function uploadFileToDrive(filePath, fileName, folderId) {
 async function deleteFileFromDrive(fileId) {
     if (!fileId) return;
     try {
-        const authClient = await auth.getClient();
         await drive.files.delete({ 
             fileId: fileId,
-            supportsAllDrives: true,
-            auth: authClient
+            supportsAllDrives: true
         });
     } catch (error) {
         console.error('[Drive] Delete Error:', error.message);
@@ -335,48 +320,30 @@ async function executeUpload(chatId) {
             getDatabase()
         ]);
 
-        const folderNames = [state.subject, state.doctor, ...state.folderPathNames];
+        let folderNames = [state.subject, state.doctor, ...state.folderPathNames];
+        let currentDriveId = rootId;
+
+        updateText(`⏳ Creating Folders & Uploading to: ${state.folderPathNames.length > 0 ? state.folderPathNames[state.folderPathNames.length-1] : 'Root'}`);
         
-        // 1. Primary Drive
-        let currentPrimaryId = rootId;
         for (let name of folderNames) {
-            currentPrimaryId = await findOrCreateFolder(name, currentPrimaryId);
+            currentDriveId = await findOrCreateFolder(name, currentDriveId);
         }
 
-        updateText(`⏳ Uploading to Primary Drive...`);
-        
-        const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, currentPrimaryId);
+        console.log(`[Upload] Initiating Drive upload...`);
+        const uploadPromise = uploadFileToDrive(tempFilePath, state.file.name, currentDriveId);
         const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error("Upload Timeout (10 mins)")), 600000)
         );
 
-        let primaryDriveResult;
+        let driveResult;
         try {
-            primaryDriveResult = await Promise.race([uploadPromise, timeoutPromise]);
+            driveResult = await Promise.race([uploadPromise, timeoutPromise]);
         } catch (err) {
-            console.error('[Upload] Primary Drive failed:', err.message);
-            throw new Error(`Primary Drive Upload Failed: ${err.message}`);
+            console.error('[Upload] Drive failed:', err.message);
+            throw new Error(`Google Drive Upload Failed: ${err.message}`);
         }
 
-        // 2. Secondary Drive
-        let secondaryDriveResult = null;
-        if (SECOND_DRIVE_ENABLED && SECOND_DRIVE_FOLDER_ID) {
-            try {
-                updateText("⏳ Creating Folders in Secondary Drive...");
-                let currentSecondaryId = SECOND_DRIVE_FOLDER_ID;
-                for (let name of folderNames) {
-                    currentSecondaryId = await findOrCreateFolder(name, currentSecondaryId);
-                }
-
-                updateText("⏳ Uploading to Secondary Drive...");
-                secondaryDriveResult = await uploadFileToDrive(tempFilePath, state.file.name, currentSecondaryId);
-                console.log(`[Upload] Secondary Drive upload successful.`);
-            } catch (secErr) {
-                console.error('[Upload] Secondary Drive Error:', secErr.message);
-            }
-        }
-
-        // 3. Save to DB
+        // 5. الحفظ في قاعدة البيانات
         let currentList = db.database[state.subject][state.doctor].root;
         for (let folderId of state.folderPathIds) {
             const folder = currentList.find(i => i.id === folderId && i.type === 'folder');
@@ -387,29 +354,24 @@ async function executeUpload(chatId) {
             id: Date.now().toString(36),
             name: state.file.name,
             type: 'file',
-            link: primaryDriveResult.link,
-            driveId: primaryDriveResult.id
+            link: driveResult.link,
+            driveId: driveResult.id
         });
 
         try {
             await saveDatabase(db);
             const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
             const folderPathStr = state.folderPathNames.join(' / ');
-            
-            let finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor}${folderPathStr ? ' / ' + folderPathStr : ''}\n📝 Name: *${displayName}*\n🔗 ${primaryDriveResult.link}`;
-            
-            if (secondaryDriveResult) {
-                finalText += `\n\n🔗 *2nd Drive Link:* ${secondaryDriveResult.link}`;
-            }
-
+            const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor}${folderPathStr ? ' / ' + folderPathStr : ''}\n📝 Name: *${displayName}*\n🔗 ${driveResult.link}`;
             await updateText(finalText);
         } catch (dbError) {
             console.error('[DB Save Error]', dbError.message);
-            await updateText(`⚠️ **Partial Fail**\n\n✅ Drive OK.\n❌ DB Fail.\n\n🔗 ${primaryDriveResult.link}`);
+            await updateText(`⚠️ **Partial Fail**\n\n✅ Drive OK.\n❌ DB Fail.\n\n🔗 ${driveResult.link}`);
         }
 
     } catch (error) {
         console.error('[Upload Fatal Error]', error);
+        // Only send error if we haven't cleaned up (user might have cancelled)
         if (userStates[chatId]) {
             await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
         }
@@ -417,6 +379,7 @@ async function executeUpload(chatId) {
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
+        // Clean up state only if it still exists and belongs to this process
         if (userStates[chatId] && userStates[chatId].file === state.file) {
             delete userStates[chatId];
         }
@@ -442,6 +405,7 @@ app.post('/delete-drive-file', async (req, res) => {
 // 8. معالجة الرسائل والأوامر
 // ==========================================
 
+// إعداد قائمة الأوامر لتظهر دائماً
 bot.setMyCommands([
     { command: 'start', description: 'Start Bot / Reset' },
     { command: 'cancel', description: 'Cancel Current Operation' }
@@ -450,13 +414,17 @@ bot.setMyCommands([
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
+    
+    // إلغاء أي عملية سابقة
     delete userStates[chatId];
+    
     bot.sendMessage(chatId, "👋 Peace Maker Welcomes You\n\n ✨ We're Glad To Have You Here\n📄 Send File OR Text To Begin", { parse_mode: 'Markdown' });
 });
 
 bot.onText(/\/cancel/, (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
+    
     if (userStates[chatId]) {
         delete userStates[chatId];
         bot.sendMessage(chatId, "❌ **Operation Cancelled Successfully**", { parse_mode: 'Markdown' });
@@ -475,9 +443,11 @@ async function handleFile(msg) {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
+    // --- التعديل الجديد: إلغاء تلقائي للعملية القديمة ---
     if (userStates[chatId]) {
         console.log(`[Auto-Cancel] User sent new file. Cancelling previous stuck operation for ${chatId}.`);
         delete userStates[chatId];
+        // لا نرسل رسالة خطأ هنا لكي لا نزعج المستخدم، نبدأ العملية الجديدة فوراً
     }
 
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
@@ -495,6 +465,8 @@ async function handleFile(msg) {
         const API = await getDatabase();
         const subjects = Object.keys(API.database);
         const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+        
+        // إضافة زر الإلغاء
         keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
         
         bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
@@ -525,8 +497,10 @@ bot.on('message', async (msg) => {
         return; 
     }
 
+    // حالة: لا توجد حالة (إشعار جديد)
     if (!state) {
         console.log(`[Action] New Notification started`);
+        
         userStates[chatId] = {
             step: 'select_subject',
             type: 'text',
@@ -539,6 +513,8 @@ bot.on('message', async (msg) => {
             const data = await getDatabase();
             const subjects = Object.keys(data.database);
             const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+            
+            // إضافة زر الإلغاء
             keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
             
             bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
@@ -566,6 +542,7 @@ bot.on('callback_query', async (query) => {
     }
 
     try {
+        // --- معالجة زر الإلغاء الجديد ---
         if (data === 'cancel_op') {
             delete userStates[chatId];
             await bot.editMessageText("❌ **Operation Cancelled**", {
@@ -576,6 +553,7 @@ bot.on('callback_query', async (query) => {
             return;
         }
 
+        // --- اختيار المادة ---
         if (state && state.step === 'select_subject' && data.startsWith('sub_')) {
             const subjectName = data.replace('sub_', '');
             state.subject = subjectName; 
@@ -584,6 +562,8 @@ bot.on('callback_query', async (query) => {
             const db = await getDatabase();
             const doctors = db.database[subjectName] ? db.database[subjectName].doctors : [];
             const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
+            
+            // إضافة زر الإلغاء
             keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
             await bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
@@ -592,17 +572,22 @@ bot.on('callback_query', async (query) => {
             });
         }
         
+        // --- اختيار الدكتور ---
         else if (state && state.step === 'select_doctor' && data.startsWith('doc_')) {
             const doctorName = data.replace('doc_', '');
             state.doctor = doctorName;
 
             if (state.type === 'text') {
+                // === التعديل الجديد ===
+                // لا نرسل فوراً، بل نعرض قائمة الخيارات
                 state.step = 'choose_action';
+                
                 const actionKeyboard = [
                     [{ text: "✉️ Send Now", callback_data: 'act_send_now' }],
                     [{ text: "⏰ Set Reminder", callback_data: 'act_set_reminder' }],
-                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }]
+                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // زر إلغاء
                 ];
+                
                 await bot.editMessageText(`Doctor: *${doctorName}*\n\nChoose Action:`, {
                     chat_id: chatId, 
                     message_id: query.message.message_id,
@@ -612,19 +597,25 @@ bot.on('callback_query', async (query) => {
                 return;
             }
 
+            // For Files
             state.step = 'navigate_folder';
             await renderFolderContents(chatId, query.message.message_id, state);
         }
 
+        // === المنطق الجديد للإشعارات ===
+        
+        // 1. اختيار الإرسال الفوري
         else if (state && state.step === 'choose_action' && data === 'act_send_now') {
             await processTextNotification(chatId, state, query.message.message_id);
         }
         
+        // 2. اختيار التذكير (البدء)
         else if (state && state.step === 'choose_action' && data === 'act_set_reminder') {
             state.step = 'schedule_day';
             await showDaySelectionKeyboard(chatId, query.message.message_id);
         }
         
+        // 3. اختيار اليوم
         else if (state && state.step === 'schedule_day' && data.startsWith('day_')) {
             const dayIndex = parseInt(data.replace('day_', ''));
             state.day = dayIndex;
@@ -632,13 +623,15 @@ bot.on('callback_query', async (query) => {
             await showHourSelectionKeyboard(chatId, query.message.message_id);
         }
         
+        // 4. اختيار الساعة
         else if (state && state.step === 'schedule_hour' && data.startsWith('hour_')) {
             const hour = parseInt(data.replace('hour_', ''));
             state.hour = hour;
-            state.step = 'schedule_minute';
-            await showMinuteSelectionKeyboard(chatId, query.message.message_id);
+            state.step = 'schedule_minute'; // التعديل: الانتقال لاختيار الدقائق
+            await showMinuteSelectionKeyboard(chatId, query.message.message_id); // دالة الدقائق الجديدة
         }
         
+        // 4.5 اختيار الدقائق (جديد)
         else if (state && state.step === 'schedule_minute' && data.startsWith('min_')) {
             const minute = parseInt(data.replace('min_', ''));
             state.minute = minute;
@@ -646,18 +639,26 @@ bot.on('callback_query', async (query) => {
             await showAmPmSelectionKeyboard(chatId, query.message.message_id);
         }
         
+        // 5. اختيار AM/PM والحفظ
         else if (state && state.step === 'schedule_ampm' && (data === 'act_AM' || data === 'act_PM')) {
             const isAM = (data === 'act_AM');
+            
+            // تحويل الوقت لصيغة 24 ساعة
             let hour24 = state.hour;
             if (!isAM && hour24 !== 12) hour24 += 12;
             if (isAM && hour24 === 12) hour24 = 0;
+            
+            // إضافة الدقائق للوقت
             const minVal = state.minute || 0; 
             const timeString = `${String(hour24).padStart(2, '0')}:${String(minVal).padStart(2, '0')}`;
             state.time = timeString;
+            
             await saveSchedule(chatId, state);
         }
 
+        // --- التنقل داخل الفولدرات (للفايلات) ---
         else if (state && state.step === 'navigate_folder') {
+            
             if (data === 'back') {
                 if (state.folderPathIds.length > 0) {
                     state.folderPathIds.pop();
@@ -669,33 +670,41 @@ bot.on('callback_query', async (query) => {
                     const db = await getDatabase();
                     const doctors = db.database[state.subject] ? db.database[state.subject].doctors : [];
                     const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
+                    
+                    // إضافة زر الإلغاء
                     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+
                     await bot.editMessageText(`Subject : *${state.subject}*\n\ Select Doctor :`, {
                         chat_id: chatId, message_id: query.message.message_id,
                         reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
                     });
                 }
             }
+            
             else if (data.startsWith('folder_')) {
                 const folderId = data.replace('folder_', '');
                 const db = await getDatabase();
                 const currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
                 const folder = currentList.find(f => f.id === folderId);
+                
                 if (folder) {
                     state.folderPathIds.push(folderId);
                     state.folderPathNames.push(folder.name);
                     await renderFolderContents(chatId, query.message.message_id, state);
                 }
             }
+            
             else if (data === 'upload_here') {
                 state.step = 'confirm_name';
                 const nameKeyboard = [
                     [{ text: "✅ Same Name", callback_data: 'act_same' }],
                     [{ text: "✏️ Rename", callback_data: 'act_rename' }],
-                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }]
+                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // زر إلغاء
                 ];
+
                 let pathText = state.folderPathNames.join(' / ');
                 if(pathText) pathText = " / " + pathText;
+
                 await bot.editMessageText(`📂 Location: *${state.subject} / ${state.doctor}${pathText}*\n\n📝  Current File Name :\n\`${state.file.name}\`\n\ Choose An Action :`, {
                     chat_id: chatId, 
                     message_id: query.message.message_id,
@@ -725,6 +734,7 @@ async function renderFolderContents(chatId, messageId, state) {
         const currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
         
         const keyboard = [];
+
         currentList.forEach(item => {
             if (item.type === 'folder') {
                 keyboard.push([{ text: `📂 ${item.name}`, callback_data: `folder_${item.id}` }]);
@@ -732,10 +742,14 @@ async function renderFolderContents(chatId, messageId, state) {
                 keyboard.push([{ text: `📄 ${item.name}`, callback_data: 'ignore_file' }]);
             }
         });
+
         keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
+
         if (state.folderPathIds.length > 0 || state.step === 'navigate_folder') {
              keyboard.push([{ text: `🔙 Back`, callback_data: 'back' }]);
         }
+
+        // إضافة زر الإلغاء دائماً في أسفل القائمة
         keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
         let pathText = state.folderPathNames.join(' / ');
@@ -754,53 +768,95 @@ async function renderFolderContents(chatId, messageId, state) {
     }
 }
 
+// === دوال مساعدة للواجهات الجديدة (Keyboards) ===
+
 function showDaySelectionKeyboard(chatId, messageId) {
     const days = [
-        { name: 'Sunday', val: 0 }, { name: 'Monday', val: 1 },
-        { name: 'Tuesday', val: 2 }, { name: 'Wednesday', val: 3 },
-        { name: 'Thursday', val: 4 }, { name: 'Friday', val: 5 }, { name: 'Saturday', val: 6 }
+        { name: 'Sunday', val: 0 },
+        { name: 'Monday', val: 1 },
+        { name: 'Tuesday', val: 2 },
+        { name: 'Wednesday', val: 3 },
+        { name: 'Thursday', val: 4 },
+        { name: 'Friday', val: 5 },
+        { name: 'Saturday', val: 6 }
     ];
+
     const keyboard = [];
     for (let i = 0; i < days.length; i += 2) {
         let row = [{ text: days[i].name, callback_data: `day_${days[i].val}` }];
-        if (days[i+1]) row.push({ text: days[i+1].name, callback_data: `day_${days[i+1].val}` });
+        if (days[i+1]) {
+            row.push({ text: days[i+1].name, callback_data: `day_${days[i+1].val}` });
+        }
         keyboard.push(row);
     }
+    
+    // إضافة زر الإلغاء
     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
-    bot.editMessageText("Select the Day:", { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: keyboard } });
+
+    bot.editMessageText("Select the Day:", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: keyboard }
+    });
 }
 
 function showHourSelectionKeyboard(chatId, messageId) {
     const keyboard = [];
     for (let i = 1; i <= 12; i += 2) {
         let row = [{ text: `${i}`, callback_data: `hour_${i}` }];
-        if (i + 1 <= 12) row.push({ text: `${i + 1}`, callback_data: `hour_${i+1}` });
+        if (i + 1 <= 12) {
+            row.push({ text: `${i + 1}`, callback_data: `hour_${i+1}` });
+        }
         keyboard.push(row);
     }
+    
+    // إضافة زر الإلغاء
     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
-    bot.editMessageText("Select Hour:", { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: keyboard } });
+
+    bot.editMessageText("Select Hour:", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: keyboard }
+    });
 }
 
+// دالة جديدة لاختيار الدقائق
 function showMinuteSelectionKeyboard(chatId, messageId) {
     const keyboard = [];
     let row = [];
     for (let i = 0; i < 60; i += 5) {
         const minStr = String(i).padStart(2, '0');
         row.push({ text: minStr, callback_data: `min_${i}` });
-        if (row.length === 5) { keyboard.push(row); row = []; }
+        
+        if (row.length === 5) {
+            keyboard.push(row);
+            row = [];
+        }
     }
     if (row.length > 0) keyboard.push(row);
+    
+    // إضافة زر الإلغاء
     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
-    bot.editMessageText("Select Minutes:", { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: keyboard } });
+
+    bot.editMessageText("Select Minutes:", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: keyboard }
+    });
 }
 
 function showAmPmSelectionKeyboard(chatId, messageId) {
     const keyboard = [
         [{ text: "AM", callback_data: 'act_AM' }],
         [{ text: "PM", callback_data: 'act_PM' }],
-        [{ text: "❌ Cancel", callback_data: 'cancel_op' }]
+        [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // إلغاء
     ];
-    bot.editMessageText("Select Time Period:", { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: keyboard } });
+    
+    bot.editMessageText("Select Time Period:", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: keyboard }
+    });
 }
 
 function getDayName(dayIndex) {
@@ -808,9 +864,12 @@ function getDayName(dayIndex) {
     return days[dayIndex];
 }
 
+// دالة حفظ التذكير (تم التعديل لإرسال الرسالة فوراً أيضاً)
 async function saveSchedule(chatId, state) {
     try {
         const db = await getDatabase();
+        
+        // 1. حفظ التذكير للمستقبل (في المصفوفة schedules)
         if (!db.schedules) db.schedules = [];
 
         db.schedules.push({
@@ -824,15 +883,24 @@ async function saveSchedule(chatId, state) {
             lastTriggered: 0
         });
 
+        // 2. الإرسال الفوري (الإصلاح المطلوب)
+        // نقوم بنفس خطوات processTextNotification لضمان ظهور الرسالة الآن
+
         if (!db.database[state.subject]) db.database[state.subject] = {};
         if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
+        
         const docData = db.database[state.subject][state.doctor];
         if (!docData.root) docData.root = [];
+        
+        // التأكد من وجود مجلد الإشعارات
         let notifFolder = docData.root.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
+        
         if (!notifFolder) {
             notifFolder = { id: 'def_notif_' + Date.now(), name: "🔔 Notifications", type: "folder", children: [] };
             docData.root.push(notifFolder);
         }
+
+        // إضافة للإشعارات داخل المجلد
         notifFolder.children.unshift({
             id: Date.now().toString(36),
             name: state.content,
@@ -840,6 +908,7 @@ async function saveSchedule(chatId, state) {
             type: "notif"
         });
 
+        // إضافة لـ activeAlerts (يظهر كـ Alert في التطبيق الآن)
         if (!db.activeAlerts) db.activeAlerts = [];
         db.activeAlerts.push({
             id: 'alert_' + Date.now() + Math.random(),
@@ -848,8 +917,10 @@ async function saveSchedule(chatId, state) {
             message: state.content,
             timestamp: Date.now()
         });
+
         if (db.activeAlerts.length > 20) db.activeAlerts.shift();
 
+        // إضافة لـ recentUpdates (يظهر في الـ News Feed الآن)
         if (!db.recentUpdates) db.recentUpdates = [];
         db.recentUpdates.unshift({
             id: 'sched_' + Date.now(),
@@ -858,11 +929,14 @@ async function saveSchedule(chatId, state) {
             message: state.content,
             timestamp: Date.now()
         });
+        
         if (db.recentUpdates.length > 5) db.recentUpdates = db.recentUpdates.slice(0, 5);
 
         db.latestNotificationUpdate = Date.now();
 
+        // حفظ التغييرات
         await saveDatabase(db);
+        
         bot.sendMessage(chatId, `✅ **Reminder Set Successfully**\n\n📅 Day: ${getDayName(state.day)}\n⏰ Time: ${state.time}\n📝 Message: "${state.content}"\n\nTarget: ${state.doctor} (${state.subject})\n\n*⚡ Message sent now and scheduled for later.*`, { parse_mode: 'Markdown' });
         delete userStates[chatId];
     } catch (err) {
@@ -872,24 +946,35 @@ async function saveSchedule(chatId, state) {
     }
 }
 
+// ==========================================
+// 10. دالة معالجة الإشعارات (للإرسال الفوري المباشر)
+// ==========================================
+
 async function processTextNotification(chatId, state, messageId) {
     try {
         const db = await getDatabase();
+        
         if (!db.database[state.subject]) db.database[state.subject] = {};
         if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
+        
         const docData = db.database[state.subject][state.doctor];
         if (!docData.root) docData.root = [];
+        
         let notifFolder = docData.root.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
+        
         if (!notifFolder) {
             notifFolder = { id: 'def_notif_' + Date.now(), name: "🔔 Notifications", type: "folder", children: [] };
             docData.root.push(notifFolder);
         }
+
         notifFolder.children.unshift({
             id: Date.now().toString(36),
             name: state.content,
             date: new Date().toLocaleString(),
             type: "notif"
         });
+
+        // إضافة لـ recentUpdates
         if (!db.recentUpdates) db.recentUpdates = [];
         db.recentUpdates.unshift({
             id: Date.now().toString(36),
@@ -898,8 +983,11 @@ async function processTextNotification(chatId, state, messageId) {
             message: state.content,
             timestamp: Date.now()
         });
+        
         if (db.recentUpdates.length > 5) db.recentUpdates = db.recentUpdates.slice(0, 5);
+
         db.latestNotificationUpdate = Date.now();
+
         await saveDatabase(db);
         await bot.editMessageText(`✅ Notification Sent Successfully\n\n📱 It will appear in the App shortly.`, { chat_id: chatId, message_id: messageId });
         delete userStates[chatId];
@@ -909,6 +997,10 @@ async function processTextNotification(chatId, state, messageId) {
         delete userStates[chatId];
     }
 }
+
+// ==========================================
+// 11. Scheduled Reminders System
+// ==========================================
 
 process.env.TZ = "Africa/Cairo";
 
@@ -923,17 +1015,20 @@ function checkSchedules() {
             const currentHours = String(now.getHours()).padStart(2, '0');
             const currentMinutes = String(now.getMinutes()).padStart(2, '0');
             const currentTime = `${currentHours}:${currentMinutes}`;
+            
             let dbUpdated = false;
 
             db.schedules.forEach(sch => {
                 if (sch.active) {
                     if (sch.day === currentDay && sch.time === currentTime) {
+                        
                         const lastTriggeredDate = new Date(sch.lastTriggered || 0);
                         const isDifferentDay = lastTriggeredDate.getDate() !== now.getDate() || 
                                                lastTriggeredDate.getMonth() !== now.getMonth();
 
                         if (isDifferentDay) {
                             console.log(`[Scheduler] Triggering reminder for ${sch.doctor} (${sch.subject})`);
+
                             if (!db.activeAlerts) db.activeAlerts = [];
                             db.activeAlerts.push({
                                 id: 'alert_' + Date.now() + Math.random(),
@@ -942,6 +1037,7 @@ function checkSchedules() {
                                 message: sch.message,
                                 timestamp: Date.now()
                             });
+
                             if (db.activeAlerts.length > 20) db.activeAlerts.shift();
 
                             if (!db.recentUpdates) db.recentUpdates = [];
@@ -955,6 +1051,7 @@ function checkSchedules() {
                             if (db.recentUpdates.length > 5) db.recentUpdates = db.recentUpdates.slice(0, 5);
 
                             db.latestNotificationUpdate = Date.now();
+
                             sch.lastTriggered = Date.now();
                             dbUpdated = true;
                         }
@@ -977,8 +1074,6 @@ setInterval(checkSchedules, 60000);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    // Test connection on startup
-    getRootFolderId().then(() => console.log("Drive Connected (Service Account Mode)"))
-    .catch(err => console.error("Drive Connection Failed:", err.message));
+    getRootFolderId().then(() => console.log("Drive Connected (Free Mode)"));
     console.log("📅 Scheduler Started: Checking for reminders every minute.");
 });
