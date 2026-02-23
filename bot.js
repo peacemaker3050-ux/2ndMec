@@ -373,7 +373,6 @@ async function executeUpload(chatId) {
 
     } catch (error) {
         console.error('[Upload Fatal Error]', error);
-        // Only send error if we haven't cleaned up (user might have cancelled)
         if (userStates[chatId]) {
             await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
         }
@@ -381,7 +380,6 @@ async function executeUpload(chatId) {
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
         }
-        // Clean up state only if it still exists and belongs to this process
         if (userStates[chatId] && userStates[chatId].file === state.file) {
             delete userStates[chatId];
         }
@@ -407,7 +405,6 @@ app.post('/delete-drive-file', async (req, res) => {
 // 8. معالجة الرسائل والأوامر
 // ==========================================
 
-// إعداد قائمة الأوامر لتظهر دائماً
 bot.setMyCommands([
     { command: 'start', description: 'Start Bot / Reset' },
     { command: 'cancel', description: 'Cancel Current Operation' }
@@ -417,7 +414,6 @@ bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
     
-    // إلغاء أي عملية سابقة
     delete userStates[chatId];
     
     bot.sendMessage(chatId, "👋 Peace Maker Welcomes You\n\n ✨ We're Glad To Have You Here\n📄 Send File OR Text To Begin", { parse_mode: 'Markdown' });
@@ -445,11 +441,9 @@ async function handleFile(msg) {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
-    // --- التعديل الجديد: إلغاء تلقائي للعملية القديمة ---
     if (userStates[chatId]) {
         console.log(`[Auto-Cancel] User sent new file. Cancelling previous stuck operation for ${chatId}.`);
         delete userStates[chatId];
-        // لا نرسل رسالة خطأ هنا لكي لا نزعج المستخدم، نبدأ العملية الجديدة فوراً
     }
 
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
@@ -468,7 +462,6 @@ async function handleFile(msg) {
         const subjects = Object.keys(API.database);
         const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
         
-        // إضافة زر الإلغاء
         keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
         
         bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
@@ -477,6 +470,57 @@ async function handleFile(msg) {
     } catch (e) {
         delete userStates[chatId];
         bot.sendMessage(chatId, "❌ Failed to load database.");
+    }
+}
+
+// === دالة جديدة لإنشاء المجلدات ===
+async function createNewFolderAndSync(chatId, folderName) {
+    const state = userStates[chatId];
+    if (!state) return;
+
+    let statusMsg = await bot.sendMessage(chatId, `⏳ Creating folder "${folderName}"...`);
+
+    try {
+        const db = await getDatabase();
+        const rootId = await getRootFolderId();
+
+        // 1. تحديد مسار الدرايف
+        let drivePath = [state.subject, state.doctor, ...state.folderPathNames];
+        let currentDriveId = rootId;
+        
+        for (let name of drivePath) {
+            currentDriveId = await findOrCreateFolder(name, currentDriveId);
+        }
+
+        // 2. إنشاء المجلد الجديد على الدرايف
+        const newDriveFolderId = await findOrCreateFolder(folderName, currentDriveId);
+        
+        // 3. تحديث قاعدة البيانات
+        let currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
+        
+        const newFolderData = {
+            id: 'folder_' + Date.now(),
+            name: folderName,
+            type: 'folder',
+            driveId: newDriveFolderId,
+            children: [] // تهيئة مصفوفة الأبناء
+        };
+
+        currentList.push(newFolderData);
+        await saveDatabase(db);
+
+        // 4. تحديث الحالة والانتقال للداخل المجلد الجديد
+        state.folderPathIds.push(newFolderData.id);
+        state.folderPathNames.push(folderName);
+        state.step = 'navigate_folder'; // العودة لوضع التنقل
+
+        await bot.deleteMessage(chatId, statusMsg.message_id);
+        await renderFolderContents(chatId, null, state, true); // إرسال رسالة جديدة
+
+    } catch (err) {
+        console.error("[Create Folder Error]", err);
+        bot.editMessageText(`❌ Failed to create folder: ${err.message}`, { chat_id: chatId, message_id: statusMsg.message_id });
+        delete userStates[chatId];
     }
 }
 
@@ -491,6 +535,16 @@ bot.on('message', async (msg) => {
     const state = userStates[chatId];
 
     if (state) {
+        // === معالجة طلب إنشاء مجلد جديد ===
+        if (state.step === 'waiting_for_folder_name') {
+            if (text.length > 50) {
+                 bot.sendMessage(chatId, "❌ Folder name too long. Please enter a shorter name:");
+                 return;
+            }
+            await createNewFolderAndSync(chatId, text.trim());
+            return;
+        }
+
         if (state.step === 'waiting_for_new_name') {
             state.file.name = text.trim();
             state.step = 'uploading'; 
@@ -499,7 +553,7 @@ bot.on('message', async (msg) => {
         return; 
     }
 
-    // حالة: لا توجد حالة (إشعار جديد)
+    // حالة: إشعار جديد
     if (!state) {
         console.log(`[Action] New Notification started`);
         
@@ -516,7 +570,6 @@ bot.on('message', async (msg) => {
             const subjects = Object.keys(data.database);
             const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
             
-            // إضافة زر الإلغاء
             keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
             
             bot.sendMessage(chatId, `📝  New Message: "${text}"\n\Select Subject :`, {
@@ -544,7 +597,6 @@ bot.on('callback_query', async (query) => {
     }
 
     try {
-        // --- معالجة زر الإلغاء الجديد ---
         if (data === 'cancel_op') {
             delete userStates[chatId];
             await bot.editMessageText("❌ **Operation Cancelled**", {
@@ -555,7 +607,6 @@ bot.on('callback_query', async (query) => {
             return;
         }
 
-        // --- اختيار المادة ---
         if (state && state.step === 'select_subject' && data.startsWith('sub_')) {
             const subjectName = data.replace('sub_', '');
             state.subject = subjectName; 
@@ -565,7 +616,6 @@ bot.on('callback_query', async (query) => {
             const doctors = db.database[subjectName] ? db.database[subjectName].doctors : [];
             const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
             
-            // إضافة زر الإلغاء
             keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
             await bot.editMessageText(`Subject : *${subjectName}*\n\ Select Doctor :`, {
@@ -574,20 +624,17 @@ bot.on('callback_query', async (query) => {
             });
         }
         
-        // --- اختيار الدكتور ---
         else if (state && state.step === 'select_doctor' && data.startsWith('doc_')) {
             const doctorName = data.replace('doc_', '');
             state.doctor = doctorName;
 
             if (state.type === 'text') {
-                // === التعديل الجديد ===
-                // لا نرسل فوراً، بل نعرض قائمة الخيارات
                 state.step = 'choose_action';
                 
                 const actionKeyboard = [
                     [{ text: "✉️ Send Now", callback_data: 'act_send_now' }],
                     [{ text: "⏰ Set Reminder", callback_data: 'act_set_reminder' }],
-                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // زر إلغاء
+                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }]
                 ];
                 
                 await bot.editMessageText(`Doctor: *${doctorName}*\n\nChoose Action:`, {
@@ -604,20 +651,15 @@ bot.on('callback_query', async (query) => {
             await renderFolderContents(chatId, query.message.message_id, state);
         }
 
-        // === المنطق الجديد للإشعارات ===
-        
-        // 1. اختيار الإرسال الفوري
         else if (state && state.step === 'choose_action' && data === 'act_send_now') {
             await processTextNotification(chatId, state, query.message.message_id);
         }
         
-        // 2. اختيار التذكير (البدء)
         else if (state && state.step === 'choose_action' && data === 'act_set_reminder') {
             state.step = 'schedule_day';
             await showDaySelectionKeyboard(chatId, query.message.message_id);
         }
         
-        // 3. اختيار اليوم
         else if (state && state.step === 'schedule_day' && data.startsWith('day_')) {
             const dayIndex = parseInt(data.replace('day_', ''));
             state.day = dayIndex;
@@ -625,15 +667,13 @@ bot.on('callback_query', async (query) => {
             await showHourSelectionKeyboard(chatId, query.message.message_id);
         }
         
-        // 4. اختيار الساعة
         else if (state && state.step === 'schedule_hour' && data.startsWith('hour_')) {
             const hour = parseInt(data.replace('hour_', ''));
             state.hour = hour;
-            state.step = 'schedule_minute'; // التعديل: الانتقال لاختيار الدقائق
-            await showMinuteSelectionKeyboard(chatId, query.message.message_id); // دالة الدقائق الجديدة
+            state.step = 'schedule_minute';
+            await showMinuteSelectionKeyboard(chatId, query.message.message_id);
         }
         
-        // 4.5 اختيار الدقائق (جديد)
         else if (state && state.step === 'schedule_minute' && data.startsWith('min_')) {
             const minute = parseInt(data.replace('min_', ''));
             state.minute = minute;
@@ -641,16 +681,13 @@ bot.on('callback_query', async (query) => {
             await showAmPmSelectionKeyboard(chatId, query.message.message_id);
         }
         
-        // 5. اختيار AM/PM والحفظ
         else if (state && state.step === 'schedule_ampm' && (data === 'act_AM' || data === 'act_PM')) {
             const isAM = (data === 'act_AM');
             
-            // تحويل الوقت لصيغة 24 ساعة
             let hour24 = state.hour;
             if (!isAM && hour24 !== 12) hour24 += 12;
             if (isAM && hour24 === 12) hour24 = 0;
             
-            // إضافة الدقائق للوقت
             const minVal = state.minute || 0; 
             const timeString = `${String(hour24).padStart(2, '0')}:${String(minVal).padStart(2, '0')}`;
             state.time = timeString;
@@ -658,7 +695,7 @@ bot.on('callback_query', async (query) => {
             await saveSchedule(chatId, state);
         }
 
-        // --- التنقل داخل الفولدرات (للفايلات) ---
+        // --- التنقل والتحكم في المجلدات (للفايلات) ---
         else if (state && state.step === 'navigate_folder') {
             
             if (data === 'back') {
@@ -673,7 +710,6 @@ bot.on('callback_query', async (query) => {
                     const doctors = db.database[state.subject] ? db.database[state.subject].doctors : [];
                     const keyboard = doctors.map(doc => [{ text: doc, callback_data: `doc_${doc}` }]);
                     
-                    // إضافة زر الإلغاء
                     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
                     await bot.editMessageText(`Subject : *${state.subject}*\n\ Select Doctor :`, {
@@ -681,6 +717,16 @@ bot.on('callback_query', async (query) => {
                         reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
                     });
                 }
+            }
+            
+            // === معالجة زر إضافة مجلد جديد ===
+            else if (data === 'add_new_folder') {
+                state.step = 'waiting_for_folder_name';
+                await bot.editMessageText("✏️ *Enter the new folder name:*\n\n(Send /cancel to abort)", {
+                    chat_id: chatId,
+                    message_id: query.message.message_id,
+                    parse_mode: 'Markdown'
+                });
             }
             
             else if (data.startsWith('folder_')) {
@@ -701,7 +747,7 @@ bot.on('callback_query', async (query) => {
                 const nameKeyboard = [
                     [{ text: "✅ Same Name", callback_data: 'act_same' }],
                     [{ text: "✏️ Rename", callback_data: 'act_rename' }],
-                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // زر إلغاء
+                    [{ text: "❌ Cancel", callback_data: 'cancel_op' }]
                 ];
 
                 let pathText = state.folderPathNames.join(' / ');
@@ -730,47 +776,70 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-async function renderFolderContents(chatId, messageId, state) {
+// === التعديل الجوهري: دالة عرض المحتويات مع زر الإضافة دائماً ===
+async function renderFolderContents(chatId, messageId, state, forceNewMessage = false) {
     try {
         const db = await getDatabase();
         const currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
         
         const keyboard = [];
 
+        // 1. إضافة المجلدات الموجودة
         currentList.forEach(item => {
             if (item.type === 'folder') {
                 keyboard.push([{ text: `📂 ${item.name}`, callback_data: `folder_${item.id}` }]);
-            } else {
-                keyboard.push([{ text: `📄 ${item.name}`, callback_data: 'ignore_file' }]);
             }
         });
 
-        keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
+        // 2. إضافة الملفات (فقط للعرض، لا تفعل شيئاً عند الضغط عليها هنا)
+        // (تم إزالتها من العرض لتقليل الزحمة إذا أردت، لكن سأبقيها كما هي في الكود الأصلي)
+        // currentList.forEach(item => {
+        //     if (item.type === 'file') {
+        //         keyboard.push([{ text: `📄 ${item.name}`, callback_data: 'ignore_file' }]);
+        //     }
+        // });
 
-        if (state.folderPathIds.length > 0 || state.step === 'navigate_folder') {
+        // 3. أزرار التحكم الثابتة (الترتيب مهم)
+        
+        // زر رفع الملف هنا
+        keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
+        
+        // === زر إضافة مجلد جديد (يظهر دائماً هنا) ===
+        keyboard.push([{ text: `➕ Add New Folder`, callback_data: 'add_new_folder' }]);
+
+        // زر الرجوع
+        if (state.folderPathIds.length > 0) {
              keyboard.push([{ text: `🔙 Back`, callback_data: 'back' }]);
         }
 
-        // إضافة زر الإلغاء دائماً في أسفل القائمة
+        // زر الإلغاء
         keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
         let pathText = state.folderPathNames.join(' / ');
         let headerText = `Doctor : *${state.doctor}*`;
         if (pathText) headerText += `\n📂 Folder: *${pathText}*`;
 
-        await bot.editMessageText(`${headerText}\n\nSelect a folder or Upload Here:`, {
+        const options = {
             chat_id: chatId,
             message_id: messageId,
             reply_markup: { inline_keyboard: keyboard },
             parse_mode: 'Markdown'
-        });
+        };
+
+        if (forceNewMessage) {
+            // إرسال رسالة جديدة إذا طُلب (بعد إنشاء مجلد مثلاً)
+            await bot.sendMessage(chatId, `${headerText}\n\nSelect a folder or action:`, options);
+        } else {
+            // تعديل الرسالة الحالية
+            await bot.editMessageText(`${headerText}\n\nSelect a folder or action:`, options);
+        }
     } catch (e) {
         console.error("Render Folder Error:", e);
         bot.sendMessage(chatId, "Error loading folder contents.");
     }
 }
 
-// === دوال مساعدة للواجهات الجديدة (Keyboards) ===
+// === دوال مساعدة للواجهات ===
 
 function showDaySelectionKeyboard(chatId, messageId) {
     const days = [
@@ -792,7 +861,6 @@ function showDaySelectionKeyboard(chatId, messageId) {
         keyboard.push(row);
     }
     
-    // إضافة زر الإلغاء
     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
     bot.editMessageText("Select the Day:", {
@@ -812,7 +880,6 @@ function showHourSelectionKeyboard(chatId, messageId) {
         keyboard.push(row);
     }
     
-    // إضافة زر الإلغاء
     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
     bot.editMessageText("Select Hour:", {
@@ -822,7 +889,6 @@ function showHourSelectionKeyboard(chatId, messageId) {
     });
 }
 
-// دالة جديدة لاختيار الدقائق
 function showMinuteSelectionKeyboard(chatId, messageId) {
     const keyboard = [];
     let row = [];
@@ -837,7 +903,6 @@ function showMinuteSelectionKeyboard(chatId, messageId) {
     }
     if (row.length > 0) keyboard.push(row);
     
-    // إضافة زر الإلغاء
     keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
 
     bot.editMessageText("Select Minutes:", {
@@ -851,7 +916,7 @@ function showAmPmSelectionKeyboard(chatId, messageId) {
     const keyboard = [
         [{ text: "AM", callback_data: 'act_AM' }],
         [{ text: "PM", callback_data: 'act_PM' }],
-        [{ text: "❌ Cancel", callback_data: 'cancel_op' }] // إلغاء
+        [{ text: "❌ Cancel", callback_data: 'cancel_op' }]
     ];
     
     bot.editMessageText("Select Time Period:", {
@@ -866,12 +931,10 @@ function getDayName(dayIndex) {
     return days[dayIndex];
 }
 
-// دالة حفظ التذكير (تم التعديل لإرسال الرسالة فوراً أيضاً)
 async function saveSchedule(chatId, state) {
     try {
         const db = await getDatabase();
         
-        // 1. حفظ التذكير للمستقبل (في المصفوفة schedules)
         if (!db.schedules) db.schedules = [];
 
         db.schedules.push({
@@ -885,16 +948,12 @@ async function saveSchedule(chatId, state) {
             lastTriggered: 0
         });
 
-        // 2. الإرسال الفوري (الإصلاح المطلوب)
-        // نقوم بنفس خطوات processTextNotification لضمان ظهور الرسالة الآن
-
         if (!db.database[state.subject]) db.database[state.subject] = {};
         if (!db.database[state.subject][state.doctor]) db.database[state.subject][state.doctor] = {};
         
         const docData = db.database[state.subject][state.doctor];
         if (!docData.root) docData.root = [];
         
-        // التأكد من وجود مجلد الإشعارات
         let notifFolder = docData.root.find(f => f.name === "🔔 Notifications" && f.type === 'folder');
         
         if (!notifFolder) {
@@ -902,7 +961,6 @@ async function saveSchedule(chatId, state) {
             docData.root.push(notifFolder);
         }
 
-        // إضافة للإشعارات داخل المجلد
         notifFolder.children.unshift({
             id: Date.now().toString(36),
             name: state.content,
@@ -910,7 +968,6 @@ async function saveSchedule(chatId, state) {
             type: "notif"
         });
 
-        // إضافة لـ activeAlerts (يظهر كـ Alert في التطبيق الآن)
         if (!db.activeAlerts) db.activeAlerts = [];
         db.activeAlerts.push({
             id: 'alert_' + Date.now() + Math.random(),
@@ -922,7 +979,6 @@ async function saveSchedule(chatId, state) {
 
         if (db.activeAlerts.length > 20) db.activeAlerts.shift();
 
-        // إضافة لـ recentUpdates (يظهر في الـ News Feed الآن)
         if (!db.recentUpdates) db.recentUpdates = [];
         db.recentUpdates.unshift({
             id: 'sched_' + Date.now(),
@@ -936,7 +992,6 @@ async function saveSchedule(chatId, state) {
 
         db.latestNotificationUpdate = Date.now();
 
-        // حفظ التغييرات
         await saveDatabase(db);
         
         bot.sendMessage(chatId, `✅ **Reminder Set Successfully**\n\n📅 Day: ${getDayName(state.day)}\n⏰ Time: ${state.time}\n📝 Message: "${state.content}"\n\nTarget: ${state.doctor} (${state.subject})\n\n*⚡ Message sent now and scheduled for later.*`, { parse_mode: 'Markdown' });
@@ -947,10 +1002,6 @@ async function saveSchedule(chatId, state) {
         delete userStates[chatId];
     }
 }
-
-// ==========================================
-// 10. دالة معالجة الإشعارات (للإرسال الفوري المباشر)
-// ==========================================
 
 async function processTextNotification(chatId, state, messageId) {
     try {
@@ -976,7 +1027,6 @@ async function processTextNotification(chatId, state, messageId) {
             type: "notif"
         });
 
-        // إضافة لـ recentUpdates
         if (!db.recentUpdates) db.recentUpdates = [];
         db.recentUpdates.unshift({
             id: Date.now().toString(36),
