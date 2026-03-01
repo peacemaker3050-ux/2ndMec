@@ -286,34 +286,10 @@
         let botNavStack = []; let adminNavStack = []; let currentAdminTab = 0; let currentModalCallback = null; let adminAddType = 'file';
         let messaging; // FCM Messaging Instance
         
-        // ==========================================
-        // === FIXED FIREBASE INITIALIZATION ===
-        // ==========================================
-        try { 
-            firebase.initializeApp(firebaseConfig); 
-            auth = firebase.auth(); 
-            
-            // Manual Service Worker Registration to fix 404/Scope issues
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/firebase-messaging-sw.js')
-                .then((registration) => {
-                    messaging = firebase.messaging();
-                    messaging.useServiceWorker(registration);
-                    console.log("[FCM] Service Worker Registered & Linked Successfully.");
-                })
-                .catch((err) => {
-                    console.error("[FCM] SW Registration Failed:", err);
-                    // Fallback initialization if manual registration fails
-                    messaging = firebase.messaging();
-                });
-            } else {
-                messaging = firebase.messaging();
-            }
-        } catch (e) { console.log("Firebase Init Error", e); }
-        // ==========================================
+        try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch (e) { console.log("Firebase Init Error", e); }
         
         // ==========================================
-        // === FCM TOKEN HANDLING LOGIC ===
+        // === FCM TOKEN HANDLING LOGIC (WITH FALLBACK) ===
         // ==========================================
         
         async function saveUserToken(userEmail, token) {
@@ -360,18 +336,6 @@
             if (!messaging || !user) return;
 
             try {
-                // Check if file exists to prevent errors
-                try {
-                    const response = await fetch('/firebase-messaging-sw.js');
-                    if (!response.ok) {
-                        console.warn("[FCM] SW file missing. Push disabled.");
-                        return;
-                    }
-                } catch (e) {
-                    console.warn("[FCM] Network error checking SW.");
-                    return;
-                }
-
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
                     console.log("[FCM] Notification permission denied.");
@@ -395,7 +359,7 @@
                 });
 
             } catch (err) {
-                console.log("[FCM] App running without Push Notifications:", err.message);
+                console.log("[FCM] Error getting token (App continues without push):", err);
             }
         }
 
@@ -547,7 +511,7 @@
         window.onload = () => { 
             if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch(e){} } 
             
-            // FIXED: Clean up old SWs to prevent POST errors and conflicts
+            // FIXED: Unregister old buggy Service Workers causing POST errors
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
                     for(let registration of registrations) {
