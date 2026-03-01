@@ -9,9 +9,19 @@ const { google } = require('googleapis');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { pipeline } = require('stream/promises');
+const admin = require("firebase-admin"); // Added Firebase Admin
 
 // ==========================================
-// 2. الإعدادات والتهيئة
+// 2. إعدادات Firebase Admin (لإرسال الإشعارات)
+// ==========================================
+const serviceAccount = require("./service-account.json"); // تأكد من وجود الملف بجانب الكود
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+// ==========================================
+// 3. الإعدادات والتهيئة
 // ==========================================
 
 const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
@@ -57,7 +67,7 @@ const CACHE_DURATION = 60000;
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 3. دوال Google Drive
+// 4. دوال Google Drive
 // ==========================================
 
 const DRIVE_ROOT_FOLDER_NAME = '2nd MEC 2026';
@@ -195,7 +205,7 @@ async function deleteFileFromDrive(fileId) {
 }
 
 // ==========================================
-// 4. دوال قاعدة البيانات
+// 5. دوال قاعدة البيانات
 // ==========================================
 
 async function getDatabase() {
@@ -233,7 +243,7 @@ async function saveDatabase(data) {
 }
 
 // ==========================================
-// 5. دوال مساعدة للتنقل
+// 6. دوال مساعدة للتنقل
 // ==========================================
 
 function getCurrentFolderContent(db, subject, doctor, pathIds) {
@@ -250,7 +260,7 @@ function getCurrentFolderContent(db, subject, doctor, pathIds) {
 }
 
 // ==========================================
-// 6. وظيفة الرفع الرئيسية
+// 7. وظيفة الرفع الرئيسية
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -388,7 +398,7 @@ async function executeUpload(chatId) {
 }
 
 // ==========================================
-// 7. API للحذف
+// 8. API للحذف
 // ==========================================
 
 app.post('/delete-drive-file', async (req, res) => {
@@ -402,7 +412,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 8. معالجة الرسائل والأوامر
+// 9. معالجة الرسائل والأوامر
 // ==========================================
 
 bot.setMyCommands([
@@ -503,7 +513,7 @@ async function createNewFolderAndSync(chatId, folderName) {
             name: folderName,
             type: 'folder',
             driveId: newDriveFolderId,
-            children: [] // تهيئة مصفوفة الأبناء
+            children: [] 
         };
 
         currentList.push(newFolderData);
@@ -512,10 +522,10 @@ async function createNewFolderAndSync(chatId, folderName) {
         // 4. تحديث الحالة والانتقال للداخل المجلد الجديد
         state.folderPathIds.push(newFolderData.id);
         state.folderPathNames.push(folderName);
-        state.step = 'navigate_folder'; // العودة لوضع التنقل
+        state.step = 'navigate_folder'; 
 
         await bot.deleteMessage(chatId, statusMsg.message_id);
-        await renderFolderContents(chatId, null, state, true); // إرسال رسالة جديدة
+        await renderFolderContents(chatId, null, state, true); 
 
     } catch (err) {
         console.error("[Create Folder Error]", err);
@@ -583,7 +593,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 9. معالجة الأزرار (Callback Query)
+// 10. معالجة الأزرار (Callback Query)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -791,14 +801,6 @@ async function renderFolderContents(chatId, messageId, state, forceNewMessage = 
             }
         });
 
-        // 2. إضافة الملفات (فقط للعرض، لا تفعل شيئاً عند الضغط عليها هنا)
-        // (تم إزالتها من العرض لتقليل الزحمة إذا أردت، لكن سأبقيها كما هي في الكود الأصلي)
-        // currentList.forEach(item => {
-        //     if (item.type === 'file') {
-        //         keyboard.push([{ text: `📄 ${item.name}`, callback_data: 'ignore_file' }]);
-        //     }
-        // });
-
         // 3. أزرار التحكم الثابتة (الترتيب مهم)
         
         // زر رفع الملف هنا
@@ -931,6 +933,69 @@ function getDayName(dayIndex) {
     return days[dayIndex];
 }
 
+// ==========================================
+// 11. دالة إرسال الإشعارات الجديدة (PUSH)
+// ==========================================
+
+async function sendPushNotificationToAll(title, body) {
+    try {
+        // 1. جلب البيانات للحصول على التوكنات
+        const db = await getDatabase();
+
+        if (!db.userTokens) {
+            console.log("[FCM] No users tokens found.");
+            return;
+        }
+
+        // 2. تجميع جميع التوكنات في مصفوفة واحدة
+        let allTokens = [];
+        Object.values(db.userTokens).forEach(userTokensArray => {
+            allTokens = allTokens.concat(userTokensArray);
+        });
+
+        if (allTokens.length === 0) return;
+
+        console.log(`[FCM] Sending to ${allTokens.length} devices...`);
+
+        // 3. تجهيز الرسالة
+        const message = {
+            notification: {
+                title: title,
+                body: body
+            },
+            // رابط يفتح عند الضغط على الإشعار
+            webpush: {
+                fcmOptions: {
+                    link: 'https://libirary-b2424.web.app' // ضع رابط موقعك هنا
+                }
+            },
+            tokens: allTokens
+        };
+
+        // 4. الإرسال
+        const response = await admin.messaging().sendMulticast(message);
+        
+        if (response.failureCount > 0) {
+            const failedTokens = [];
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                    failedTokens.push(allTokens[idx]);
+                }
+            });
+            console.log("[FCM] List of tokens that caused failures: " + failedTokens);
+        } else {
+            console.log("[FCM] Successfully sent message!");
+        }
+
+    } catch (error) {
+        console.log("[FCM] Error sending message:", error);
+    }
+}
+
+// ==========================================
+// 12. دوال حفظ البيانات مع الإشعارات
+// ==========================================
+
 async function saveSchedule(chatId, state) {
     try {
         const db = await getDatabase();
@@ -994,6 +1059,10 @@ async function saveSchedule(chatId, state) {
 
         await saveDatabase(db);
         
+        // === MODIFIED: SEND PUSH NOTIFICATION ===
+        await sendPushNotificationToAll("⏰ Reminder Set", state.content);
+        // =========================================
+
         bot.sendMessage(chatId, `✅ **Reminder Set Successfully**\n\n📅 Day: ${getDayName(state.day)}\n⏰ Time: ${state.time}\n📝 Message: "${state.content}"\n\nTarget: ${state.doctor} (${state.subject})\n\n*⚡ Message sent now and scheduled for later.*`, { parse_mode: 'Markdown' });
         delete userStates[chatId];
     } catch (err) {
@@ -1041,6 +1110,11 @@ async function processTextNotification(chatId, state, messageId) {
         db.latestNotificationUpdate = Date.now();
 
         await saveDatabase(db);
+
+        // === MODIFIED: SEND PUSH NOTIFICATION ===
+        await sendPushNotificationToAll("📢 Update Available", state.content);
+        // =========================================
+
         await bot.editMessageText(`✅ Notification Sent Successfully\n\n📱 It will appear in the App shortly.`, { chat_id: chatId, message_id: messageId });
         delete userStates[chatId];
     } catch (err) {
@@ -1051,7 +1125,7 @@ async function processTextNotification(chatId, state, messageId) {
 }
 
 // ==========================================
-// 11. Scheduled Reminders System
+// 13. Scheduled Reminders System
 // ==========================================
 
 process.env.TZ = "Africa/Cairo";
@@ -1114,6 +1188,14 @@ function checkSchedules() {
             if (dbUpdated) {
                 await saveDatabase(db);
                 console.log("[Scheduler] Database updated with new alerts/notifications.");
+                
+                // Send Push when reminder triggers
+                // Note: Assuming we want to push for automated reminders too
+                // We can extract the last added recentUpdate to send push
+                if (db.recentUpdates.length > 0) {
+                    const latest = db.recentUpdates[0];
+                    await sendPushNotificationToAll("⏰ Reminder", latest.message);
+                }
             }
 
         } catch (error) {

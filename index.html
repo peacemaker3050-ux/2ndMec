@@ -21,6 +21,8 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <!-- Added Messaging SDK for Push Notifications -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
     
     <!-- Fuse.js for Fuzzy Search -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
@@ -245,7 +247,7 @@
                 <div class="form-group"><label class="form-label">Select Subject</label><select id="notif-subject-select" class="form-select" onchange="window.populateNotifDoctors()"></select></div>
                 <div class="form-group"><label class="form-label">Select Doctor</label><select id="notif-doctor-select" class="form-select" onchange="window.loadNotifPreview()"></select></div>
                 <div class="form-group"><label class="form-label">Notification Message</label><textarea id="notif-message-text" class="form-textarea" placeholder="Type important info here..."></textarea></div>
-                <div class="form-group" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;"><label class="form-label" style="color:#fbbf24;">🔔 Schedule Reminder (Optional)</label><div style="display:flex; gap:10px;"><div style="flex:1;"><label class="form-label" style="font-size:11px;">Day</label><select id="notif-day-select" class="form-select"><option value="">No Repeat</option><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option></select></div><div style="flex:1;"><label class="form-label" style="font-size:11px;">Time</label><input type="time" id="notif-time-input" class="form-input"></div></div></div>
+                <div class="form-group" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;"><label class="form-label" style="color:#fbbf24;">🔔 Schedule Reminder (Optional)</label><div style="display:flex; gap:10px;"><div style="flex:1;"><label class="form-label" style="font-size:11px;">Day</label><select id="notif-day-select" class="form-select"><option value="">No Repeat</option><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option></select></div><div style="flex:1;"><label class="form-label" style="font-size:11px;">Time</label><input type="time" id="notif-time-input" class="form-input"></input></div></div></div>
                 <button class="btn-send" onclick="window.sendDoctorNotification()">Send Notification</button>
             </div>
             <div id="tab-broadcast" class="tab-content">
@@ -277,13 +279,91 @@
         const OWNER_EMAIL = "peacemaker3050@gmail.com";
         const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
         const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
+        
+        // VAPID KEY FOR FCM PUSH NOTIFICATIONS
+        const VAPID_KEY = "BCmmvd3JEj26OLT_bEl986rldLpJiSPjAzjBsRaVN-OO5RCj_dcLXexMobA4K9Y9-3Zrv4Tc2s1H9uakLoIEf0Y";
+
         const defaultDatabase = { "Physics": { "doctors": ["Dr. Ahmed"], "Dr. Ahmed": { "root": [ { "id": "f1", "name": "📚 Lectures", "type": "folder", "children": [] }, { "id": "f2", "name": "🔔 Notifications", "type": "folder", "children": [] } ] } }, "Chemistry": { "doctors": [], "root": [] }, "Mathematics": { "doctors": [], "root": [] } };
         const defaultConfig = { botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], generalBroadcast: { active: false, title: "", body: "", timestamp: 0 }, englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif", appName: "UniBot Pro", appIcon: "", appVersion: 1, themeColor: "#3b82f6", botMsgColor: "#ffffff", welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.", subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇", categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:", backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", schedules: [], activeAlerts: [], database: defaultDatabase };
         let CONFIG = { ...defaultConfig };
         let database = CONFIG.database;
         let auth; let isAuthInitialized = false; let deferredPrompt; let refreshInterval = null; let fuseSearchEngine = null;
         let botNavStack = []; let adminNavStack = []; let currentAdminTab = 0; let currentModalCallback = null; let adminAddType = 'file';
-        try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch (e) { console.log("Firebase Init Error", e); }
+        let messaging; // FCM Messaging Instance
+        
+        try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch (e) { console.log("Firebase Init Error", e); }
+        
+        // ==========================================
+        // === FCM TOKEN HANDLING LOGIC ===
+        // ==========================================
+        
+        async function saveUserToken(userEmail, token) {
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' }
+                });
+                let data = await response.json();
+
+                if (!data.userTokens) data.userTokens = {};
+
+                if (!data.userTokens[userEmail]) {
+                    data.userTokens[userEmail] = [];
+                }
+                
+                // Avoid duplicates
+                if (!data.userTokens[userEmail].includes(token)) {
+                    data.userTokens[userEmail].push(token);
+                }
+
+                await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_ACCESS_KEY },
+                    body: JSON.stringify(data)
+                });
+                console.log("[FCM] Token saved for:", userEmail);
+            } catch (error) {
+                console.error("[FCM] Error saving token:", error);
+            }
+        }
+
+        async function setupFCMToken(user) {
+            if (!messaging || !user) return;
+
+            try {
+                // Request Permission
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    console.log("[FCM] Notification permission denied.");
+                    return;
+                }
+
+                // Get Token
+                const currentToken = await messaging.getToken({ vapidKey: VAPID_KEY });
+                
+                if (currentToken) {
+                    console.log("[FCM] Token received:", currentToken);
+                    saveUserToken(user.email, currentToken);
+                } else {
+                    console.log("[FCM] No registration token available.");
+                }
+
+                // Listen for token refresh
+                messaging.onTokenRefresh(() => {
+                    messaging.getToken({ vapidKey: VAPID_KEY }).then((refreshedToken) => {
+                        console.log("[FCM] Token refreshed:", refreshedToken);
+                        saveUserToken(user.email, refreshedToken);
+                    });
+                });
+
+            } catch (err) {
+                console.log("[FCM] Error getting token:", err);
+            }
+        }
+
+        // ==========================================
+        // === END FCM LOGIC ===
+        // ==========================================
+
         const chatArea = document.getElementById('chat-area');
         const keyboardArea = document.getElementById('keyboard-area');
         const typingIndicator = document.getElementById('typing');
@@ -370,14 +450,34 @@
         window.handleMenuAuthClick = async function() { document.getElementById('menu-dropdown').classList.remove('active'); if (!auth) return; const user = auth.currentUser; if (user) { const email = user.email; if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) { openAdminPanel(); } else { window.logoutUser(); } return; } try { const provider = new firebase.auth.GoogleAuthProvider(); await auth.signInWithPopup(provider); window.updateAuthUI(); showToast("Login Successful", "success"); } catch (error) { console.error("Login Error:", error); showToast("Login Failed: " + error.message, "error"); } };
         window.logoutUser = async function() { if (auth) { await auth.signOut(); window.location.reload(); } };
         function hasAdminAccess() { const user = auth.currentUser; if(!user) return false; if(user.email === OWNER_EMAIL) return true; if(CONFIG.admins && CONFIG.admins.includes(user.email)) return true; return false; }
-        function initFirebaseAuth() { if (!auth) return; auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => { auth.onAuthStateChanged((user) => { isAuthInitialized = true; window.updateAuthUI(); }); }).catch(() => { auth.onAuthStateChanged((user) => { isAuthInitialized = true; window.updateAuthUI(); }); }); }
+        function initFirebaseAuth() { 
+            if (!auth) return; 
+            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => { 
+                auth.onAuthStateChanged((user) => { 
+                    isAuthInitialized = true; 
+                    window.updateAuthUI();
+                    // === ADDED: Setup FCM Token on Login ===
+                    if (user) {
+                        setupFCMToken(user);
+                    }
+                }); 
+            }).catch(() => { 
+                auth.onAuthStateChanged((user) => { 
+                    isAuthInitialized = true; 
+                    window.updateAuthUI(); 
+                    if (user) {
+                        setupFCMToken(user);
+                    }
+                }); 
+            }); 
+        }
         window.updateAuthUI = function() { if (!isAuthInitialized) return; const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon'); const user = auth ? auth.currentUser : null; if (user) { const email = user.email; if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🔓"; } } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; } }
         function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
         function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
         function updateDynamicManifest(name, iconData) { const version = CONFIG.appVersion || 1; const baseUrl = window.location.href.split('?')[0] || window.location.href; const startUrl = `${baseUrl}?v=${version}`; const manifest = { "name": name || CONFIG.botName, "short_name": name || CONFIG.botName, "start_url": startUrl, "id": window.location.origin + "?v=" + version, "display": "standalone", "background_color": "#0f172a", "theme_color": "#0f172a", "icons": [] }; if (iconData && iconData.length > 10) { manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": "image/jpeg" }); } else { manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" }); } const stringManifest = JSON.stringify(manifest); const blob = new Blob([stringManifest], {type: 'application/manifest+json'}); const manifestURL = URL.createObjectURL(blob); const link = document.querySelector('#dynamic-manifest'); if(link.href && link.href.startsWith('blob:')) URL.revokeObjectURL(link.href); link.setAttribute('href', manifestURL); let appleLink = document.querySelector('link[rel="apple-touch-icon"]'); if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); } appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png"; }
         window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
-        window.onload = () => { if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); } catch(e){} } const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); } createInlineServiceWorker(); fetchConfig().then(() => { }).catch(err => { console.error("Cloud Sync Failed", err); }); if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').then(reg => console.log("External SW Registered", reg)).catch(err => console.log("External SW Fail (Using Inline)", err)); } initFirebaseAuth(); const loadingScreen = document.getElementById('loading-screen'); setTimeout(() => { loadingScreen.style.opacity = '0'; setTimeout(() => { loadingScreen.style.display = 'none'; }, 300); }, 1500); const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); startSync(); };
+        window.onload = () => { if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch(e){} } const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); } createInlineServiceWorker(); fetchConfig().then(() => { }).catch(err => { console.error("Cloud Sync Failed", err); }); if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').then(reg => console.log("External SW Registered", reg)).catch(err => console.log("External SW Fail (Using Inline)", err)); } initFirebaseAuth(); const loadingScreen = document.getElementById('loading-screen'); setTimeout(() => { loadingScreen.style.opacity = '0'; setTimeout(() => { loadingScreen.style.display = 'none'; }, 300); }, 1500); const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); startSync(); };
     </script>
 </body>
 </html>

@@ -176,22 +176,30 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-// 6. FCM BACKGROUND HANDLER
+// 6. FCM BACKGROUND HANDLER (تم التعديل لاستخراج الرابط بشكل صحيح)
 messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title;
+  
+  // استخراج الرابط من payload.fcmOptions (الخاص بـ Web Push) أو من payload.data
+  // هذا الرابط سيتم فتحه عند الضغط على الإشعار
+  const link = payload.fcmOptions?.link || payload.data?.link || '/';
+
   const notificationOptions = {
     body: payload.notification.body,
     icon: payload.notification.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
     badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
     vibrate: [200, 100, 200],
-    data: { click_action: payload.fcmOptions?.link || '/' }
+    // تخزين الرابط في data ليتم استخدامه عند النقر
+    data: { click_action: link }
   };
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// 7. NOTIFICATION CLICKS
+// 7. NOTIFICATION CLICKS (تم التعديل لضمان فتح الرابط الصحيح)
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    
+    // قراءة الرابط من البيانات التي خزناها في الخطوة السابقة
     const url = event.notification.data.click_action || '/';
     
     event.waitUntil(
