@@ -40,7 +40,7 @@ const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/Jrg
 // إعدادات Google Drive
 const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
 const CLIENT_SECRET = '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';
-const DRIVE_REFRESH_TOKEN = '1//03k-dWBVZuE6mCgYIARAAGAMSNwF-L9Ir0kZpKwddmRTLUQC748bgOQSAz4vCouit0VPDlfk3hHWivWFHJJUOgHe4V0A0Dv7wOuU';
+const DRIVE_REFRESH_TOKEN = '1//03NCuR1DqZAU7CgYIARAAGAMSNwF-L9IrBl_1uf3agTKyz9BGD_-DN3-ZLTzfogcGm8CzCdHoVIN41zCfqon_Q-Kd3uhXvK8wPOY';
 const REDIRECT_URI = 'http://localhost';
 
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
@@ -483,7 +483,7 @@ async function handleFile(msg) {
     }
 }
 
-// === دالة جديدة لإنشاء المجلدات ===
+// === دالة محسنة لإنشاء المجلدات (مع إصلاح مشكلة Doctors List) ===
 async function createNewFolderAndSync(chatId, folderName) {
     const state = userStates[chatId];
     if (!state) return;
@@ -516,6 +516,18 @@ async function createNewFolderAndSync(chatId, folderName) {
             children: [] 
         };
 
+        // --- إصلاح هام: تحديث قائمة الأطباء إذا كنا في المجلد الرئيسي ---
+        if (state.folderPathIds.length === 0) {
+            if (!db.database[state.subject].doctors) {
+                db.database[state.subject].doctors = [];
+            }
+            // إضافة الدكتور للقائمة إذا لم يكن موجوداً
+            if (!db.database[state.subject].doctors.includes(folderName)) {
+                db.database[state.subject].doctors.push(folderName);
+            }
+        }
+        // --------------------------------------------------------------------
+
         currentList.push(newFolderData);
         await saveDatabase(db);
 
@@ -534,36 +546,47 @@ async function createNewFolderAndSync(chatId, folderName) {
     }
 }
 
+// ==========================================
+// 10. معالجة الرسائل النصية (تم التصحيح هنا)
+// ==========================================
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
     
+    // 1. تصفية الرسائل غير المرغوبة
     if (!text || text.startsWith('/')) return;
     if (msg.document || msg.photo) return;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     const state = userStates[chatId];
 
+    // 2. معالجة الحالات النشطة (States)
     if (state) {
-        // === معالجة طلب إنشاء مجلد جديد ===
+        // --- حالة: انتظار اسم مجلد جديد ---
         if (state.step === 'waiting_for_folder_name') {
             if (text.length > 50) {
                  bot.sendMessage(chatId, "❌ Folder name too long. Please enter a shorter name:");
                  return;
             }
             await createNewFolderAndSync(chatId, text.trim());
-            return;
+            return; // <--- تم إضافة الـ return هنا لإيقاف التنفيذ
         }
 
+        // --- حالة: انتظار اسم جديد للملف (Rename) ---
         if (state.step === 'waiting_for_new_name') {
             state.file.name = text.trim();
             state.step = 'uploading'; 
             executeUpload(chatId);
+            return; // <--- تم إضافة الـ return هنا
         }
-        return; 
+        
+        // إذا وصلنا هنا، فهذا يعني أن المستخدم في حالة لكن أرسل نص غير متوقع
+        // لا نفعل شيئاً أو نرسل تنبيه
+        return;
     }
 
-    // حالة: إشعار جديد
+    // 3. حالة: بدء إشعار جديد (Text Notification)
+    // هذه الحالة يتم تنفيذها فقط إذا لم يكن هناك state نشط
     if (!state) {
         console.log(`[Action] New Notification started`);
         
@@ -593,7 +616,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 10. معالجة الأزرار (Callback Query)
+// 11. معالجة الأزرار (Callback Query)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -786,7 +809,7 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// === التعديل الجوهري: دالة عرض المحتويات مع زر الإضافة دائماً ===
+// === دالة عرض المحتويات مع زر الإضافة دائماً ===
 async function renderFolderContents(chatId, messageId, state, forceNewMessage = false) {
     try {
         const db = await getDatabase();
@@ -801,12 +824,12 @@ async function renderFolderContents(chatId, messageId, state, forceNewMessage = 
             }
         });
 
-        // 3. أزرار التحكم الثابتة (الترتيب مهم)
+        // 3. أزرار التحكم الثابتة
         
         // زر رفع الملف هنا
         keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
         
-        // === زر إضافة مجلد جديد (يظهر دائماً هنا) ===
+        // زر إضافة مجلد جديد
         keyboard.push([{ text: `➕ Add New Folder`, callback_data: 'add_new_folder' }]);
 
         // زر الرجوع
@@ -829,10 +852,8 @@ async function renderFolderContents(chatId, messageId, state, forceNewMessage = 
         };
 
         if (forceNewMessage) {
-            // إرسال رسالة جديدة إذا طُلب (بعد إنشاء مجلد مثلاً)
             await bot.sendMessage(chatId, `${headerText}\n\nSelect a folder or action:`, options);
         } else {
-            // تعديل الرسالة الحالية
             await bot.editMessageText(`${headerText}\n\nSelect a folder or action:`, options);
         }
     } catch (e) {
@@ -934,7 +955,7 @@ function getDayName(dayIndex) {
 }
 
 // ==========================================
-// 11. دالة إرسال الإشعارات الجديدة (PUSH)
+// 12. دالة إرسال الإشعارات الجديدة (PUSH)
 // ==========================================
 
 async function sendPushNotificationToAll(title, body) {
@@ -993,7 +1014,7 @@ async function sendPushNotificationToAll(title, body) {
 }
 
 // ==========================================
-// 12. دوال حفظ البيانات مع الإشعارات
+// 13. دوال حفظ البيانات مع الإشعارات
 // ==========================================
 
 async function saveSchedule(chatId, state) {
@@ -1036,9 +1057,9 @@ async function saveSchedule(chatId, state) {
         if (!db.activeAlerts) db.activeAlerts = [];
         db.activeAlerts.push({
             id: 'alert_' + Date.now() + Math.random(),
-            subject: state.subject,
-            doctor: state.doctor,
-            message: state.content,
+            subject: sch.subject, // تم التصحيح من state إلى sch
+            doctor: sch.doctor,   // تم التصحيح
+            message: sch.message, // تم التصحيح
             timestamp: Date.now()
         });
 
@@ -1059,9 +1080,9 @@ async function saveSchedule(chatId, state) {
 
         await saveDatabase(db);
         
-        // === MODIFIED: SEND PUSH NOTIFICATION ===
+        // === SEND PUSH NOTIFICATION ===
         await sendPushNotificationToAll("⏰ Reminder Set", state.content);
-        // =========================================
+        // ================================
 
         bot.sendMessage(chatId, `✅ **Reminder Set Successfully**\n\n📅 Day: ${getDayName(state.day)}\n⏰ Time: ${state.time}\n📝 Message: "${state.content}"\n\nTarget: ${state.doctor} (${state.subject})\n\n*⚡ Message sent now and scheduled for later.*`, { parse_mode: 'Markdown' });
         delete userStates[chatId];
@@ -1111,9 +1132,9 @@ async function processTextNotification(chatId, state, messageId) {
 
         await saveDatabase(db);
 
-        // === MODIFIED: SEND PUSH NOTIFICATION ===
+        // === SEND PUSH NOTIFICATION ===
         await sendPushNotificationToAll("📢 Update Available", state.content);
-        // =========================================
+        // ================================
 
         await bot.editMessageText(`✅ Notification Sent Successfully\n\n📱 It will appear in the App shortly.`, { chat_id: chatId, message_id: messageId });
         delete userStates[chatId];
@@ -1125,7 +1146,7 @@ async function processTextNotification(chatId, state, messageId) {
 }
 
 // ==========================================
-// 13. Scheduled Reminders System
+// 14. Scheduled Reminders System
 // ==========================================
 
 process.env.TZ = "Africa/Cairo";
@@ -1190,8 +1211,6 @@ function checkSchedules() {
                 console.log("[Scheduler] Database updated with new alerts/notifications.");
                 
                 // Send Push when reminder triggers
-                // Note: Assuming we want to push for automated reminders too
-                // We can extract the last added recentUpdate to send push
                 if (db.recentUpdates.length > 0) {
                     const latest = db.recentUpdates[0];
                     await sendPushNotificationToAll("⏰ Reminder", latest.message);
