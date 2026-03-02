@@ -24,7 +24,7 @@ admin.initializeApp({
 // 3. الإعدادات والتهيئة
 // ==========================================
 
-// ✅ تم تحديث Refresh Token هنا
+// ⚠️ تأكد من وضع الـ Refresh Token الجديد الذي حصلت عليه هنا
 const DRIVE_REFRESH_TOKEN = '1//03NCuR1DqZAU7CgYIARAAGAMSNwF-L9IrBl_1uf3agTKyz9BGD_-DN3-ZLTzfogcGm8CzCdHoVIN41zCfqon_Q-Kd3uhXvK8wPOY'; 
 
 const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
@@ -290,17 +290,15 @@ async function executeUpload(chatId) {
                     parse_mode: 'Markdown',
                     disable_web_page_preview: true 
                 });
-            } catch (e) { console.log("Edit msg warning:", e.message); }
+            } catch (e) { console.log("Edit msg error:", e.message); }
         };
 
-        // إضافة await لضمان التحديث الفوري للرسالة
-        await updateText("⏳ Downloading From Telegram...");
+        updateText("⏳ Downloading From Telegram...");
         
         try {
             const rawFileLink = await bot.getFileLink(state.file.id);
             const encodedFileLink = encodeURI(rawFileLink);
             const safeFileName = state.file.name.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
-            // في Railway يكون المسار /tmp، في الويندوز المحلي سيكون ملف مؤقت
             tempFilePath = path.join('/tmp', `upload_${Date.now()}_${safeFileName}`);
             
             const writer = fs.createWriteStream(tempFilePath);
@@ -330,17 +328,19 @@ async function executeUpload(chatId) {
 
         await new Promise(resolve => setTimeout(resolve, 1000)); 
 
-        await updateText("⏳ Preparing Drive Structure...");
+        updateText("⏳ Preparing Drive Structure...");
         const [rootId, db] = await Promise.all([
             getRootFolderId(),
             getDatabase()
         ]);
 
+        // بناء المسار الكامل: المادة > الدكتور > المسار الفرعي (المجلد الجديد إن وجد)
         let folderNames = [state.subject, state.doctor, ...state.folderPathNames];
         let currentDriveId = rootId;
 
-        await updateText(`⏳ Navigating Folders: ${folderNames.join(' / ')}`);
+        updateText(`⏳ Navigating Folders: ${folderNames.join(' / ')}`);
         
+        // التأكد من وجود كل مجلد في المسار وإنشائه إذا لم يكن موجوداً
         for (let name of folderNames) {
             currentDriveId = await findOrCreateFolder(name, currentDriveId);
         }
@@ -362,6 +362,7 @@ async function executeUpload(chatId) {
         // 5. الحفظ في قاعدة البيانات
         let currentList = db.database[state.subject][state.doctor].root;
         
+        // التنقل داخل قاعدة البيانات للوصول لمكان المجلد الحالي
         for (let folderId of state.folderPathIds) {
             const folder = currentList.find(i => i.id === folderId && i.type === 'folder');
             if (folder) currentList = folder.children;
@@ -377,8 +378,6 @@ async function executeUpload(chatId) {
 
         try {
             await saveDatabase(db);
-            console.log(`[Success] File uploaded successfully to Drive and DB!`);
-            
             const displayName = decodeURI(state.file.name).replace(/\+/g, ' ');
             const folderPathStr = state.folderPathNames.join(' / ');
             const finalText = `✅ Upload Completed \n📂 ${state.subject} / ${state.doctor}${folderPathStr ? ' / ' + folderPathStr : ''}\n📝 Name: *${displayName}*\n🔗 ${driveResult.link}`;
@@ -471,7 +470,7 @@ async function handleFile(msg) {
         type: 'file',
         file: { id: fileId, name: fileName },
         folderPathIds: [],
-        folderPathNames: [] 
+        folderPathNames: [] // تأكد من بدء المسار فارغ
     };
 
     try {
@@ -490,7 +489,7 @@ async function handleFile(msg) {
     }
 }
 
-// === دالة محسنة لإنشاء المجلدات ===
+// === دالة محسنة لإنشاء المجلدات (تضمن تحديث المسار للرفع فوراً) ===
 async function createNewFolderAndSync(chatId, folderName) {
     const state = userStates[chatId];
     if (!state) return;
@@ -501,6 +500,7 @@ async function createNewFolderAndSync(chatId, folderName) {
         const db = await getDatabase();
         const rootId = await getRootFolderId();
 
+        // 1. تحديد مسار الدرايف
         let drivePath = [state.subject, state.doctor, ...state.folderPathNames];
         let currentDriveId = rootId;
         
@@ -508,8 +508,10 @@ async function createNewFolderAndSync(chatId, folderName) {
             currentDriveId = await findOrCreateFolder(name, currentDriveId);
         }
 
+        // 2. إنشاء المجلد الجديد على الدرايف
         const newDriveFolderId = await findOrCreateFolder(folderName, currentDriveId);
         
+        // 3. تحديث قاعدة البيانات
         let currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
         
         const newFolderData = {
@@ -520,6 +522,7 @@ async function createNewFolderAndSync(chatId, folderName) {
             children: [] 
         };
 
+        // --- تحديث قائمة الأطباء إذا لزم الأمر ---
         if (state.folderPathIds.length === 0) {
             if (!db.database[state.subject].doctors) {
                 db.database[state.subject].doctors = [];
@@ -528,12 +531,14 @@ async function createNewFolderAndSync(chatId, folderName) {
                 db.database[state.subject].doctors.push(folderName);
             }
         }
+        // --------------------------------------------
 
         currentList.push(newFolderData);
         await saveDatabase(db);
 
+        // 4. تحديث الحالة (هنا الجزء المهم للرفع لاحقاً)
         state.folderPathIds.push(newFolderData.id);
-        state.folderPathNames.push(folderName); 
+        state.folderPathNames.push(folderName); // إضافة اسم المجلد الجديد للمسار
         state.step = 'navigate_folder'; 
 
         await bot.deleteMessage(chatId, statusMsg.message_id);
@@ -674,6 +679,7 @@ bot.on('callback_query', async (query) => {
                 return;
             }
 
+            // For Files
             state.step = 'navigate_folder';
             await renderFolderContents(chatId, query.message.message_id, state);
         }
@@ -722,6 +728,7 @@ bot.on('callback_query', async (query) => {
             await saveSchedule(chatId, state);
         }
 
+        // --- التنقل والتحكم في المجلدات (للفايلات) ---
         else if (state && state.step === 'navigate_folder') {
             
             if (data === 'back') {
@@ -745,6 +752,7 @@ bot.on('callback_query', async (query) => {
                 }
             }
             
+            // === معالجة زر إضافة مجلد جديد ===
             else if (data === 'add_new_folder') {
                 state.step = 'waiting_for_folder_name';
                 await bot.editMessageText("✏️ *Enter the new folder name:*\n\n(Send /cancel to abort)", {
@@ -809,12 +817,15 @@ async function renderFolderContents(chatId, messageId, state, forceNewMessage = 
         
         const keyboard = [];
 
+        // 1. إضافة المجلدات الموجودة
         currentList.forEach(item => {
             if (item.type === 'folder') {
                 keyboard.push([{ text: `📂 ${item.name}`, callback_data: `folder_${item.id}` }]);
             }
         });
 
+        // 2. أزرار التحكم الثابتة
+        
         keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
         keyboard.push([{ text: `➕ Add New Folder`, callback_data: 'add_new_folder' }]);
 
