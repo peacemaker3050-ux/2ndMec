@@ -27,7 +27,7 @@ admin.initializeApp({
 // ==========================================
 
 const DRIVE_REFRESH_TOKEN = process.env.DRIVE_REFRESH_TOKEN || '1//03SEUMCBTjt1CCgYIARAAGAMSNwF-L9IrecuL1Xr9zf0RZ1b_mGyIP3_hVeJC-IfIWHrpO_knI6JYsgppYXDPnp2pjniVfbeiP2A'; 
-const token = process.env.TOKEN || 'YOUR_BOT_TOKEN';
+const token = process.env.TOKEN || '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
 
 const AUTHORIZED_USERS = [
     5605597142,
@@ -38,11 +38,11 @@ const AUTHORIZED_USERS = [
     // أضف IDs المشرفين هنا
 ];
 
-const JSONBIN_BIN_ID = process.env.JSONBIN_BIN_ID || "YOUR_BIN_ID";
-const JSONBIN_ACCESS_KEY = process.env.JSONBIN_ACCESS_KEY || "YOUR_ACCESS_KEY";
+const JSONBIN_BIN_ID = process.env.JSONBIN_BIN_ID || "696e77bfae596e708fe71e9d";
+const JSONBIN_ACCESS_KEY = process.env.JSONBIN_ACCESS_KEY || "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-const CLIENT_ID = process.env.CLIENT_ID || 'YOUR_CLIENT_ID';
-const CLIENT_SECRET = process.env.CLIENT_SECRET || 'YOUR_CLIENT_SECRET';
+const CLIENT_ID = process.env.CLIENT_ID || '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
+const CLIENT_SECRET = process.env.CLIENT_SECRET || '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';
 const REDIRECT_URI = 'http://localhost';
 
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
