@@ -26,7 +26,7 @@ admin.initializeApp({
 // 3. الإعدادات والتهيئة
 // ==========================================
 
-const DRIVE_REFRESH_TOKEN = process.env.DRIVE_REFRESH_TOKEN || 'YOUR_REFRESH_TOKEN'; 
+const DRIVE_REFRESH_TOKEN = process.env.DRIVE_REFRESH_TOKEN || '1//03SEUMCBTjt1CCgYIARAAGAMSNwF-L9IrecuL1Xr9zf0RZ1b_mGyIP3_hVeJC-IfIWHrpO_knI6JYsgppYXDPnp2pjniVfbeiP2A'; 
 const token = process.env.TOKEN || 'YOUR_BOT_TOKEN';
 
 const AUTHORIZED_USERS = [
