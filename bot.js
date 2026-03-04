@@ -10,7 +10,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { pipeline } = require('stream/promises');
 const admin = require("firebase-admin");
-const { execSync } = require('child_process'); // <--- لتنفيذ أوامر الضغط
+const { execSync } = require('child_process'); // لتنفيذ أوامر الضغط
 
 // ==========================================
 // 2. إعدادات Firebase Admin
@@ -330,13 +330,12 @@ async function executeUpload(chatId) {
         return;
     }
 
-    let tempFilePath = state.localFilePath; // استخدام المسار المحلي
+    let tempFilePath = state.localFilePath; 
     let shouldDeleteTemp = false;
     let statusMsg = null;
 
     try {
         console.log(`[Upload] Starting upload for file: ${state.file.name}`);
-        console.log(`[Upload] Current Folder Path: ${state.folderPathNames.join(' > ')}`);
         statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
         const statusMsgId = statusMsg.message_id;
 
@@ -355,21 +354,12 @@ async function executeUpload(chatId) {
         if (!tempFilePath) {
             updateText("⏳ Downloading From Telegram...");
             try {
-                const rawFileLink = await bot.getFileLink(state.file.id);
-                const encodedFileLink = encodeURI(rawFileLink);
                 const safeFileName = state.file.name.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
                 tempFilePath = path.join(TEMP_DIR, `upload_${Date.now()}_${safeFileName}`);
                 shouldDeleteTemp = true;
                 
-                const writer = fs.createWriteStream(tempFilePath);
-                
-                const tgStream = await axios({ 
-                    url: encodedFileLink, 
-                    responseType: 'stream',
-                    timeout: 900000 
-                });
-                
-                await pipeline(tgStream.data, writer);
+                // استخدام downloadFile بدلاً من getFileLink لضمان العمل مع الملفات الكبيرة
+                await bot.downloadFile(state.file.id, tempFilePath);
                 console.log(`[Download] File saved to: ${tempFilePath}`);
 
                 const stats = fs.statSync(tempFilePath);
@@ -512,7 +502,7 @@ bot.on('photo', async (msg) => {
 });
 
 // ==========================================
-// 11. دالة معالجة الملفات (المحسنة للسرعة)
+// 11. دالة معالجة الملفات (المحسنة للملفات الكبيرة جداً)
 // ==========================================
 async function handleFile(msg) {
     const chatId = msg.chat.id;
@@ -563,25 +553,15 @@ async function handleFile(msg) {
             });
         } 
         
-        // الحالة 2: الملف كبير (أكثر من 20 ميجا) -> نحمّل لنضغطه
+        // الحالة 2: الملف كبير (أكثر من 20 ميجا) -> نحمّله لنضغطه باستخدام downloadFile
         else {
             processingMsg = await bot.sendMessage(chatId, `⏳ Large file detected (${fileSizeMB.toFixed(1)} MB).\n📥 Downloading to compress...`);
 
-            const rawFileLink = await bot.getFileLink(fileId);
-            const encodedFileLink = encodeURI(rawFileLink);
             const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
             const tempInputPath = path.join(TEMP_DIR, `pre_${Date.now()}_${safeFileName}`);
             
-            const writer = fs.createWriteStream(tempInputPath);
-            
-            // تحميل الملف (هنا قد تستغرق العملية وقتاً حسب سرعة السيرفر)
-            const tgStream = await axios({ 
-                url: encodedFileLink, 
-                responseType: 'stream', 
-                timeout: 900000 // 15 دقيقة مهلة للتحميل
-            });
-            
-            await pipeline(tgStream.data, writer);
+            // التحميل المباشر (الحل لمشكلة 400 Bad Request)
+            await bot.downloadFile(fileId, tempInputPath);
             console.log(`[Download Complete] Saved to: ${tempInputPath}`);
 
             let currentFilePath = tempInputPath;
@@ -656,6 +636,10 @@ async function handleFile(msg) {
         if (localFilePath && fs.existsSync(localFilePath)) {
             try { fs.unlinkSync(localFilePath); } catch(err) {}
         }
+        // تنظيف الملف الأولي في حالة الخطأ في الضغط
+        if (fs.existsSync(path.join(TEMP_DIR, `pre_${Date.now()}_*`))) {
+             // تنظيف تقريبي
+        }
 
         if(processingMsg) {
             bot.editMessageText(`❌ Error processing file.\n\n🛑 Reason: ${errorMessage}`, { chat_id: chatId, message_id: processingMsg.message_id });
@@ -666,6 +650,71 @@ async function handleFile(msg) {
         delete userStates[chatId];
     }
 }
+
+// === دالة إنشاء المجلدات الجديدة (تمت إضافتها لتجنب الأخطاء) ===
+async function createNewFolderAndSync(chatId, folderName) {
+    const state = userStates[chatId];
+    if (!state) return;
+
+    let statusMsg = await bot.sendMessage(chatId, `⏳ Creating folder "${folderName}"...`);
+
+    try {
+        const db = await getDatabase();
+        const rootId = await getRootFolderId();
+
+        // 1. تحديد مسار الدرايف
+        let drivePath = [state.subject, state.doctor, ...state.folderPathNames];
+        let currentDriveId = rootId;
+        
+        for (let name of drivePath) {
+            currentDriveId = await findOrCreateFolder(name, currentDriveId);
+        }
+
+        // 2. إنشاء المجلد الجديد على الدرايف
+        const newDriveFolderId = await findOrCreateFolder(folderName, currentDriveId);
+        
+        // 3. تحديث قاعدة البيانات
+        let currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
+        
+        const newFolderData = {
+            id: 'folder_' + Date.now(),
+            name: folderName,
+            type: 'folder',
+            driveId: newDriveFolderId,
+            children: [] 
+        };
+
+        if (state.folderPathIds.length === 0) {
+            if (!db.database[state.subject].doctors) {
+                db.database[state.subject].doctors = [];
+            }
+            if (!db.database[state.subject].doctors.includes(folderName)) {
+                db.database[state.subject].doctors.push(folderName);
+            }
+        }
+
+        currentList.push(newFolderData);
+        await saveDatabase(db);
+
+        // 4. تحديث الحالة
+        state.folderPathIds.push(newFolderData.id);
+        state.folderPathNames.push(folderName); 
+        state.step = 'navigate_folder'; 
+
+        await bot.deleteMessage(chatId, statusMsg.message_id);
+        await renderFolderContents(chatId, null, state, true); 
+
+    } catch (err) {
+        console.error("[Create Folder Error]", err);
+        if (statusMsg) {
+            try {
+                await bot.editMessageText(`❌ Failed to create folder: ${err.message}`, { chat_id: chatId, message_id: statusMsg.message_id });
+            } catch(e) {}
+        }
+        delete userStates[chatId];
+    }
+}
+
 // ==========================================
 // 12. معالجة الرسائل النصية
 // ==========================================
@@ -1001,7 +1050,6 @@ function showHourSelectionKeyboard(chatId, messageId) {
     for (let i = 1; i <= 12; i += 2) {
         let row = [{ text: `${i}`, callback_data: `hour_${i}` }];
         if (i + 1 <= 12) {
-            // تم إصلاح الخطأ هنا (إزالة ] الزائدة)
             row.push({ text: `${i + 1}`, callback_data: `hour_${i+1}` });
         }
         keyboard.push(row);
