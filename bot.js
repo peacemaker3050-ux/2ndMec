@@ -10,12 +10,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { pipeline } = require('stream/promises');
 const admin = require("firebase-admin");
-const { execSync } = require('child_process'); // لتنفيذ أوامر الضغط
 
 // ==========================================
 // 2. إعدادات Firebase Admin
 // ==========================================
-// تأكد من وجود ملف service-account.json في مجلد المشروع
 const serviceAccount = require("./service-account.json"); 
 
 admin.initializeApp({
@@ -26,8 +24,10 @@ admin.initializeApp({
 // 3. الإعدادات والتهيئة
 // ==========================================
 
-const DRIVE_REFRESH_TOKEN = process.env.DRIVE_REFRESH_TOKEN || '1//03SEUMCBTjt1CCgYIARAAGAMSNwF-L9IrecuL1Xr9zf0RZ1b_mGyIP3_hVeJC-IfIWHrpO_knI6JYsgppYXDPnp2pjniVfbeiP2A'; 
-const token = process.env.TOKEN || '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
+// ⚠️ تأكد من وضع الـ Refresh Token الجديد الذي حصلت عليه هنا
+const DRIVE_REFRESH_TOKEN = '1//03SEUMCBTjt1CCgYIARAAGAMSNwF-L9IrecuL1Xr9zf0RZ1b_mGyIP3_hVeJC-IfIWHrpO_knI6JYsgppYXDPnp2pjniVfbeiP2A'; 
+
+const token = '8273814930:AAEdxVzhYjnNZqdJKvpGJC9k1bVf2hcGUV4';
 
 const AUTHORIZED_USERS = [
     5605597142,
@@ -35,14 +35,13 @@ const AUTHORIZED_USERS = [
     6732616473,
     5741332811,
     5978595535,
-    // أضف IDs المشرفين هنا
 ];
 
-const JSONBIN_BIN_ID = process.env.JSONBIN_BIN_ID || "696e77bfae596e708fe71e9d";
-const JSONBIN_ACCESS_KEY = process.env.JSONBIN_ACCESS_KEY || "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
+const JSONBIN_BIN_ID = "696e77bfae596e708fe71e9d";
+const JSONBIN_ACCESS_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
-const CLIENT_ID = process.env.CLIENT_ID || '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
-const CLIENT_SECRET = process.env.CLIENT_SECRET || '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';
+const CLIENT_ID = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
 const REDIRECT_URI = 'http://localhost';
 
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
@@ -61,17 +60,12 @@ const app = express();
 app.use(bodyParser.json());
 
 const userStates = {};
+const lastFileUploads = {}; 
 let dbCache = null;
 let lastCacheTime = 0;
 const CACHE_DURATION = 60000; 
 
 const PORT = process.env.PORT || 3000;
-const TEMP_DIR = path.join(__dirname, 'temp_downloads'); // مجلد مؤقت
-
-// إنشاء المجلد المؤقت
-if (!fs.existsSync(TEMP_DIR)) {
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-}
 
 // ==========================================
 // 4. دوال Google Drive
@@ -267,58 +261,7 @@ function getCurrentFolderContent(db, subject, doctor, pathIds) {
 }
 
 // ==========================================
-// 7. وظيفة ضغط الملفات (Ghostscript)
-// ==========================================
-
-function compressPdfLocal(inputPath, outputPath, mode) {
-    try {
-        let command = [
-            "gs",
-            "-sDEVICE=pdfwrite",
-            "-dCompatibilityLevel=1.4",
-            "-dNOPAUSE",
-            "-dQUIET",
-            "-dBATCH",
-            "-dNumRenderingThreads=2",
-            `-sOutputFile=${outputPath}`
-        ];
-
-        if (mode === "standard") {
-            command.push("-dPDFSETTINGS=/screen");
-            command.push("-sColorConversionStrategy=Gray");
-            command.push("-dProcessColorModel=/DeviceGray");
-            command.push("-dDownsampleColorImages=true");
-            command.push("-dColorImageResolution=96");
-            command.push("-dDownsampleGrayImages=true");
-            command.push("-dGrayImageResolution=120");
-            command.push("-dAutoFilterColorImages=false");
-            command.push("-dAutoFilterGrayImages=false");
-        } else if (mode === "aggressive") {
-            command.push("-dPDFSETTINGS=/screen");
-            command.push("-sColorConversionStrategy=Gray");
-            command.push("-dProcessColorModel=/DeviceGray");
-            command.push("-dDownsampleColorImages=true");
-            command.push("-dColorImageResolution=72");
-            command.push("-dDownsampleGrayImages=true");
-            command.push("-dGrayImageResolution=96");
-            command.push("-dAutoFilterColorImages=true");
-            command.push("-dAutoFilterGrayImages=true");
-            command.push("-dDetectDuplicateImages=true");
-        }
-
-        command.push(inputPath);
-
-        // تنفيذ الأمر مع مهلة 400 ثانية
-        execSync(command.join(" "), { stdio: "ignore", timeout: 400000 }); 
-        return true;
-    } catch (error) {
-        console.error(`[Compression Error] Mode: ${mode}`, error.message);
-        return false;
-    }
-}
-
-// ==========================================
-// 8. وظيفة الرفع الرئيسية (مع تحسين التحميل)
+// 7. وظيفة الرفع الرئيسية (محدثة)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -330,12 +273,12 @@ async function executeUpload(chatId) {
         return;
     }
 
-    let tempFilePath = state.localFilePath; 
-    let shouldDeleteTemp = false;
+    let tempFilePath = null;
     let statusMsg = null;
 
     try {
         console.log(`[Upload] Starting upload for file: ${state.file.name}`);
+        console.log(`[Upload] Current Folder Path: ${state.folderPathNames.join(' > ')}`);
         statusMsg = await bot.sendMessage(chatId, "⏳ Initializing...");
         const statusMsgId = statusMsg.message_id;
 
@@ -350,38 +293,37 @@ async function executeUpload(chatId) {
             } catch (e) { console.log("Edit msg error:", e.message); }
         };
 
-        // إذا لم يكن الملف محملاً (حالة < 20 ميجا)، نقوم بتحميله
-        if (!tempFilePath) {
-            updateText("⏳ Downloading From Telegram...");
-            try {
-                const safeFileName = state.file.name.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
-                tempFilePath = path.join(TEMP_DIR, `upload_${Date.now()}_${safeFileName}`);
-                shouldDeleteTemp = true;
-                
-                // طريقة التحميل المعتمدة: Axios Stream
-                const fileLink = await bot.getFileLink(state.file.id);
-                const writer = fs.createWriteStream(tempFilePath);
-                const response = await axios({
-                    url: fileLink,
-                    method: 'GET',
-                    responseType: 'stream',
-                    timeout: 900000 // 15 دقيقة
-                });
-                
-                await pipeline(response.data, writer);
-                console.log(`[Download] File saved to: ${tempFilePath}`);
+        updateText("⏳ Downloading From Telegram...");
+        
+        try {
+            const rawFileLink = await bot.getFileLink(state.file.id);
+            const encodedFileLink = encodeURI(rawFileLink);
+            const safeFileName = state.file.name.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
+            tempFilePath = path.join('/tmp', `upload_${Date.now()}_${safeFileName}`);
+            
+            const writer = fs.createWriteStream(tempFilePath);
+            
+            const tgStream = await axios({ 
+                url: encodedFileLink, 
+                responseType: 'stream',
+                timeout: 900000 
+            });
+            
+            await pipeline(tgStream.data, writer);
+            console.log(`[Download] File saved to: ${tempFilePath}`);
 
-                const stats = fs.statSync(tempFilePath);
-                if (stats.size === 0) {
-                     throw new Error("Downloaded file is empty (0 bytes).");
-                }
-                
-            } catch (downloadError) {
-                console.error('[Download Error]', downloadError.message);
-                throw new Error("Failed to download file.");
+            const stats = fs.statSync(tempFilePath);
+            if (stats.size === 0) {
+                 throw new Error("Downloaded file is empty (0 bytes).");
             }
-        } else {
-             console.log(`[Upload] Using existing local file: ${tempFilePath}`);
+            
+        } catch (downloadError) {
+            console.error('[Download Error]', downloadError.message);
+            let errorMsg = "Failed to download file.";
+            if (downloadError.code === 'ETIMEDOUT') {
+                errorMsg = "⏱️ **Download Timeout:** File too large or slow internet.";
+            }
+            throw new Error(errorMsg);
         }
 
         await new Promise(resolve => setTimeout(resolve, 1000)); 
@@ -392,11 +334,13 @@ async function executeUpload(chatId) {
             getDatabase()
         ]);
 
+        // بناء المسار الكامل: المادة > الدكتور > المسار الفرعي (المجلد الجديد إن وجد)
         let folderNames = [state.subject, state.doctor, ...state.folderPathNames];
         let currentDriveId = rootId;
 
         updateText(`⏳ Navigating Folders: ${folderNames.join(' / ')}`);
         
+        // التأكد من وجود كل مجلد في المسار وإنشائه إذا لم يكن موجوداً
         for (let name of folderNames) {
             currentDriveId = await findOrCreateFolder(name, currentDriveId);
         }
@@ -415,8 +359,10 @@ async function executeUpload(chatId) {
             throw new Error(`Google Drive Upload Failed: ${err.message}`);
         }
 
+        // 5. الحفظ في قاعدة البيانات
         let currentList = db.database[state.subject][state.doctor].root;
         
+        // التنقل داخل قاعدة البيانات للوصول لمكان المجلد الحالي
         for (let folderId of state.folderPathIds) {
             const folder = currentList.find(i => i.id === folderId && i.type === 'folder');
             if (folder) currentList = folder.children;
@@ -447,11 +393,8 @@ async function executeUpload(chatId) {
             await bot.sendMessage(chatId, `❌ Upload Failed: ${error.message}`);
         }
     } finally {
-        // تنظيف الملفات المؤقتة
         if (tempFilePath && fs.existsSync(tempFilePath)) {
-            try {
-                fs.unlinkSync(tempFilePath);
-            } catch(e) {}
+            fs.unlinkSync(tempFilePath);
         }
         if (userStates[chatId] && userStates[chatId].file === state.file) {
             delete userStates[chatId];
@@ -461,7 +404,7 @@ async function executeUpload(chatId) {
 }
 
 // ==========================================
-// 9. API للحذف
+// 8. API للحذف
 // ==========================================
 
 app.post('/delete-drive-file', async (req, res) => {
@@ -475,7 +418,7 @@ app.post('/delete-drive-file', async (req, res) => {
 });
 
 // ==========================================
-// 10. معالجة الرسائل والأوامر
+// 9. معالجة الرسائل والأوامر
 // ==========================================
 
 bot.setMyCommands([
@@ -510,163 +453,43 @@ bot.on('photo', async (msg) => {
     handleFile({ ...msg, document: photo, file_name: "photo_" + Date.now() + ".jpg" });
 });
 
-// ==========================================
-// 11. دالة معالجة الملفات (المحسنة للملفات الكبيرة جداً)
-// ==========================================
 async function handleFile(msg) {
     const chatId = msg.chat.id;
     if (!AUTHORIZED_USERS.includes(chatId)) return;
 
     if (userStates[chatId]) {
         console.log(`[Auto-Cancel] User sent new file. Cancelling previous stuck operation for ${chatId}.`);
-        // تنظيف الملف القديم إن وجد
-        if (userStates[chatId].localFilePath && fs.existsSync(userStates[chatId].localFilePath)) {
-            try { fs.unlinkSync(userStates[chatId].localFilePath); } catch(e) {}
-        }
         delete userStates[chatId];
     }
 
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
-    const doc = msg.document || msg.photo[msg.photo.length - 1];
-    const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : `photo_${Date.now()}.jpg`;
+    const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
 
-    // === التحسين: الحصول على الحجم مباشرة من تليجرام بدون تحميل ===
-    const fileSizeBytes = doc.file_size || 0; 
-    const fileSizeMB = fileSizeBytes / (1024 * 1024);
-    const targetSizeMB = 20;
-
-    console.log(`[Quick Check] File: ${fileName} | Size: ${fileSizeMB.toFixed(2)} MB`);
-
-    let processingMsg = null;
-    let localFilePath = null;
+    userStates[chatId] = {
+        step: 'select_subject',
+        type: 'file',
+        file: { id: fileId, name: fileName },
+        folderPathIds: [],
+        folderPathNames: [] // تأكد من بدء المسار فارغ
+    };
 
     try {
-        // الحالة 1: الملف صغير (أقل من 20 ميجا) -> لا نحمّله الآن، نعرض القائمة فوراً
-        if (fileSizeMB <= targetSizeMB) {
-            userStates[chatId] = {
-                step: 'select_subject',
-                type: 'file',
-                file: { id: fileId, name: fileName },
-                localFilePath: null, // لم يتم التحميل بعد
-                folderPathIds: [],
-                folderPathNames: []
-            };
-
-            const API = await getDatabase();
-            const subjects = Object.keys(API.database);
-            const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-            keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
-            
-            bot.sendMessage(chatId, `📂 File: *${fileName}*\n💾 Size: ${fileSizeMB.toFixed(1)} MB\n\nSelect Subject :`, {
-                reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
-            });
-        } 
+        const API = await getDatabase();
+        const subjects = Object.keys(API.database);
+        const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
         
-        // الحالة 2: الملف كبير (أكثر من 20 ميجا) -> نحمّله لنضغطه باستخدام Axios Stream
-        else {
-            processingMsg = await bot.sendMessage(chatId, `⏳ Large file detected (${fileSizeMB.toFixed(1)} MB).\n📥 Downloading to compress...`);
-
-            const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
-            const tempInputPath = path.join(TEMP_DIR, `pre_${Date.now()}_${safeFileName}`);
-            
-            // التحميل المباشر باستخدام Axios (الحل لمشكلة 400 Bad Request)
-            const fileLink = await bot.getFileLink(fileId);
-            const writer = fs.createWriteStream(tempInputPath);
-            const response = await axios({
-                url: fileLink,
-                method: 'GET',
-                responseType: 'stream',
-                timeout: 900000 // 15 دقيقة
-            });
-            
-            await pipeline(response.data, writer);
-            console.log(`[Download Complete] Saved to: ${tempInputPath}`);
-
-            let currentFilePath = tempInputPath;
-            let currentSizeMB = fs.statSync(currentFilePath).size / (1024 * 1024);
-            const originalSizeMB = currentSizeMB;
-
-            // بدء عملية الضغط
-            let attempts = 0;
-            const maxAttempts = 2;
-
-            while (attempts < maxAttempts && currentSizeMB > targetSizeMB) {
-                attempts++;
-                const mode = (attempts === 1) ? "standard" : "aggressive";
-                const nextFilePath = path.join(TEMP_DIR, `comp_${Date.now()}_run${attempts}.pdf`);
-                
-                let statusText = (mode === "standard") 
-                    ? "⚙️ Compressing (Fast Mode)..." 
-                    : "⏳ Compressing (Deep Mode)...";
-                
-                await bot.editMessageText(statusText, { chat_id: chatId, message_id: processingMsg.message_id });
-
-                const success = compressPdfLocal(currentFilePath, nextFilePath, mode);
-
-                if (success && fs.existsSync(nextFilePath)) {
-                    if (currentFilePath !== tempInputPath) {
-                        try { fs.unlinkSync(currentFilePath); } catch(e){}
-                    }
-                    
-                    currentFilePath = nextFilePath;
-                    currentSizeMB = fs.statSync(currentFilePath).size / (1024 * 1024);
-                    console.log(`[Compression] Attempt ${attempts}: ${currentSizeMB.toFixed(2)} MB`);
-                } else {
-                    break; 
-                }
-            }
-
-            // النتيجة النهائية
-            if (currentSizeMB <= targetSizeMB) {
-                await bot.editMessageText(`✅ Compressed Successfully!\n📉 From ${originalSizeMB.toFixed(1)}MB to ${currentSizeMB.toFixed(1)}MB\n\nSelect Subject:`, { chat_id: chatId, message_id: processingMsg.message_id });
-            } else {
-                await bot.editMessageText(`⚠️ Max compression reached.\n📉 From ${originalSizeMB.toFixed(1)}MB to ${currentSizeMB.toFixed(1)}MB\n\nSelect Subject:`, { chat_id: chatId, message_id: processingMsg.message_id });
-            }
-
-            // حفظ الحالة مع مسار الملف المضغوط
-            userStates[chatId] = {
-                step: 'select_subject',
-                type: 'file',
-                file: { id: fileId, name: fileName },
-                localFilePath: currentFilePath, // الملف موجود محلياً ومضغوط
-                folderPathIds: [],
-                folderPathNames: []
-            };
-
-            const API = await getDatabase();
-            const subjects = Object.keys(API.database);
-            const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-            keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
-            
-            await bot.editMessageText(`📂 File: *${fileName}*\n💾 Size: ${currentSizeMB.toFixed(1)} MB\n\ Select Subject :`, {
-                reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown', chat_id: chatId, message_id: processingMsg.message_id
-            });
-        }
-
+        keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+        
+        bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
+            reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+        });
     } catch (e) {
-        console.error("[Handle File Error]", e);
-        
-        let errorMessage = "Unknown Error";
-        if (e.message) errorMessage = e.message;
-        if (e.code) errorMessage += ` (Code: ${e.code})`;
-
-        // تنظيف الملفات المؤقتة
-        if (localFilePath && fs.existsSync(localFilePath)) {
-            try { fs.unlinkSync(localFilePath); } catch(err) {}
-        }
-        // تنظيف الملف الأولي في حالة الخطأ
-        // ملاحظة: تنظيف الملفات العشوائي في CATCH غير آمن، نعتمد على التنظيف في FINALLY أو عند الإلغاء
-        if (processingMsg) {
-            bot.editMessageText(`❌ Error processing file.\n\n🛑 Reason: ${errorMessage}`, { chat_id: chatId, message_id: processingMsg.message_id });
-        } else {
-            bot.sendMessage(chatId, `❌ Error processing file.\n\n🛑 Reason: ${errorMessage}`);
-        }
-        
         delete userStates[chatId];
+        bot.sendMessage(chatId, "❌ Failed to load database.");
     }
 }
 
-// === دالة إنشاء المجلدات الجديدة (تمت إضافتها لتجنب الأخطاء) ===
+// === دالة محسنة لإنشاء المجلدات (تضمن تحديث المسار للرفع فوراً) ===
 async function createNewFolderAndSync(chatId, folderName) {
     const state = userStates[chatId];
     if (!state) return;
@@ -699,6 +522,7 @@ async function createNewFolderAndSync(chatId, folderName) {
             children: [] 
         };
 
+        // --- تحديث قائمة الأطباء إذا لزم الأمر ---
         if (state.folderPathIds.length === 0) {
             if (!db.database[state.subject].doctors) {
                 db.database[state.subject].doctors = [];
@@ -707,13 +531,14 @@ async function createNewFolderAndSync(chatId, folderName) {
                 db.database[state.subject].doctors.push(folderName);
             }
         }
+        // --------------------------------------------
 
         currentList.push(newFolderData);
         await saveDatabase(db);
 
-        // 4. تحديث الحالة
+        // 4. تحديث الحالة (هنا الجزء المهم للرفع لاحقاً)
         state.folderPathIds.push(newFolderData.id);
-        state.folderPathNames.push(folderName); 
+        state.folderPathNames.push(folderName); // إضافة اسم المجلد الجديد للمسار
         state.step = 'navigate_folder'; 
 
         await bot.deleteMessage(chatId, statusMsg.message_id);
@@ -731,7 +556,7 @@ async function createNewFolderAndSync(chatId, folderName) {
 }
 
 // ==========================================
-// 12. معالجة الرسائل النصية
+// 10. معالجة الرسائل النصية
 // ==========================================
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
@@ -791,7 +616,7 @@ bot.on('message', async (msg) => {
 });
 
 // ==========================================
-// 13. معالجة الأزرار (Callback Query)
+// 11. معالجة الأزرار (Callback Query)
 // ==========================================
 
 bot.on('callback_query', async (query) => {
@@ -806,9 +631,6 @@ bot.on('callback_query', async (query) => {
 
     try {
         if (data === 'cancel_op') {
-            if (state && state.localFilePath && fs.existsSync(state.localFilePath)) {
-                try { fs.unlinkSync(state.localFilePath); } catch(e){}
-            }
             delete userStates[chatId];
             await bot.editMessageText("❌ **Operation Cancelled**", {
                 chat_id: chatId,
@@ -857,6 +679,7 @@ bot.on('callback_query', async (query) => {
                 return;
             }
 
+            // For Files
             state.step = 'navigate_folder';
             await renderFolderContents(chatId, query.message.message_id, state);
         }
@@ -905,6 +728,7 @@ bot.on('callback_query', async (query) => {
             await saveSchedule(chatId, state);
         }
 
+        // --- التنقل والتحكم في المجلدات (للفايلات) ---
         else if (state && state.step === 'navigate_folder') {
             
             if (data === 'back') {
@@ -928,6 +752,7 @@ bot.on('callback_query', async (query) => {
                 }
             }
             
+            // === معالجة زر إضافة مجلد جديد ===
             else if (data === 'add_new_folder') {
                 state.step = 'waiting_for_folder_name';
                 await bot.editMessageText("✏️ *Enter the new folder name:*\n\n(Send /cancel to abort)", {
@@ -992,11 +817,14 @@ async function renderFolderContents(chatId, messageId, state, forceNewMessage = 
         
         const keyboard = [];
 
+        // 1. إضافة المجلدات الموجودة
         currentList.forEach(item => {
             if (item.type === 'folder') {
                 keyboard.push([{ text: `📂 ${item.name}`, callback_data: `folder_${item.id}` }]);
             }
         });
+
+        // 2. أزرار التحكم الثابتة
         
         keyboard.push([{ text: `📤 Upload Here`, callback_data: 'upload_here' }]);
         keyboard.push([{ text: `➕ Add New Folder`, callback_data: 'add_new_folder' }]);
@@ -1122,7 +950,7 @@ function getDayName(dayIndex) {
 }
 
 // ==========================================
-// 14. دالة إرسال الإشعارات الجديدة (PUSH)
+// 12. دالة إرسال الإشعارات الجديدة (PUSH)
 // ==========================================
 
 async function sendPushNotificationToAll(title, body) {
@@ -1175,7 +1003,7 @@ async function sendPushNotificationToAll(title, body) {
 }
 
 // ==========================================
-// 15. دوال حفظ البيانات مع الإشعارات
+// 13. دوال حفظ البيانات مع الإشعارات
 // ==========================================
 
 async function saveSchedule(chatId, state) {
@@ -1218,9 +1046,9 @@ async function saveSchedule(chatId, state) {
         if (!db.activeAlerts) db.activeAlerts = [];
         db.activeAlerts.push({
             id: 'alert_' + Date.now() + Math.random(),
-            subject: sch.subject,
-            doctor: sch.doctor,
-            message: sch.message,
+            subject: state.subject,
+            doctor: state.doctor,
+            message: state.content,
             timestamp: Date.now()
         });
 
@@ -1229,9 +1057,9 @@ async function saveSchedule(chatId, state) {
         if (!db.recentUpdates) db.recentUpdates = [];
         db.recentUpdates.unshift({
             id: 'sched_' + Date.now(),
-            doctor: sch.doctor,
-            subject: sch.subject,
-            message: sch.message,
+            doctor: state.doctor,
+            subject: state.subject,
+            message: state.content,
             timestamp: Date.now()
         });
         
@@ -1303,7 +1131,7 @@ async function processTextNotification(chatId, state, messageId) {
 }
 
 // ==========================================
-// 16. Scheduled Reminders System
+// 14. Scheduled Reminders System
 // ==========================================
 
 process.env.TZ = "Africa/Cairo";
