@@ -512,7 +512,7 @@ bot.on('photo', async (msg) => {
 });
 
 // ==========================================
-// 11. دالة معالجة الملفات (مع الضغط والتحليل المفصل للأخطاء)
+// 11. دالة معالجة الملفات (المحسنة للسرعة)
 // ==========================================
 async function handleFile(msg) {
     const chatId = msg.chat.id;
@@ -520,39 +520,75 @@ async function handleFile(msg) {
 
     if (userStates[chatId]) {
         console.log(`[Auto-Cancel] User sent new file. Cancelling previous stuck operation for ${chatId}.`);
+        // تنظيف الملف القديم إن وجد
+        if (userStates[chatId].localFilePath && fs.existsSync(userStates[chatId].localFilePath)) {
+            try { fs.unlinkSync(userStates[chatId].localFilePath); } catch(e) {}
+        }
         delete userStates[chatId];
     }
 
     const fileId = msg.document ? msg.document.file_id : msg.file_id;
-    const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : msg.file_name;
+    const doc = msg.document || msg.photo[msg.photo.length - 1];
+    const fileName = msg.document ? (msg.document.file_name || "file_" + Date.now()) : `photo_${Date.now()}.jpg`;
+
+    // === التحسين: الحصول على الحجم مباشرة من تليجرام بدون تحميل ===
+    const fileSizeBytes = doc.file_size || 0; 
+    const fileSizeMB = fileSizeBytes / (1024 * 1024);
+    const targetSizeMB = 20;
+
+    console.log(`[Quick Check] File: ${fileName} | Size: ${fileSizeMB.toFixed(2)} MB`);
 
     let processingMsg = null;
     let localFilePath = null;
-    let tempInputPath = null;
 
     try {
-        // 1. التحميل المسبق لفحص الحجم
-        processingMsg = await bot.sendMessage(chatId, "⏳ Analyzing file size...");
+        // الحالة 1: الملف صغير (أقل من 20 ميجا) -> لا نحمّله الآن، نعرض القائمة فوراً
+        if (fileSizeMB <= targetSizeMB) {
+            userStates[chatId] = {
+                step: 'select_subject',
+                type: 'file',
+                file: { id: fileId, name: fileName },
+                localFilePath: null, // لم يتم التحميل بعد
+                folderPathIds: [],
+                folderPathNames: []
+            };
 
-        const rawFileLink = await bot.getFileLink(fileId);
-        const encodedFileLink = encodeURI(rawFileLink);
-        const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
+            const API = await getDatabase();
+            const subjects = Object.keys(API.database);
+            const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+            keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+            
+            bot.sendMessage(chatId, `📂 File: *${fileName}*\n💾 Size: ${fileSizeMB.toFixed(1)} MB\n\nSelect Subject :`, {
+                reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
+            });
+        } 
         
-        tempInputPath = path.join(TEMP_DIR, `pre_${Date.now()}_${safeFileName}`);
-        
-        const writer = fs.createWriteStream(tempInputPath);
-        const tgStream = await axios({ url: encodedFileLink, responseType: 'stream', timeout: 900000 });
-        await pipeline(tgStream.data, writer);
+        // الحالة 2: الملف كبير (أكثر من 20 ميجا) -> نحمّل لنضغطه
+        else {
+            processingMsg = await bot.sendMessage(chatId, `⏳ Large file detected (${fileSizeMB.toFixed(1)} MB).\n📥 Downloading to compress...`);
 
-        let currentFilePath = tempInputPath;
-        let currentSizeMB = fs.statSync(currentFilePath).size / (1024 * 1024);
-        const originalSizeMB = currentSizeMB;
-        const targetSizeMB = 20;
+            const rawFileLink = await bot.getFileLink(fileId);
+            const encodedFileLink = encodeURI(rawFileLink);
+            const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
+            const tempInputPath = path.join(TEMP_DIR, `pre_${Date.now()}_${safeFileName}`);
+            
+            const writer = fs.createWriteStream(tempInputPath);
+            
+            // تحميل الملف (هنا قد تستغرق العملية وقتاً حسب سرعة السيرفر)
+            const tgStream = await axios({ 
+                url: encodedFileLink, 
+                responseType: 'stream', 
+                timeout: 900000 // 15 دقيقة مهلة للتحميل
+            });
+            
+            await pipeline(tgStream.data, writer);
+            console.log(`[Download Complete] Saved to: ${tempInputPath}`);
 
-        console.log(`[Size Check] File: ${fileName} is ${currentSizeMB.toFixed(2)} MB`);
+            let currentFilePath = tempInputPath;
+            let currentSizeMB = fs.statSync(currentFilePath).size / (1024 * 1024);
+            const originalSizeMB = currentSizeMB;
 
-        // 2. منطق الضغط إذا كان أكبر من 20 ميجا
-        if (currentSizeMB > targetSizeMB) {
+            // بدء عملية الضغط
             let attempts = 0;
             const maxAttempts = 2;
 
@@ -563,7 +599,7 @@ async function handleFile(msg) {
                 
                 let statusText = (mode === "standard") 
                     ? "⚙️ Compressing (Fast Mode)..." 
-                    : "⏳ Compressing (Deep Mode to reach 20MB)...";
+                    : "⏳ Compressing (Deep Mode)...";
                 
                 await bot.editMessageText(statusText, { chat_id: chatId, message_id: processingMsg.message_id });
 
@@ -578,63 +614,47 @@ async function handleFile(msg) {
                     currentSizeMB = fs.statSync(currentFilePath).size / (1024 * 1024);
                     console.log(`[Compression] Attempt ${attempts}: ${currentSizeMB.toFixed(2)} MB`);
                 } else {
-                    break; // فشل الضغط
+                    break; 
                 }
             }
 
-            // إخبار المستخدم بالنتيجة
+            // النتيجة النهائية
             if (currentSizeMB <= targetSizeMB) {
                 await bot.editMessageText(`✅ Compressed Successfully!\n📉 From ${originalSizeMB.toFixed(1)}MB to ${currentSizeMB.toFixed(1)}MB\n\nSelect Subject:`, { chat_id: chatId, message_id: processingMsg.message_id });
             } else {
                 await bot.editMessageText(`⚠️ Max compression reached.\n📉 From ${originalSizeMB.toFixed(1)}MB to ${currentSizeMB.toFixed(1)}MB\n\nSelect Subject:`, { chat_id: chatId, message_id: processingMsg.message_id });
             }
-        } else {
-             // ملف صغير، لا حاجة للضغط
-             await bot.deleteMessage(chatId, processingMsg.message_id);
-             processingMsg = null;
-        }
 
-        // 3. حفظ الحالة
-        userStates[chatId] = {
-            step: 'select_subject',
-            type: 'file',
-            file: { id: fileId, name: fileName },
-            localFilePath: currentFilePath,
-            folderPathIds: [],
-            folderPathNames: []
-        };
+            // حفظ الحالة مع مسار الملف المضغوط
+            userStates[chatId] = {
+                step: 'select_subject',
+                type: 'file',
+                file: { id: fileId, name: fileName },
+                localFilePath: currentFilePath, // الملف موجود محلياً ومضغوط
+                folderPathIds: [],
+                folderPathNames: []
+            };
 
-        // 4. عرض قائمة المواد
-        const API = await getDatabase();
-        const subjects = Object.keys(API.database);
-        const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
-        keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
-        
-        if (processingMsg) {
-             await bot.editMessageText(`📂 File: *${fileName}*\n\ Select Subject :`, {
+            const API = await getDatabase();
+            const subjects = Object.keys(API.database);
+            const keyboard = subjects.map(sub => [{ text: sub, callback_data: `sub_${sub}` }]);
+            keyboard.push([{ text: "❌ Cancel", callback_data: 'cancel_op' }]);
+            
+            await bot.editMessageText(`📂 File: *${fileName}*\n💾 Size: ${currentSizeMB.toFixed(1)} MB\n\ Select Subject :`, {
                 reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown', chat_id: chatId, message_id: processingMsg.message_id
-            });
-        } else {
-            bot.sendMessage(chatId, `📂 File: *${fileName}*\n\ Select Subject :`, {
-                reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown'
             });
         }
 
     } catch (e) {
         console.error("[Handle File Error]", e);
         
-        // استخراج السبب الحقيقي للخطأ
         let errorMessage = "Unknown Error";
         if (e.message) errorMessage = e.message;
         if (e.code) errorMessage += ` (Code: ${e.code})`;
-        if (e.signal) errorMessage += ` (Signal: ${e.signal})`; // لمعرفة إذا قُتل العملية (Killed)
 
-        // تنظيف الملفات
-        if (fs.existsSync(tempInputPath)) {
-            try { fs.unlinkSync(tempInputPath); } catch(err) {}
-        }
-        if (currentFilePath && currentFilePath !== tempInputPath && fs.existsSync(currentFilePath)) {
-            try { fs.unlinkSync(currentFilePath); } catch(err) {}
+        // تنظيف الملفات المؤقتة
+        if (localFilePath && fs.existsSync(localFilePath)) {
+            try { fs.unlinkSync(localFilePath); } catch(err) {}
         }
 
         if(processingMsg) {
@@ -646,67 +666,6 @@ async function handleFile(msg) {
         delete userStates[chatId];
     }
 }
-
-// === دالة محسنة لإنشاء المجلدات ===
-async function createNewFolderAndSync(chatId, folderName) {
-    const state = userStates[chatId];
-    if (!state) return;
-
-    let statusMsg = await bot.sendMessage(chatId, `⏳ Creating folder "${folderName}"...`);
-
-    try {
-        const db = await getDatabase();
-        const rootId = await getRootFolderId();
-
-        let drivePath = [state.subject, state.doctor, ...state.folderPathNames];
-        let currentDriveId = rootId;
-        
-        for (let name of drivePath) {
-            currentDriveId = await findOrCreateFolder(name, currentDriveId);
-        }
-
-        const newDriveFolderId = await findOrCreateFolder(folderName, currentDriveId);
-        
-        let currentList = getCurrentFolderContent(db, state.subject, state.doctor, state.folderPathIds);
-        
-        const newFolderData = {
-            id: 'folder_' + Date.now(),
-            name: folderName,
-            type: 'folder',
-            driveId: newDriveFolderId,
-            children: [] 
-        };
-
-        if (state.folderPathIds.length === 0) {
-            if (!db.database[state.subject].doctors) {
-                db.database[state.subject].doctors = [];
-            }
-            if (!db.database[state.subject].doctors.includes(folderName)) {
-                db.database[state.subject].doctors.push(folderName);
-            }
-        }
-
-        currentList.push(newFolderData);
-        await saveDatabase(db);
-
-        state.folderPathIds.push(newFolderData.id);
-        state.folderPathNames.push(folderName); 
-        state.step = 'navigate_folder'; 
-
-        await bot.deleteMessage(chatId, statusMsg.message_id);
-        await renderFolderContents(chatId, null, state, true); 
-
-    } catch (err) {
-        console.error("[Create Folder Error]", err);
-        if (statusMsg) {
-            try {
-                await bot.editMessageText(`❌ Failed to create folder: ${err.message}`, { chat_id: chatId, message_id: statusMsg.message_id });
-            } catch(e) {}
-        }
-        delete userStates[chatId];
-    }
-}
-
 // ==========================================
 // 12. معالجة الرسائل النصية
 // ==========================================
