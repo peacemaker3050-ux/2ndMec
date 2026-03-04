@@ -318,7 +318,7 @@ function compressPdfLocal(inputPath, outputPath, mode) {
 }
 
 // ==========================================
-// 8. وظيفة الرفع الرئيسية
+// 8. وظيفة الرفع الرئيسية (مع تحسين التحميل)
 // ==========================================
 
 async function executeUpload(chatId) {
@@ -358,8 +358,17 @@ async function executeUpload(chatId) {
                 tempFilePath = path.join(TEMP_DIR, `upload_${Date.now()}_${safeFileName}`);
                 shouldDeleteTemp = true;
                 
-                // استخدام downloadFile بدلاً من getFileLink لضمان العمل مع الملفات الكبيرة
-                await bot.downloadFile(state.file.id, tempFilePath);
+                // طريقة التحميل المعتمدة: Axios Stream
+                const fileLink = await bot.getFileLink(state.file.id);
+                const writer = fs.createWriteStream(tempFilePath);
+                const response = await axios({
+                    url: fileLink,
+                    method: 'GET',
+                    responseType: 'stream',
+                    timeout: 900000 // 15 دقيقة
+                });
+                
+                await pipeline(response.data, writer);
                 console.log(`[Download] File saved to: ${tempFilePath}`);
 
                 const stats = fs.statSync(tempFilePath);
@@ -553,15 +562,24 @@ async function handleFile(msg) {
             });
         } 
         
-        // الحالة 2: الملف كبير (أكثر من 20 ميجا) -> نحمّله لنضغطه باستخدام downloadFile
+        // الحالة 2: الملف كبير (أكثر من 20 ميجا) -> نحمّله لنضغطه باستخدام Axios Stream
         else {
             processingMsg = await bot.sendMessage(chatId, `⏳ Large file detected (${fileSizeMB.toFixed(1)} MB).\n📥 Downloading to compress...`);
 
             const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-__\u0600-\u06FF]/g, "_");
             const tempInputPath = path.join(TEMP_DIR, `pre_${Date.now()}_${safeFileName}`);
             
-            // التحميل المباشر (الحل لمشكلة 400 Bad Request)
-            await bot.downloadFile(fileId, tempInputPath);
+            // التحميل المباشر باستخدام Axios (الحل لمشكلة 400 Bad Request)
+            const fileLink = await bot.getFileLink(fileId);
+            const writer = fs.createWriteStream(tempInputPath);
+            const response = await axios({
+                url: fileLink,
+                method: 'GET',
+                responseType: 'stream',
+                timeout: 900000 // 15 دقيقة
+            });
+            
+            await pipeline(response.data, writer);
             console.log(`[Download Complete] Saved to: ${tempInputPath}`);
 
             let currentFilePath = tempInputPath;
@@ -636,12 +654,9 @@ async function handleFile(msg) {
         if (localFilePath && fs.existsSync(localFilePath)) {
             try { fs.unlinkSync(localFilePath); } catch(err) {}
         }
-        // تنظيف الملف الأولي في حالة الخطأ في الضغط
-        if (fs.existsSync(path.join(TEMP_DIR, `pre_${Date.now()}_*`))) {
-             // تنظيف تقريبي
-        }
-
-        if(processingMsg) {
+        // تنظيف الملف الأولي في حالة الخطأ
+        // ملاحظة: تنظيف الملفات العشوائي في CATCH غير آمن، نعتمد على التنظيف في FINALLY أو عند الإلغاء
+        if (processingMsg) {
             bot.editMessageText(`❌ Error processing file.\n\n🛑 Reason: ${errorMessage}`, { chat_id: chatId, message_id: processingMsg.message_id });
         } else {
             bot.sendMessage(chatId, `❌ Error processing file.\n\n🛑 Reason: ${errorMessage}`);
@@ -1203,9 +1218,9 @@ async function saveSchedule(chatId, state) {
         if (!db.activeAlerts) db.activeAlerts = [];
         db.activeAlerts.push({
             id: 'alert_' + Date.now() + Math.random(),
-            subject: state.subject,
-            doctor: state.doctor,
-            message: state.content,
+            subject: sch.subject,
+            doctor: sch.doctor,
+            message: sch.message,
             timestamp: Date.now()
         });
 
@@ -1214,9 +1229,9 @@ async function saveSchedule(chatId, state) {
         if (!db.recentUpdates) db.recentUpdates = [];
         db.recentUpdates.unshift({
             id: 'sched_' + Date.now(),
-            doctor: state.doctor,
-            subject: state.subject,
-            message: state.content,
+            doctor: sch.doctor,
+            subject: sch.subject,
+            message: sch.message,
             timestamp: Date.now()
         });
         
