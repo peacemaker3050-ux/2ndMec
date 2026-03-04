@@ -1027,7 +1027,7 @@ function showHourSelectionKeyboard(chatId, messageId) {
     for (let i = 1; i <= 12; i += 2) {
         let row = [{ text: `${i}`, callback_data: `hour_${i}` }];
         if (i + 1 <= 12) {
-            row.push({ text: `${i + 1}`, callback_data: `hour_${i+1}` }]);
+            row.push({ text: `${i + 1}`, callback_data: `hour_${i+1}` });
         }
         keyboard.push(row);
     }
