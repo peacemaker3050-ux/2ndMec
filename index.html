@@ -166,7 +166,8 @@
             <div class="header-actions" id="menu-btn">⋮</div>
             <div id="search-dropdown" class="search-dropdown"></div>
             <div class="menu-dropdown" id="menu-dropdown">
-                <div class="menu-item install-btn" id="pwa-install-btn" style="display:none;" onclick="window.installApp()"><span>📲</span> <span>Install App</span></div>
+                <!-- MODIFIED: Removed display:none and updated text -->
+                <div class="menu-item install-btn" id="pwa-install-btn" onclick="window.installApp()"><span>📲</span> <span>Install App (PWA)</span></div>
                 <div class="menu-item" onclick="window.showInstallGuide()"><span>📱</span> <span>How to Install (iOS/Android)</span></div>
                 <div class="menu-item notif-toggle" onclick="window.enableNotifications()"><span>🔔</span> <span>Enable Notifications</span></div>
                 <div class="menu-item notif-test" onclick="window.testNotification()"><span>🧪</span> <span>Test Notification</span></div>
@@ -268,8 +269,6 @@
     </div>
 
     <script>
-        // REMOVED: createInlineServiceWorker function as requested
-
         const DEFAULT_BG_URL = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/110.jpeg"; 
         const firebaseConfig = { apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ", authDomain: "libirary-b2424.firebaseapp.com", projectId: "libirary-b2424", storageBucket: "libirary-b2424.firebasestorage.app", messagingSenderId: "371129360013", appId: "1:371129360013:web:377ef70759204018a60cc4" };
         const OWNER_EMAIL = "peacemaker3050@gmail.com";
@@ -286,6 +285,41 @@
         let auth; let isAuthInitialized = false; let deferredPrompt; let refreshInterval = null; let fuseSearchEngine = null;
         let botNavStack = []; let adminNavStack = []; let currentAdminTab = 0; let currentModalCallback = null; let adminAddType = 'file';
         let messaging; // FCM Messaging Instance
+
+        // ==========================================
+        // === PWA INSTALL LOGIC (ADDED) ===
+        // ==========================================
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window.deferredPrompt = e;
+            // Ensure the button is visible in the menu
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) installBtn.style.display = 'flex';
+        });
+        window.showInstallGuide = function() {
+            document.getElementById('install-guide-overlay').classList.add('active');
+            document.getElementById('menu-dropdown').classList.remove('active');
+        };
+        window.installApp = async function() {
+            if (window.deferredPrompt) {
+                window.deferredPrompt.prompt();
+                const { outcome } = await window.deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                }
+                window.deferredPrompt = null;
+                // Optionally hide the button after install
+                // const installBtn = document.getElementById('pwa-install-btn');
+                // if (installBtn) installBtn.style.display = 'none';
+            } else {
+                // If native prompt is not available (e.g. iOS or some desktop browsers),
+                // show the manual installation guide.
+                window.showInstallGuide();
+            }
+        };
+        // ==========================================
+        // === END PWA INSTALL LOGIC ===
+        // ==========================================
         
         try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch (e) { console.log("Firebase Init Error", e); }
         
