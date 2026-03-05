@@ -268,12 +268,8 @@
     </div>
 
     <script>
-        function createInlineServiceWorker() {
-            const swCode = `const CACHE_NAME = 'uni-bot-v1'; self.addEventListener('install', (event) => { self.skipWaiting(); }); self.addEventListener('activate', (event) => { event.waitUntil(clients.claim()); }); self.addEventListener('fetch', (event) => { if (event.request.url.includes('jsonbin.io')) { event.respondWith(fetch(event.request).then((response) => { if (response && response.status === 200) { const responseClone = response.clone(); caches.open(CACHE_NAME).then((cache) => { cache.put(event.request, responseClone); }); } return response; }).catch(() => caches.match(event.request))); } else { event.respondWith(caches.match(event.request).then((cachedResponse) => { return cachedResponse || fetch(event.request).then((response) => { if (response && response.status === 200) { const responseClone = response.clone(); caches.open(CACHE_NAME).then((cache) => { cache.put(event.request, responseClone); }); } return response; }); })); } });`;
-            const blob = new Blob([swCode], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(blob);
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register(swUrl).then(reg => console.log('SW Registered')).catch(err => console.log('SW Fail', err));
-        }
+        // REMOVED: createInlineServiceWorker function as requested
+
         const DEFAULT_BG_URL = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/110.jpeg"; 
         const firebaseConfig = { apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ", authDomain: "libirary-b2424.firebaseapp.com", projectId: "libirary-b2424", storageBucket: "libirary-b2424.firebasestorage.app", messagingSenderId: "371129360013", appId: "1:371129360013:web:377ef70759204018a60cc4" };
         const OWNER_EMAIL = "peacemaker3050@gmail.com";
@@ -424,7 +420,33 @@
         function applyConfig(newConfig) { CONFIG = newConfig; database = CONFIG.database; document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerHTML = `<div class="sync-dot" id="connection-dot"></div> <span id="status-text">${CONFIG.botStatus}</span>`; const dot = document.getElementById('connection-dot'); const text = document.getElementById('status-text'); if(navigator.onLine) { dot.classList.remove('offline'); text.innerText = "Online"; } else { dot.classList.add('offline'); text.innerText = "Offline"; } const avatarEl = document.getElementById('header-avatar'); if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; } const chatArea = document.getElementById('chat-area'); if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`; else if (DEFAULT_BG_URL) chatArea.style.backgroundImage = `url('${DEFAULT_BG_URL}')`; else chatArea.style.backgroundImage = "none"; document.documentElement.style.setProperty('--font-en', CONFIG.englishFont || "'Inter', sans-serif"); document.documentElement.style.setProperty('--font-ar', CONFIG.arabicFont || "'Cairo', sans-serif"); const primaryHex = CONFIG.themeColor || "#3b82f6"; const botColorHex = CONFIG.botMsgColor || "#ffffff"; const botRgb = hexToRgb(botColorHex); document.documentElement.style.setProperty('--accent-primary', primaryHex); const darkerHex = darkenColor(primaryHex, 30); const userGradient = `linear-gradient(135deg, ${primaryHex} 0%, ${darkerHex} 100%)`; document.documentElement.style.setProperty('--accent-gradient', userGradient); document.documentElement.style.setProperty('--msg-user-bg', userGradient); if (botRgb) document.documentElement.style.setProperty('--msg-bot-bg', `rgba(${botRgb.r}, ${botRgb.g}, ${botRgb.b}, 0.1)`); if(CONFIG.appName || CONFIG.appIcon) updateDynamicManifest(CONFIG.appName, CONFIG.appIcon); window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
             const lastSeenNotif = localStorage.getItem('uniBot_lastSeenNotif'); if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) { const latestUpdate = CONFIG.recentUpdates[0]; if (!lastSeenNotif || parseInt(latestUpdate.timestamp) > parseInt(lastSeenNotif)) { showVisualAlertWithBody(`📢 ${latestUpdate.doctor} (${latestUpdate.subject}):\n${latestUpdate.message || "New notification available"}`); localStorage.setItem('uniBot_lastSeenNotif', latestUpdate.timestamp); } } if (CONFIG.activeAlerts && CONFIG.activeAlerts.length > 0) { CONFIG.activeAlerts.forEach(alert => { const seenAlerts = JSON.parse(localStorage.getItem('uniBot_seenAlerts') || '[]'); if (!seenAlerts.includes(alert.id)) { showVisualAlertWithBody(`🔔 Reminder (${alert.subject} - ${alert.doctor}):\n${alert.message}`); seenAlerts.push(alert.id); localStorage.setItem('uniBot_seenAlerts', JSON.stringify(seenAlerts)); } }); } }
         function checkAndShowBroadcast() { const existingBroadcast = document.getElementById('app-broadcast-msg'); if (existingBroadcast) existingBroadcast.remove(); if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { const broadcastHTML = `<div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()"><div class="broadcast-header"><span>📣</span> <span>Message from Batch Rep</span></div><div><b>${CONFIG.generalBroadcast.title}</b></div><div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div><span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span></div>`; chatArea.insertAdjacentHTML('afterbegin', broadcastHTML); } }
-        function showVisualAlertWithBody(bodyText) { const overlay = document.getElementById('visual-alert-overlay'); if (overlay.classList.contains('active')) return; window.currentPendingNotification = bodyText; document.getElementById('visual-alert-body').innerText = bodyText; overlay.classList.add('active'); if (navigator.vibrate) navigator.vibrate([200, 100, 200]); }
+        
+        // MODIFICATION 2: Updated showVisualAlertWithBody
+        function showVisualAlertWithBody(bodyText) {
+          const overlay = document.getElementById('visual-alert-overlay');
+          if (overlay.classList.contains('active')) return;
+
+          window.currentPendingNotification = bodyText;
+          document.getElementById('visual-alert-body').innerText = bodyText;
+          overlay.classList.add('active');
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+          // ── إرسال إشعار شريط الهاتف عبر Service Worker ──
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            // استخراج اسم الدكتور والرسالة من النص
+            const lines = bodyText.split('\n');
+            const headerLine = lines[0] || '';
+            const msgBody = lines.slice(1).join('\n') || bodyText;
+
+            navigator.serviceWorker.controller.postMessage({
+              type: 'SHOW_NOTIFICATION',
+              title: headerLine,
+              body: msgBody,
+              icon: CONFIG.appIcon || CONFIG.botImage || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png'
+            });
+          }
+        }
+
         window.openPendingNotification = function() { window.closeVisualAlert(); const text = window.currentPendingNotification; if (!text) return; try { const lines = text.split('\n'); const headerPart = lines[0]; const messageBody = lines.slice(1).join('\n'); let cleanHeader = headerPart.replace('📢 ', '').replace('🔔 ', '').replace(':', ''); const match = cleanHeader.match(/(.+) \((.+)\)/); if (match) { const docName = match[1]; const subjectName = match[2]; const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${docName} (${subjectName})</div><div>${messageBody}</div></div>`; addMessage(htmlContent, 'bot', true); } else if (cleanHeader.includes('-')) { const match2 = cleanHeader.match(/(.+) - (.+)/); if(match2) { const sName = match2[1]; const dName = match2[2]; const htmlContent = `<div class="notif-display"><div class="notif-header">📢 Message from Doctor • ${dName} (${sName})</div><div>${messageBody}</div></div>`; addMessage(htmlContent, 'bot', true); } else { addMessage(text, 'bot', true); } } else { addMessage(text, 'bot', true); } } catch (e) { addMessage(text, 'bot', true); } };
         window.closeVisualAlert = function() { document.getElementById('visual-alert-overlay').classList.remove('active'); };
         window.testNotification = function() { document.getElementById('menu-dropdown').classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; } Notification.requestPermission().then(permission => { if (permission === 'granted') { if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }); showToast("Test notification sent...", "success"); } else { new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: CONFIG.appIcon }); showToast("Test notification sent...", "success"); } } else { showToast("Permission denied.", "error"); } }); };
@@ -477,7 +499,42 @@
         function updateDynamicManifest(name, iconData) { const version = CONFIG.appVersion || 1; const baseUrl = window.location.href.split('?')[0] || window.location.href; const startUrl = `${baseUrl}?v=${version}`; const manifest = { "name": name || CONFIG.botName, "short_name": name || CONFIG.botName, "start_url": startUrl, "id": window.location.origin + "?v=" + version, "display": "standalone", "background_color": "#0f172a", "theme_color": "#0f172a", "icons": [] }; if (iconData && iconData.length > 10) { manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": "image/jpeg" }); } else { manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" }); } const stringManifest = JSON.stringify(manifest); const blob = new Blob([stringManifest], {type: 'application/manifest+json'}); const manifestURL = URL.createObjectURL(blob); const link = document.querySelector('#dynamic-manifest'); if(link.href && link.href.startsWith('blob:')) URL.revokeObjectURL(link.href); link.setAttribute('href', manifestURL); let appleLink = document.querySelector('link[rel="apple-touch-icon"]'); if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); } appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png"; }
         window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
-        window.onload = () => { if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch(e){} } const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); } createInlineServiceWorker(); fetchConfig().then(() => { }).catch(err => { console.error("Cloud Sync Failed", err); }); if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').then(reg => console.log("External SW Registered", reg)).catch(err => console.log("External SW Fail (Using Inline)", err)); } initFirebaseAuth(); const loadingScreen = document.getElementById('loading-screen'); setTimeout(() => { loadingScreen.style.opacity = '0'; setTimeout(() => { loadingScreen.style.display = 'none'; }, 300); }, 1500); const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); startSync(); };
+        window.onload = () => { if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch(e){} } const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); }
+        
+        // MODIFICATION 3: Replaced Inline SW creation with External SW registration
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => {
+              console.log('[App] SW Registered:', reg.scope);
+
+              // انتظر حتى يصبح SW جاهزاً ثم أرسل له إشارة البدء
+              const sendInit = (sw) => {
+                sw.postMessage({ type: 'INIT_POLLING' });
+                console.log('[App] INIT_POLLING sent to SW');
+              };
+
+              if (reg.active) {
+                sendInit(reg.active);
+              } else if (reg.installing || reg.waiting) {
+                const sw = reg.installing || reg.waiting;
+                sw.addEventListener('statechange', () => {
+                  if (sw.state === 'activated') sendInit(sw);
+                });
+              }
+
+              // استقبال رسائل من SW (مستقبلاً)
+              navigator.serviceWorker.addEventListener('message', event => {
+                console.log('[App] Message from SW:', event.data);
+              });
+            })
+            .catch(err => console.error('[App] SW Registration Failed:', err));
+        }
+
+        fetchConfig().then(() => {}).catch(err => {
+            console.error("Cloud Sync Failed", err);
+        });
+        
+        initFirebaseAuth(); const loadingScreen = document.getElementById('loading-screen'); setTimeout(() => { loadingScreen.style.opacity = '0'; setTimeout(() => { loadingScreen.style.display = 'none'; }, 300); }, 1500); const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); botReply(welcomeMsg, true); renderKeyboard(); startSync(); };
     </script>
 </body>
 </html>

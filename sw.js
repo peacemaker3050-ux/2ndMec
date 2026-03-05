@@ -1,11 +1,11 @@
 // ============================================================
-// === HYBRID SERVICE WORKER (FCM + POLLING + CACHING) ===
+// === UNIFIED SERVICE WORKER (FCM + OFFLINE + POLLING) ===
 // ============================================================
 
-// 1. FIREBASE IMPORTS & CONFIG
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
 
+// ── Config ──
 const firebaseConfig = {
   apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
   authDomain: "libirary-b2424.firebaseapp.com",
@@ -15,300 +15,316 @@ const firebaseConfig = {
   appId: "1:371129360013:web:377ef70759204018a60cc4"
 };
 
+const BIN_ID  = "696e77bfae596e708fe71e9d";
+const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
+
+// ── Cache ──
+const CACHE_VERSION = 'v8';
+const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;   // ملفات التطبيق
+const CACHE_API     = `uni-api-${CACHE_VERSION}`;       // ردود JSONBin
+
+// كل الملفات اللازمة لتشغيل التطبيق Offline
+const STATIC_FILES = [
+  './',
+  './index.html',
+  'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap',
+  'https://cdn.jsdelivr.net/npm/fuse.js@6.6.2',
+  'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js'
+];
+
+// ── Firebase + FCM ──
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// CONSTANTS
-const BIN_ID = "696e77bfae596e708fe71e9d";
-const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
-const CACHE_NAME = 'uni-bot-cache-v6';
-
-// 2. INDEXEDDB SETUP
-let db;
+// ── IndexedDB ──
+let idb = null;
 let dbReady = false;
-let isPolling = false;
+let pollingTimer = null;
 
-const initDB = () => {
+function initDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('UniBotSWDB', 1);
-    request.onupgradeneeded = (e) => {
-        db = e.target.result;
-        if (!db.objectStoreNames.contains('settings')) {
-            db.createObjectStore('settings', { keyPath: 'id' });
-        }
+    const req = indexedDB.open('UniBotSW', 2);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv', { keyPath: 'k' });
     };
-    request.onsuccess = (e) => {
-        db = e.target.result;
-        dbReady = true;
-        console.log("[SW] DB Initialized");
-        resolve(db);
-    };
-    request.onerror = (e) => {
-        console.error("[SW] DB Error", e);
-        reject(e);
-    };
+    req.onsuccess = e => { idb = e.target.result; dbReady = true; resolve(); };
+    req.onerror  = e => { console.warn('[SW] DB error', e); reject(e); };
   });
-};
-
-async function getLastTime() {
-    if (!db) return 0;
-    return new Promise((resolve) => {
-        const tx = db.transaction('settings', 'readonly');
-        const store = tx.objectStore('settings');
-        const req = store.get('lastNotifTime');
-        req.onsuccess = () => resolve(req.result ? req.result.value : 0);
-        req.onerror = () => resolve(0);
-    });
 }
 
-async function setLastTime(time) {
-    if (!db) return;
-    const tx = db.transaction('settings', 'readwrite');
-    tx.objectStore('settings').put({ id: 'lastNotifTime', value: time });
+async function dbGet(key) {
+  if (!idb) return null;
+  return new Promise(resolve => {
+    const tx = idb.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => resolve(req.result ? req.result.v : null);
+    req.onerror   = () => resolve(null);
+  });
 }
 
-// 3. SW INSTALL
-self.addEventListener('install', (event) => { 
-    console.log("[SW] Installing...");
-    self.skipWaiting();
-    
-    event.waitUntil(
-        Promise.all([
-            initDB(),
-            caches.open(CACHE_NAME).then(cache => {
-                // حفظ الصفحة الرئيسية لضمان عمل التطبيق Offline
-                return cache.addAll(['./', 'index.html']);
-            })
-        ])
-    );
+async function dbSet(key, value) {
+  if (!idb) return;
+  const tx = idb.transaction('kv', 'readwrite');
+  tx.objectStore('kv').put({ k: key, v: value });
+}
+
+// ============================================================
+// INSTALL — تخزين كل ملفات التطبيق
+// ============================================================
+self.addEventListener('install', event => {
+  console.log('[SW] Installing', CACHE_VERSION);
+  self.skipWaiting();
+  event.waitUntil(
+    (async () => {
+      await initDB();
+      const cache = await caches.open(CACHE_STATIC);
+      // تخزين الملفات واحداً واحداً لتجنب فشل الكل بسبب خطأ واحد
+      await Promise.allSettled(
+        STATIC_FILES.map(url =>
+          cache.add(url).catch(e => console.warn('[SW] Cache skip:', url, e.message))
+        )
+      );
+      console.log('[SW] Static files cached');
+    })()
+  );
 });
 
-// 4. SW ACTIVATE (تم التعديل هنا لتحسين استقبال الإشعارات)
-self.addEventListener('activate', (event) => { 
-    console.log("[SW] Activated");
-    
-    event.waitUntil(
-        Promise.all([
-            self.clients.claim(),
-            caches.keys().then(keys => {
-                return Promise.all(
-                    keys.map(key => {
-                        if (key !== CACHE_NAME) {
-                            console.log("[SW] Deleting old cache:", key);
-                            return caches.delete(key);
-                        }
-                    })
-                );
-            }),
-            (async () => {
-                // محاولة تسجيل Periodic Sync (يعمل فقط على Android Chrome المثبت)
-                if ('periodicSync' in self.registration) {
-                    try {
-                        await self.registration.periodicSync.register('check-doctor-msg', {
-                            minInterval: 15 * 60 * 1000 // كل 15 دقيقة
-                        });
-                        console.log("[SW] Periodic Sync Registered");
-                    } catch (err) {
-                        console.log("[SW] Periodic Sync not supported/allowed:", err);
-                    }
-                }
-            })()
-        ]).then(() => {
-            // === التعديل الجديد ===
-            // بعد انتهاء التفعيل، قم بفحص الإشعارات فوراً
-            console.log("[SW] Activation complete. Running immediate check for notifications.");
-            return checkNotifications();
-        })
-    ); 
+// ============================================================
+// ACTIVATE — حذف الكاش القديم
+// ============================================================
+self.addEventListener('activate', event => {
+  console.log('[SW] Activating', CACHE_VERSION);
+  event.waitUntil(
+    (async () => {
+      await self.clients.claim();
 
-    // بدء الـ Polling يدوياً كل 60 ثانية كـ Backup
-    if (!isPolling) {
-        isPolling = true;
-        setInterval(() => {
-            checkNotifications();
-        }, 60 * 1000); 
-    }
+      // حذف كاشات الإصدارات القديمة
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter(k => k !== CACHE_STATIC && k !== CACHE_API)
+          .map(k => { console.log('[SW] Deleting old cache:', k); return caches.delete(k); })
+      );
+
+      if (!dbReady) await initDB();
+
+      // Periodic Sync (Android Chrome فقط)
+      if ('periodicSync' in self.registration) {
+        try {
+          await self.registration.periodicSync.register('check-notif', { minInterval: 15 * 60 * 1000 });
+          console.log('[SW] Periodic Sync registered');
+        } catch(e) { console.log('[SW] Periodic Sync not available'); }
+      }
+
+      // فحص فوري عند التفعيل
+      await checkNotifications();
+
+      // بدء الـ Polling كل 60 ثانية
+      startPolling();
+    })()
+  );
 });
 
-// 5. FETCH HANDLER (يدعم Offline للـ API والموارد)
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
+// ============================================================
+// FETCH — استراتيجية ذكية حسب نوع الطلب
+// ============================================================
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
 
-    // Network First for API (مع دعم Offline)
-    if (url.hostname.includes('jsonbin.io')) {
-        event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    // تخزين النسخة الجديدة
-                    if (response && response.status === 200) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // في حالة فشل الاتصال، جلب البيانات من الكاش
-                    console.log("[SW] Network failed, serving from cache");
-                    return caches.match(event.request);
-                })
-        );
-        return;
-    }
-
-    // Cache First for Assets (الصور، الخطوط، إلخ)
+  // ── 1. JSONBin API: Network First → Cache Fallback ──
+  if (url.hostname.includes('jsonbin.io')) {
     event.respondWith(
-        caches.match(event.request).then(cached => {
-            return cached || fetch(event.request).then(response => {
-                if (response.status === 200) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
-                }
-                return response;
-            }).catch(() => {
-                // إذا فشل التحميل وكان طلباً لصفحة، أرجع الصفحة الرئيسية
-                if (event.request.mode === 'navigate') {
-                    return caches.match('./');
-                }
-            });
+      fetch(event.request.clone())
+        .then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_API).then(c => c.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          console.log('[SW] Offline: serving JSONBin from cache');
+          return caches.match(event.request);
         })
     );
+    return;
+  }
+
+  // ── 2. Firebase/Google APIs: Network Only (لا تُخزَّن) ──
+  if (url.hostname.includes('googleapis.com') ||
+      url.hostname.includes('gstatic.com') ||
+      url.hostname.includes('firebaseio.com')) {
+    event.respondWith(
+      fetch(event.request).catch(() => new Response('', { status: 503 }))
+    );
+    return;
+  }
+
+  // ── 3. باقي الموارد: Cache First → Network Fallback ──
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+
+      return fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200 && event.request.method === 'GET') {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then(c => c.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          // إذا فشل التحميل وكان طلب تنقل → أرجع index.html
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html') || caches.match('./');
+          }
+          return new Response('', { status: 503 });
+        });
+    })
+  );
 });
 
-// 6. FCM BACKGROUND HANDLER (تم التعديل لاستخراج الرابط بشكل صحيح)
-messaging.onBackgroundMessage((payload) => {
-  const notificationTitle = payload.notification.title;
-  
-  // استخراج الرابط من payload.fcmOptions (الخاص بـ Web Push) أو من payload.data
-  // هذا الرابط سيتم فتحه عند الضغط على الإشعار
-  const link = payload.fcmOptions?.link || payload.data?.link || '/';
+// ============================================================
+// FCM BACKGROUND MESSAGE — عند وصول إشعار والتطبيق مغلق
+// ============================================================
+messaging.onBackgroundMessage(payload => {
+  console.log('[SW] FCM Background Message:', payload);
+  const title = payload.notification?.title || '📢 New Message';
+  const body  = payload.notification?.body  || 'New update available';
+  const icon  = payload.notification?.icon  || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png';
+  const link  = payload.fcmOptions?.link || payload.data?.link || '/';
 
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+  return self.registration.showNotification(title, {
+    body,
+    icon,
     badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
     vibrate: [200, 100, 200],
-    // تخزين الرابط في data ليتم استخدامه عند النقر
+    requireInteraction: true,
+    tag: 'fcm-notif',
     data: { click_action: link }
-  };
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  });
 });
 
-// 7. NOTIFICATION CLICKS (تم التعديل لضمان فتح الرابط الصحيح)
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    
-    // قراءة الرابط من البيانات التي خزناها في الخطوة السابقة
-    const url = event.notification.data.click_action || '/';
-    
-    event.waitUntil(
-        clients.matchAll({
-            type: 'window',
-            includeUncontrolled: true
-        }).then((clientList) => {
-            // استخدام self.location بدلاً من window
-            const origin = self.location.origin;
-            
-            for (const client of clientList) {
-                if (client.url.includes(origin) && 'focus' in client) { 
-                     return client.focus();
-                }
-            }
-            if (clients.openWindow) {
-                return clients.openWindow(url);
-            }
-        })
-    );
+// ============================================================
+// NOTIFICATION CLICK
+// ============================================================
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.click_action || self.location.origin;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
 });
 
-// 8. APP MESSAGES
-self.addEventListener('message', (event) => {
-    const data = event.data;
-    
-    // استقبال أمر البدء من الـ Inline Service Worker أو الصفحة
-    if (data && data.type === 'INIT_POLLING') {
-        console.log("[SW] Received INIT_POLLING signal");
-        if (!isPolling) {
-            isPolling = true;
-            checkNotifications();
-        }
-    }
+// ============================================================
+// MESSAGES من الصفحة
+// ============================================================
+self.addEventListener('message', event => {
+  const data = event.data;
+  if (!data) return;
 
-    if (data.type === 'SYNCED_NOTIF_DOCTOR' || data.type === 'TEST_NOTIF') {
-        if (Notification.permission === 'granted') {
-            self.registration.showNotification(data.type === 'TEST_NOTIF' ? '🧪 Test Successful' : '📢 Update Available', { 
-                body: data.body || 'Tap to read details.', 
-                icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', 
-                tag: 'doctor-notification', 
-                vibrate: [200, 100, 200] 
-            });
-        }
-    }
+  if (data.type === 'INIT_POLLING') {
+    console.log('[SW] INIT_POLLING received');
+    startPolling();
+    checkNotifications();
+  }
+
+  if (data.type === 'TEST_NOTIF') {
+    self.registration.showNotification('🧪 Test Successful', {
+      body: 'Push notifications are working correctly!',
+      icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+      vibrate: [200, 100, 200]
+    });
+  }
+
+  // إشعار فوري من الصفحة (عند إرسال رسالة من البوت)
+  if (data.type === 'SHOW_NOTIFICATION') {
+    self.registration.showNotification(data.title || '📢 New Message', {
+      body: data.body || '',
+      icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+      badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+      vibrate: [200, 100, 200],
+      requireInteraction: true,
+      tag: 'doctor-notif-' + Date.now(),
+      data: { click_action: self.location.origin }
+    });
+  }
 });
 
-// 9. POLLING LOGIC
-async function checkNotifications() {
-    if (!dbReady) {
-        console.log("[SW] DB not ready, initializing...");
-        try {
-            await initDB();
-            if(!dbReady) return;
-        } catch(e) {
-            console.error("[SW] Failed to init DB during poll", e);
-            return;
-        }
-    }
+// ============================================================
+// PERIODIC SYNC
+// ============================================================
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'check-notif') event.waitUntil(checkNotifications());
+});
 
-    try {
-        const lastNotifTime = await getLastTime();
-        const url = 'https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest?nocache=' + Date.now();
-        
-        const response = await fetch(url, { 
-            method: 'GET', 
-            headers: { 
-                'X-Master-Key': BIN_KEY, 
-                'X-Bin-Meta': 'false'
-            }
-        });
+self.addEventListener('sync', event => {
+  if (event.tag === 'check-notif') event.waitUntil(checkNotifications());
+});
 
-        if (!response.ok) throw new Error("Network response was not ok");
-        const data = await response.json();
-
-        if (data && data.recentUpdates && data.recentUpdates.length > 0) {
-            const newestUpdate = data.recentUpdates[0];
-            const updateTimestamp = newestUpdate.timestamp || Date.now();
-
-            if (updateTimestamp > lastNotifTime) {
-                console.log("[SW] New Update detected!");
-                
-                setLastTime(updateTimestamp);
-
-                if (Notification.permission === 'granted') {
-                    const deepLink = `/?subject=${encodeURIComponent(newestUpdate.subject)}&doctor=${encodeURIComponent(newestUpdate.doctor)}&action=open_notification`;
-
-                    self.registration.showNotification('📢 New Message', { 
-                        body: `From ${newestUpdate.doctor} (${newestUpdate.subject})`, 
-                        icon: data.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', 
-                        requireInteraction: true, 
-                        tag: 'latest-update', 
-                        silent: false, 
-                        vibrate: [200, 100, 200],
-                        data: {
-                            click_action: deepLink
-                        }
-                    });
-                }
-            }
-        }
-    } catch (err) {
-        console.error("[SW] Polling Error:", err);
-    }
+// ============================================================
+// POLLING LOGIC
+// ============================================================
+function startPolling() {
+  if (pollingTimer) return; // لا تبدأ مرتين
+  console.log('[SW] Polling started (60s interval)');
+  pollingTimer = setInterval(() => checkNotifications(), 60 * 1000);
 }
 
-// 10. PERIODIC SYNC EVENT
-self.addEventListener('sync', (event) => {
-    if (event.tag === 'check-doctor-msg') {
-        event.waitUntil(checkNotifications());
-    }
-});
+async function checkNotifications() {
+  if (!dbReady) {
+    try { await initDB(); } catch(e) { return; }
+  }
+
+  try {
+    const lastTime = (await dbGet('lastNotifTime')) || 0;
+
+    const response = await fetch(
+      `https://api.jsonbin.io/v3/b/${BIN_ID}/latest?nc=${Date.now()}`,
+      { headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store' }
+    );
+
+    if (!response.ok) return;
+    const data = await response.json();
+
+    if (!data?.recentUpdates?.length) return;
+
+    const newest    = data.recentUpdates[0];
+    const newTime   = newest.timestamp || 0;
+
+    if (newTime <= lastTime) return; // لا يوجد جديد
+
+    console.log('[SW] New notification detected!', newest);
+    await dbSet('lastNotifTime', newTime);
+
+    if (Notification.permission !== 'granted') return;
+
+    // ── إشعار شريط الهاتف ──
+    await self.registration.showNotification('📢 ' + (newest.doctor || 'New Message'), {
+      body: newest.message || 'New update available',
+      icon: data.appIcon || data.botImage || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+      badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+      vibrate: [200, 100, 200],
+      requireInteraction: true,
+      tag: 'poll-notif',
+      silent: false,
+      data: {
+        click_action: `${self.location.origin}/?subject=${encodeURIComponent(newest.subject || '')}&doctor=${encodeURIComponent(newest.doctor || '')}`
+      }
+    });
+
+  } catch(err) {
+    console.error('[SW] Polling error:', err);
+  }
+}
