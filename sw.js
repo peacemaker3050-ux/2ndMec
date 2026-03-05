@@ -248,17 +248,11 @@ self.addEventListener('message', event => {
     });
   }
 
-  // إشعار فوري من الصفحة (عند إرسال رسالة من البوت)
+  // إشعار فوري من الصفحة — نتجاهله لأن الـ polling هو المصدر الوحيد للإشعارات
+  // (تم تعطيله لمنع الإشعار المزدوج)
   if (data.type === 'SHOW_NOTIFICATION') {
-    self.registration.showNotification(data.title || '📢 New Message', {
-      body: data.body || '',
-      icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-      badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-      vibrate: [200, 100, 200],
-      requireInteraction: true,
-      tag: 'doctor-notif-' + Date.now(),
-      data: { click_action: self.location.origin }
-    });
+    // لا نعرض إشعار هنا — الـ polling سيعرضه تلقائياً
+    console.log('[SW] SHOW_NOTIFICATION ignored to prevent duplicate');
   }
 });
 
@@ -277,7 +271,7 @@ self.addEventListener('sync', event => {
 // POLLING LOGIC
 // ============================================================
 function startPolling() {
-  if (pollingTimer) return; // لا تبدأ مرتين
+  if (pollingTimer) return;
   console.log('[SW] Polling started (60s interval)');
   pollingTimer = setInterval(() => checkNotifications(), 60 * 1000);
 }
@@ -310,8 +304,9 @@ async function checkNotifications() {
 
     if (Notification.permission !== 'granted') return;
 
-    // ── إشعار شريط الهاتف ──
-    await self.registration.showNotification('📢 ' + (newest.doctor || 'New Message'), {
+    // ── إشعار شريط الهاتف (doctor + subject) ──
+    const notifTitle = `📢 ${newest.doctor || 'New Message'} (${newest.subject || ''})`;
+    await self.registration.showNotification(notifTitle, {
       body: newest.message || 'New update available',
       icon: data.appIcon || data.botImage || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
       badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
