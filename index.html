@@ -800,8 +800,41 @@
         window.updateAuthUI = function() { if (!isAuthInitialized) return; const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon'); const user = auth ? auth.currentUser : null; if (user) { const email = user.email; if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🔓"; } } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; } }
         function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
         function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
-        function updateDynamicManifest(name, iconData) { const version = CONFIG.appVersion || 1; const baseUrl = window.location.href.split('?')[0] || window.location.href; const startUrl = `${baseUrl}?v=${version}`; const manifest = { "name": name || CONFIG.botName, "short_name": name || CONFIG.botName, "start_url": startUrl, "id": window.location.origin + "?v=" + version, "display": "standalone", "background_color": "#0f172a", "theme_color": "#0f172a", "icons": [] }; if (iconData && iconData.length > 10) { manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": "image/jpeg" }); } else { manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" }); } const stringManifest = JSON.stringify(manifest); const blob = new Blob([stringManifest], {type: 'application/manifest+json'}); const manifestURL = URL.createObjectURL(blob); const link = document.querySelector('#dynamic-manifest'); if(link.href && link.href.startsWith('blob:')) URL.revokeObjectURL(link.href); link.setAttribute('href', manifestURL); let appleLink = document.querySelector('link[rel="apple-touch-icon"]'); if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); } appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png"; }
-        window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
+function updateDynamicManifest(name, iconData) {
+    const version = CONFIG.appVersion || 1;
+    const baseUrl = window.location.href.split('?')[0] || window.location.href;
+    const startUrl = `${baseUrl}?v=${version}`;
+    const manifest = {
+        "name": name || CONFIG.botName,
+        "short_name": name || CONFIG.botName,
+        "start_url": startUrl,
+        "id": window.location.origin + "?v=" + version,
+        "display": "standalone",
+        "background_color": "#0f172a",
+        "theme_color": "#0f172a",
+        "icons": []
+    };
+    if (iconData && iconData.length > 10) {
+        const mimeType = iconData.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+        manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": mimeType });
+    } else {
+        manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" });
+    }
+    const stringManifest = JSON.stringify(manifest);
+    // data URL بدل blob URL — أكثر توافقاً مع التثبيت
+    const dataUrl = 'data:application/manifest+json,' + encodeURIComponent(stringManifest);
+    const link = document.querySelector('#dynamic-manifest');
+    link.setAttribute('href', dataUrl);
+
+    // Apple touch icon
+    let appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!appleLink) {
+        appleLink = document.createElement('link');
+        appleLink.rel = 'apple-touch-icon';
+        document.head.appendChild(appleLink);
+    }
+    appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
+}        window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
         window.onload = () => { if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch(e){} } const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); }
         
