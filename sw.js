@@ -300,25 +300,9 @@ async function checkNotifications() {
 
     if (newTime <= lastTime) return; // لا يوجد جديد
 
-    console.log('[SW] New notification detected!', newest);
+    console.log('[SW] New notification detected (FCM handles display):', newest);
     await dbSet('lastNotifTime', newTime);
-
-    if (Notification.permission !== 'granted') return;
-
-    // ── إشعار شريط الهاتف (doctor + subject) ──
-    const notifTitle = `📢 ${newest.doctor || 'New Message'} (${newest.subject || ''})`;
-    await self.registration.showNotification(notifTitle, {
-      body: newest.message || 'New update available',
-      icon: data.appIcon || data.botImage || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-      badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-      vibrate: [200, 100, 200],
-      requireInteraction: true,
-      tag: 'poll-notif',
-      silent: false,
-      data: {
-        click_action: `${self.location.origin}/?subject=${encodeURIComponent(newest.subject || '')}&doctor=${encodeURIComponent(newest.doctor || '')}`
-      }
-    });
+    // FCM بيتولى إظهار الإشعار — الـ polling بيحدّث الوقت بس عشان متكررش
 
   } catch(err) {
     console.error('[SW] Polling error:', err);
