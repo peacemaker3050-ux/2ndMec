@@ -707,6 +707,7 @@
             
             // Trigger new files check if added recently
             checkNewFilesAndNotify(); 
+            sendFCMToAllUsers('🆕 ملف جديد', newItem.name);
         }
         
         function deleteAdminDataItem(index) { showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => { if(!confirmed) return; if (adminNavStack.length === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } else if (adminNavStack.length === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; } else { const currentList = getAdminCurrentContent(); currentList.splice(index, 1); } saveConfigToBin(CONFIG); renderAdminDataView(); initSearchEngine(); }); }
@@ -976,6 +977,34 @@
             });
             }
             }
+            async function sendFCMToAllUsers(title, body) {
+    try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': JSONBIN_ACCESS_KEY, 'X-Bin-Meta': 'false' }
+        });
+        const data = await response.json();
+        if (!data.userTokens) return;
+
+        const tokens = [];
+        Object.values(data.userTokens).forEach(list => tokens.push(...list));
+        if (!tokens.length) return;
+
+        // بنبعت لكل token عن طريق FCM REST API
+        for (const token of tokens) {
+            fetch('https://fcm.googleapis.com/fcm/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'key=YOUR_SERVER_KEY'  // ← ضيف هنا Server Key من Firebase Console
+                },
+                body: JSON.stringify({
+                    to: token,
+                    notification: { title: title, body: body }
+                })
+            }).catch(() => {});
+        }
+    } catch(e) { console.log('FCM send error:', e); }
+    }
 
         function renderNewFilesList() {
             const container = document.getElementById('new-files-list');
