@@ -162,22 +162,26 @@
         
         /* The Trigger Handle (Visible below header) */
         .gesture-trigger {
-            width: 40px;
-            height: 5px;
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            margin: 8px auto;
-            cursor: grab;
-            z-index: 15;
-            position: relative;
-            flex-shrink: 0;
-            transition: background-color 0.2s;
-        }
-        .gesture-trigger:active {
-            background-color: rgba(255, 255, 255, 0.6);
-            cursor: grabbing;
-        }
-
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: auto;
+    margin: 6px auto;
+    padding: 6px 16px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 20px;
+    cursor: pointer;
+    color: #a5b4fc;
+    font-size: 12px;
+    font-weight: 600;
+    width: fit-content;
+    transition: background 0.2s;
+}
+.gesture-trigger:active {
+    background: rgba(99, 102, 241, 0.3);
+}
         /* The Sliding Panel Container */
         .new-files-panel {
             position: fixed;
@@ -384,7 +388,7 @@
         </header>
 
         <!-- === NEW SLIDING PANEL COMPONENT === -->
-        <div class="gesture-trigger" id="slide-trigger"></div>
+        <div class="gesture-trigger" id="slide-trigger">🆕 <span id="slide-trigger-label">New Files</span></div>
         
         <div class="new-files-panel" id="new-files-panel">
             <div class="panel-handle" id="panel-close-handle"></div>
@@ -830,129 +834,32 @@
         // ==========================================
 
         function initNewFilesPanel() {
-            const trigger = document.getElementById('slide-trigger');
-            const panel = document.getElementById('new-files-panel');
-            const closeHandle = document.getElementById('panel-close-handle');
-            let startY = 0;
-            let currentY = 0;
-            let isDragging = false;
+    const trigger = document.getElementById('slide-trigger');
+    const panel = document.getElementById('new-files-panel');
+    const label = document.getElementById('slide-trigger-label');
 
-            // --- OPEN LOGIC (Drag Trigger Down) ---
-            const startDragOpen = (e) => {
-                isDragging = true;
-                startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-                panel.style.transition = 'none'; // Disable transition for direct control
-            };
+    function openPanel() {
+        panel.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        panel.style.transform = 'translateY(0%)';
+        isNewFilesPanelOpen = true;
+        label.textContent = 'Close ✕';
+        renderNewFilesList();
+    }
 
-            const onDragOpen = (e) => {
-                if (!isDragging) return;
-                const y = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-                const delta = y - startY;
-                if (delta > 0) {
-                    // Start revealing panel. Panel top is at 78px.
-                    // We translate it from -100% (hidden) to 0 (shown).
-                    // Let's map pixel drag to percentage.
-                    // Assume panel height is approx window height - 78.
-                    const panelHeight = window.innerHeight - 78;
-                    const percentage = (delta / panelHeight) * 100;
-                    if(percentage > -100) {
-                        panel.style.transform = `translateY(${percentage - 100}%)`;
-                    }
-                }
-            };
+    function closePanel() {
+        panel.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        panel.style.transform = 'translateY(-100%)';
+        isNewFilesPanelOpen = false;
+        label.textContent = 'New Files';
+    }
 
-            const endDragOpen = (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                panel.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-                
-                // Get current transform value to decide snap
-                const style = window.getComputedStyle(panel);
-                const matrix = new WebKitCSSMatrix(style.transform);
-                const currentTranslateY = matrix.m42; // Y translation in pixels
-                const panelHeight = window.innerHeight - 78;
-                const currentPercent = (currentTranslateY / panelHeight) * 100; // approx -100 to 0
+    trigger.addEventListener('click', () => {
+        isNewFilesPanelOpen ? closePanel() : openPanel();
+    });
 
-                // If dragged down more than 20%, open fully. Else close.
-                if (currentPercent > -80) {
-                    openPanel();
-                } else {
-                    closePanel();
-                }
-            };
-
-            trigger.addEventListener('mousedown', startDragOpen);
-            trigger.addEventListener('touchstart', startDragOpen);
-            window.addEventListener('mousemove', onDragOpen);
-            window.addEventListener('touchmove', onDragOpen);
-            window.addEventListener('mouseup', endDragOpen);
-            window.addEventListener('touchend', endDragOpen);
-
-
-            // --- CLOSE LOGIC (Drag Bottom Handle Up) ---
-            const startDragClose = (e) => {
-                isDragging = true;
-                startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-                panel.style.transition = 'none';
-                e.stopPropagation(); // Prevent opening trigger
-            };
-
-            const onDragClose = (e) => {
-                if (!isDragging) return;
-                const y = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-                const delta = startY - y; // Up is positive
-                
-                if (delta > 0) {
-                    const panelHeight = window.innerHeight - 78;
-                    const percentage = (delta / panelHeight) * 100;
-                    // Current open is 0. We want to go negative.
-                    if(percentage > -100) {
-                        panel.style.transform = `translateY(${-percentage}%)`;
-                    }
-                }
-            };
-
-            const endDragClose = (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                panel.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-                
-                const style = window.getComputedStyle(panel);
-                const matrix = new WebKitCSSMatrix(style.transform);
-                const currentTranslateY = matrix.m42;
-                const panelHeight = window.innerHeight - 78;
-                
-                // If dragged up significantly (translateY < -30%), close
-                if (currentTranslateY < -panelHeight * 0.3) {
-                    closePanel();
-                } else {
-                    openPanel();
-                }
-            };
-
-            closeHandle.addEventListener('mousedown', startDragClose);
-            closeHandle.addEventListener('touchstart', startDragClose);
-            window.addEventListener('mousemove', onDragClose);
-            window.addEventListener('touchmove', onDragClose);
-            window.addEventListener('mouseup', endDragClose);
-            window.addEventListener('touchend', endDragClose);
-
-            // Helper functions
-            function openPanel() {
-                panel.style.transform = 'translateY(0)';
-                isNewFilesPanelOpen = true;
-                renderNewFilesList();
-            }
-
-            function closePanel() {
-                panel.style.transform = 'translateY(-100%)';
-                isNewFilesPanelOpen = false;
-            }
-
-            // Expose globally if needed
-            window.openNewFilesPanel = openPanel;
-            window.closeNewFilesPanel = closePanel;
-        }
+    window.openNewFilesPanel = openPanel;
+    window.closeNewFilesPanel = closePanel;
+}
 
         function initNewFilesToggle() {
             const toggle = document.getElementById('new-files-toggle');
@@ -1048,7 +955,8 @@
                 <div class="file-details">
                     <div class="file-name">${file.name}</div>
                     <div class="file-meta">
-                        <span>${file.path[file.path.length-2] || 'Unknown'}</span> • <span>${timeString}</span>
+                        // بعد
+                    <span>${file.path[0]}</span> › <span>${file.path[1]}</span>${file.path.length > 3 ? ` › <span>${file.path[file.path.length-2]}</span>` : ''} • <span>${timeString}</span>
                     </div>
                 </div>
                 <div class="status-dot ${colorClass}"></div>
@@ -1138,14 +1046,7 @@
                 showToast(`🆕 New file added: ${newestFile.name}`, 'success');
 
             // Push notification via Service Worker
-            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-            type: 'SHOW_NOTIFICATION',
-            title: '🆕 ملف جديد',
-            body: newestFile.name,
-            icon: '/icon-192.png'
-            });
-            }
+           
                 // Update last seen so we don't notify again for this file
                 localStorage.setItem(LAST_SEEN_FILES_KEY, newestFile.ts.toString());
                 
