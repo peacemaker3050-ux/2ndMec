@@ -461,7 +461,8 @@
           window.currentPendingNotification = bodyText;
           document.getElementById('visual-alert-body').innerText = bodyText;
           overlay.classList.add('active');
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          // vibrate فقط لو في تفاعل من المستخدم
+          try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch(e) {}
 
           // ── إرسال إشعار شريط الهاتف عبر Service Worker ──
           if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
