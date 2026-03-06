@@ -858,7 +858,9 @@
             
             if(isActive) toggle.classList.add('active');
             sendToggleToSW(isActive);
-            
+            if (!localStorage.getItem(LAST_SEEN_FILES_KEY)) {
+        localStorage.setItem(LAST_SEEN_FILES_KEY, Date.now().toString());}
+
             toggle.addEventListener('click', () => {
                 toggle.classList.toggle('active');
                 const state = toggle.classList.contains('active');
