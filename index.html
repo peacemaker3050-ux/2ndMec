@@ -381,13 +381,7 @@
                     console.log("[FCM] No registration token available.");
                 }
 
-                // Listen for token refresh
-                messaging.onTokenRefresh(() => {
-                    messaging.getToken({ vapidKey: VAPID_KEY }).then((refreshedToken) => {
-                        console.log("[FCM] Token refreshed:", refreshedToken);
-                        saveUserToken(user.email, refreshedToken);
-                    });
-                });
+            
 
             } catch (err) {
                 console.log("[FCM] Error getting token:", err);

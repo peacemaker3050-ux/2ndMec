@@ -139,7 +139,8 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(event.request.clone())
         .then(response => {
-          if (response && response.status === 200) {
+          // فقط خزّن طلبات GET
+          if (response && response.status === 200 && event.request.method === 'GET') {
             const clone = response.clone();
             caches.open(CACHE_API).then(c => c.put(event.request, clone));
           }
