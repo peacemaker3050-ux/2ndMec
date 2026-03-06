@@ -422,8 +422,20 @@
         function normalizeText(text) { if (!text) return ""; let processed = text.toLowerCase(); Object.keys(numberMap).forEach(key => { const regex = new RegExp(`\\b${key}\\b`, 'gi'); processed = processed.replace(regex, numberMap[key]); }); Object.keys(transliterationMap).forEach(key => { const regex = new RegExp(`\\b${key}\\b`, 'gi'); processed = processed.replace(regex, transliterationMap[key]); }); return processed; }
         function flattenDatabase(db) { const list = []; Object.keys(db).forEach(subject => { list.push({ type: 'subject', name: subject, path: [subject], id: subject }); const subjectData = db[subject]; if (subjectData.doctors) { subjectData.doctors.forEach(doctor => { list.push({ type: 'doctor', name: doctor, path: [subject, doctor], id: `${subject}-${doctor}` }); const doctorData = subjectData[doctor]; if (doctorData && doctorData.root) traverseFolder(doctorData.root, [subject, doctor], list); }); } }); return list; }
         function traverseFolder(items, currentPath, list) { if (!items) return; items.forEach(item => { const fullPath = [...currentPath, item.name]; list.push({ type: item.type, name: item.name, path: fullPath, id: item.id, link: item.link }); if (item.type === 'folder' && item.children) traverseFolder(item.children, fullPath, list); }); }
-        function initSearchEngine() { if (typeof Fuse === 'undefined') return; const flatData = flattenDatabase(database); fuseSearchEngine = new Fuse(flatData, { keys: [{ name: 'name', weight: 1 }, { name: 'path', weight: 0.5 }, { name: 'id', weight: 0.1 }], threshold: 0.4, ignoreLocation: true, minMatchCharLength: 1, includeScore: true }); }
-        function performSearch(query) { if (!query || !fuseSearchEngine) return []; const normalizedQuery = normalizeText(query); const results = fuseSearchEngine.search(normalizedQuery); return results.map(r => r.item); }
+        function initSearchEngine() {
+        if (typeof Fuse === 'undefined') return;
+        const flatData = flattenDatabase(database);
+        fuseSearchEngine = flatData; // بنحفظ البيانات مباشرة
+        }
+
+        function performSearch(query) {
+        if (!query || !fuseSearchEngine) return [];
+        const normalizedQuery = normalizeText(query.toLowerCase());
+        return fuseSearchEngine.filter(item => {
+        const itemName = normalizeText((item.name || '').toLowerCase());
+        return itemName.includes(normalizedQuery);
+        });
+        }
         function renderSearchResults(results, query) { searchDropdown.innerHTML = ''; if (query.length < 2) return; const fileResults = results.filter(item => item.type === 'file'); if (fileResults.length === 0) searchDropdown.innerHTML = '<div class="search-empty">No files found</div>'; else { fileResults.forEach(item => { const div = document.createElement('div'); div.className = 'search-result-item'; div.innerHTML = `<div class="sr-title">📄 ${item.name}</div><div class="sr-path">${item.path.map(p => `<span>${p}</span>`).join('<span> > </span>')}</div>`; div.onclick = () => handleSearchResultClick(item); searchDropdown.appendChild(div); }); } searchDropdown.classList.add('show'); }
         function handleSearchResultClick(item) { searchDropdown.classList.remove('show'); searchInput.value = ''; if (item.type === 'file' && item.link && item.link !== '#') { const fileName = item.name; const fileLink = item.link; const finalMessageHTML = `<div style="margin-bottom:5px;">📎 <b>${fileName}</b></div><div class="file-link-btn" onclick="window.open('${fileLink}', '_blank')"><span>🔗</span><span>Open in Google Drive</span></div>`; addMessage(finalMessageHTML, 'bot', true); scrollToBottom(); } }
         let searchTimeout; searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const query = searchInput.value.trim(); if (query.length < 2) return; clearTimeout(searchTimeout); const results = performSearch(query); if (results.length > 0) { const fileResults = results.filter(item => item.type === 'file'); if (fileResults.length > 0) handleSearchResultClick(fileResults[0]); } } }); searchInput.addEventListener('input', (e) => { const query = e.target.value.trim(); clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { const results = performSearch(query); renderSearchResults(results, query); }, 200); });
