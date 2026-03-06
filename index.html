@@ -814,12 +814,8 @@ function updateDynamicManifest(name, iconData) {
         "theme_color": "#0f172a",
         "icons": []
     };
-    if (iconData && iconData.length > 10) {
-        const mimeType = iconData.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-        manifest.icons.push({ "src": iconData, "sizes": "512x512", "type": mimeType });
-    } else {
-        manifest.icons.push({ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png", "sizes": "512x512", "type": "image/png" });
-    }
+   const iconUrl = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/icon-512.png";
+manifest.icons.push({ "src": iconUrl, "sizes": "512x512", "type": "image/png" });
     const stringManifest = JSON.stringify(manifest);
     // data URL بدل blob URL — أكثر توافقاً مع التثبيت
     const dataUrl = 'data:application/manifest+json,' + encodeURIComponent(stringManifest);
@@ -833,8 +829,7 @@ function updateDynamicManifest(name, iconData) {
         appleLink.rel = 'apple-touch-icon';
         document.head.appendChild(appleLink);
     }
-    appleLink.href = iconData && iconData.length > 10 ? iconData : "https://cdn-icons-png.flaticon.com/512/2991/2991148.png";
-}        window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
+appleLink.href = iconUrl;}        window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
         window.onload = () => { if (!auth) { try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); messaging = firebase.messaging(); } catch(e){} } const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); }
         
