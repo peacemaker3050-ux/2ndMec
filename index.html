@@ -368,7 +368,11 @@
                 }
 
                 // Get Token
-                const currentToken = await messaging.getToken({ vapidKey: VAPID_KEY });
+                const swReg = await navigator.serviceWorker.getRegistration('./sw.js');
+                const currentToken = await messaging.getToken({ 
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration: swReg
+        });
                 
                 if (currentToken) {
                     console.log("[FCM] Token received:", currentToken);
