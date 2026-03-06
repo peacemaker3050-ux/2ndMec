@@ -1,5 +1,6 @@
 // ============================================================
 // === UNIFIED SERVICE WORKER (FCM + OFFLINE + POLLING) ===
+// === v10 — Added SET_TOGGLE handler ===
 // ============================================================
 
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
@@ -19,11 +20,10 @@ const BIN_ID  = "696e77bfae596e708fe71e9d";
 const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
 
 // ── Cache ──
-const CACHE_VERSION = 'v8';
-const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;   // ملفات التطبيق
-const CACHE_API     = `uni-api-${CACHE_VERSION}`;       // ردود JSONBin
+const CACHE_VERSION = 'v10';
+const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
+const CACHE_API     = `uni-api-${CACHE_VERSION}`;
 
-// كل الملفات اللازمة لتشغيل التطبيق Offline
 const STATIC_FILES = [
   './',
   './index.html',
@@ -72,7 +72,7 @@ async function dbSet(key, value) {
 }
 
 // ============================================================
-// INSTALL — تخزين كل ملفات التطبيق
+// INSTALL
 // ============================================================
 self.addEventListener('install', event => {
   console.log('[SW] Installing', CACHE_VERSION);
@@ -81,7 +81,6 @@ self.addEventListener('install', event => {
     (async () => {
       await initDB();
       const cache = await caches.open(CACHE_STATIC);
-      // تخزين الملفات واحداً واحداً لتجنب فشل الكل بسبب خطأ واحد
       await Promise.allSettled(
         STATIC_FILES.map(url =>
           cache.add(url).catch(e => console.warn('[SW] Cache skip:', url, e.message))
@@ -93,7 +92,7 @@ self.addEventListener('install', event => {
 });
 
 // ============================================================
-// ACTIVATE — حذف الكاش القديم
+// ACTIVATE
 // ============================================================
 self.addEventListener('activate', event => {
   console.log('[SW] Activating', CACHE_VERSION);
@@ -101,7 +100,6 @@ self.addEventListener('activate', event => {
     (async () => {
       await self.clients.claim();
 
-      // حذف كاشات الإصدارات القديمة
       const keys = await caches.keys();
       await Promise.all(
         keys
@@ -111,7 +109,6 @@ self.addEventListener('activate', event => {
 
       if (!dbReady) await initDB();
 
-      // Periodic Sync (Android Chrome فقط)
       if ('periodicSync' in self.registration) {
         try {
           await self.registration.periodicSync.register('check-notif', { minInterval: 15 * 60 * 1000 });
@@ -119,27 +116,22 @@ self.addEventListener('activate', event => {
         } catch(e) { console.log('[SW] Periodic Sync not available'); }
       }
 
-      // فحص فوري عند التفعيل
       await checkNotifications();
-
-      // بدء الـ Polling كل 60 ثانية
       startPolling();
     })()
   );
 });
 
 // ============================================================
-// FETCH — استراتيجية ذكية حسب نوع الطلب
+// FETCH
 // ============================================================
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // ── 1. JSONBin API: Network First → Cache Fallback ──
   if (url.hostname.includes('jsonbin.io')) {
     event.respondWith(
       fetch(event.request.clone())
         .then(response => {
-          // فقط خزّن طلبات GET
           if (response && response.status === 200 && event.request.method === 'GET') {
             const clone = response.clone();
             caches.open(CACHE_API).then(c => c.put(event.request, clone));
@@ -154,7 +146,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── 2. Firebase/Google APIs: Network Only (لا تُخزَّن) ──
   if (url.hostname.includes('googleapis.com') ||
       url.hostname.includes('gstatic.com') ||
       url.hostname.includes('firebaseio.com')) {
@@ -164,11 +155,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── 3. باقي الموارد: Cache First → Network Fallback ──
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
-
       return fetch(event.request)
         .then(response => {
           if (response && response.status === 200 && event.request.method === 'GET') {
@@ -178,7 +167,6 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => {
-          // إذا فشل التحميل وكان طلب تنقل → أرجع index.html
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html') || caches.match('./');
           }
@@ -189,11 +177,11 @@ self.addEventListener('fetch', event => {
 });
 
 // ============================================================
-// FCM BACKGROUND MESSAGE — عند وصول إشعار والتطبيق مغلق
+// FCM BACKGROUND MESSAGE
 // ============================================================
 messaging.onBackgroundMessage(payload => {
   console.log('[SW] FCM Background Message:', payload);
-  const title = payload.notification?.title || '📢 New Message';
+  const title = payload.notification?.title || 'New Message';
   const body  = payload.notification?.body  || 'New update available';
   const icon  = payload.notification?.icon  || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png';
   const link  = payload.fcmOptions?.link || payload.data?.link || '/';
@@ -235,25 +223,45 @@ self.addEventListener('message', event => {
   const data = event.data;
   if (!data) return;
 
+  // بدء الـ Polling
   if (data.type === 'INIT_POLLING') {
     console.log('[SW] INIT_POLLING received');
-    startPolling();
-    checkNotifications();
+    if (!dbReady) initDB().then(() => { startPolling(); checkNotifications(); });
+    else { startPolling(); checkNotifications(); }
   }
 
+  // Test Notification
   if (data.type === 'TEST_NOTIF') {
-    self.registration.showNotification('🧪 Test Successful', {
+    self.registration.showNotification('Test Successful', {
       body: 'Push notifications are working correctly!',
       icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
       vibrate: [200, 100, 200]
     });
   }
 
-  // إشعار فوري من الصفحة — نتجاهله لأن الـ polling هو المصدر الوحيد للإشعارات
-  // (تم تعطيله لمنع الإشعار المزدوج)
+  // اشعار فوري من الصفحة عند اكتشاف ملف جديد
   if (data.type === 'SHOW_NOTIFICATION') {
-    // لا نعرض إشعار هنا — الـ polling سيعرضه تلقائياً
-    console.log('[SW] SHOW_NOTIFICATION ignored to prevent duplicate');
+    self.registration.showNotification(data.title || 'New File', {
+      body: data.body || '',
+      icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+      vibrate: [200, 100, 200],
+      tag: 'new-file-notif',
+      data: { click_action: self.location.origin }
+    });
+  }
+
+  // حفظ حالة التوجل من الصفحة في IndexedDB
+  // الصفحة بتبعت SET_TOGGLE عند كل تغيير وعند التحميل
+  if (data.type === 'SET_TOGGLE') {
+    if (!dbReady) {
+      initDB().then(() => {
+        dbSet('newFilesToggle', data.value);
+        console.log('[SW] Toggle saved after DB init:', data.value);
+      });
+    } else {
+      dbSet('newFilesToggle', data.value);
+      console.log('[SW] Toggle saved:', data.value);
+    }
   }
 });
 
@@ -269,7 +277,7 @@ self.addEventListener('sync', event => {
 });
 
 // ============================================================
-// POLLING LOGIC
+// POLLING
 // ============================================================
 function startPolling() {
   if (pollingTimer) return;
@@ -277,13 +285,44 @@ function startPolling() {
   pollingTimer = setInterval(() => checkNotifications(), 60 * 1000);
 }
 
+// ============================================================
+// دالة تجيب احدث ملف في الـ database
+// ============================================================
+function findNewestFile(database) {
+  if (!database) return null;
+  let newest = null;
+
+  function scan(list) {
+    for (const item of list || []) {
+      if (item.type === 'file' && item.ts) {
+        if (!newest || item.ts > newest.ts) newest = item;
+      }
+      if (item.type === 'folder' && item.children) scan(item.children);
+    }
+  }
+
+  for (const subject of Object.values(database)) {
+    for (const key of Object.keys(subject)) {
+      if (key === 'doctors') continue;
+      const doctor = subject[key];
+      if (doctor && doctor.root) scan(doctor.root);
+    }
+  }
+
+  return newest;
+}
+
+// ============================================================
+// CHECK NOTIFICATIONS — اشعارات الاطباء + ملفات جديدة
+// ============================================================
 async function checkNotifications() {
   if (!dbReady) {
     try { await initDB(); } catch(e) { return; }
   }
 
   try {
-    const lastTime = (await dbGet('lastNotifTime')) || 0;
+    const lastNotifTime = (await dbGet('lastNotifTime')) || 0;
+    const lastFileTime  = (await dbGet('lastFileTime'))  || 0;
 
     const response = await fetch(
       `https://api.jsonbin.io/v3/b/${BIN_ID}/latest?nc=${Date.now()}`,
@@ -293,16 +332,40 @@ async function checkNotifications() {
     if (!response.ok) return;
     const data = await response.json();
 
-    if (!data?.recentUpdates?.length) return;
+    // 1. اشعارات الاطباء النصية — FCM يتولى العرض
+    if (data?.recentUpdates?.length) {
+      const newest  = data.recentUpdates[0];
+      const newTime = newest.timestamp || 0;
+      if (newTime > lastNotifTime) {
+        await dbSet('lastNotifTime', newTime);
+        console.log('[SW] New text notification detected, FCM handles display');
+      }
+    }
 
-    const newest    = data.recentUpdates[0];
-    const newTime   = newest.timestamp || 0;
+    // 2. ملفات جديدة
+    const toggleState = await dbGet('newFilesToggle');
+    if (toggleState !== true && toggleState !== 'true') return;
 
-    if (newTime <= lastTime) return; // لا يوجد جديد
+    const newestFile = findNewestFile(data?.database);
+    if (!newestFile) return;
 
-    console.log('[SW] New notification detected (FCM handles display):', newest);
-    await dbSet('lastNotifTime', newTime);
-    // FCM بيتولى إظهار الإشعار — الـ polling بيحدّث الوقت بس عشان متكررش
+    const fileTs   = newestFile.ts || 0;
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    if (fileTs > lastFileTime && (Date.now() - fileTs) < oneDayMs) {
+      await dbSet('lastFileTime', fileTs);
+      console.log('[SW] New file detected:', newestFile.name);
+
+      self.registration.showNotification('New File Added', {
+        body: newestFile.name,
+        icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+        badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+        vibrate: [200, 100, 200],
+        requireInteraction: false,
+        tag: 'new-file-notif',
+        data: { click_action: self.location.origin }
+      });
+    }
 
   } catch(err) {
     console.error('[SW] Polling error:', err);

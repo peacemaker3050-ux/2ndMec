@@ -802,7 +802,7 @@
             .then(reg => {
               console.log('[App] SW Registered:', reg.scope);
               const sendInit = (sw) => { sw.postMessage({ type: 'INIT_POLLING' }); };
-              if (reg.active) { sendInit(reg.active); } else if (reg.installing || reg.waiting) { const sw = reg.installing || reg.waiting; sw.addEventListener('statechange', () => { if (sw.state === 'activated') sendInit(sw); }); }
+              if (reg.active) { sendInit(reg.active);reg.active.postMessage({ type: 'SET_TOGGLE', value: localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true' }); } else if (reg.installing || reg.waiting) { const sw = reg.installing || reg.waiting; sw.addEventListener('statechange', () => { if (sw.state === 'activated') sendInit(sw); }); }
               navigator.serviceWorker.addEventListener('message', event => { console.log('[App] Message from SW:', event.data); });
             })
             .catch(err => console.error('[App] SW Registration Failed:', err));
@@ -958,14 +958,24 @@
             const isActive = localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true';
             
             if(isActive) toggle.classList.add('active');
+            sendToggleToSW(isActive);
             
             toggle.addEventListener('click', () => {
                 toggle.classList.toggle('active');
                 const state = toggle.classList.contains('active');
                 localStorage.setItem(NEW_FILES_TOGGLE_KEY, state);
+                sendToggleToSW(state);
                 showToast(state ? "✅ New Files Alerts ON" : "🔕 New Files Alerts OFF", "info");
             });
         }
+        function sendToggleToSW(state) {
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                type: 'SET_TOGGLE',
+                value: state
+            });
+            }
+            }
 
         function renderNewFilesList() {
             const container = document.getElementById('new-files-list');
@@ -1098,13 +1108,13 @@
             if (newestFile.ts > lastSeenNum) {
                 showToast(`🆕 New file added: ${newestFile.name}`, 'success');
 
-            // Push notification via Service Worker (works when app is closed)
+            // Push notification via Service Worker
             if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             navigator.serviceWorker.controller.postMessage({
             type: 'SHOW_NOTIFICATION',
-            title: '🆕 New File Added',
+            title: '🆕 ملف جديد',
             body: newestFile.name,
-            icon: CONFIG.appIcon || CONFIG.botImage || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png'
+            icon: '/icon-192.png'
             });
             }
                 // Update last seen so we don't notify again for this file
