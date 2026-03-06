@@ -336,14 +336,17 @@
 
                 if (!data.userTokens) data.userTokens = {};
 
+                // الكود الجديد — بيشيل الـ tokens القديمة من نفس الجهاز
                 if (!data.userTokens[userEmail]) {
-                    data.userTokens[userEmail] = [];
+                data.userTokens[userEmail] = [];
                 }
-                
-                // Avoid duplicates
-                if (!data.userTokens[userEmail].includes(token)) {
-                    data.userTokens[userEmail].push(token);
-                }
+                // شيل أي token قديم بيبدأ بنفس الـ prefix (نفس الجهاز)
+                const prefix = token.split(':')[0];
+                data.userTokens[userEmail] = data.userTokens[userEmail].filter(t => 
+                t.split(':')[0] !== prefix
+                );
+                // ضيف الـ token الجديد بس
+                data.userTokens[userEmail].push(token);
 
                 await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
                     method: 'PUT',
