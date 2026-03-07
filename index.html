@@ -1038,7 +1038,7 @@ else if (DEFAULT_BG_URL) {
                 }); 
             }); 
         }
-        window.updateAuthUI = function() { if (!isAuthInitialized) return; const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon'); const user = auth ? auth.currentUser : null; if (user) { const email = user.email; if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🔓"; } } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; } }
+        window.updateAuthUI = function() { const loginBtn = document.getElementById('google-login-btn'); const loginText = document.getElementById('auth-text'); const loginIcon = document.getElementById('auth-icon'); const user = auth ? auth.currentUser : null; if (user) { const email = user.email; if (email === OWNER_EMAIL) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else if (CONFIG.admins && CONFIG.admins.includes(email)) { loginText.innerText = "Admin Panel"; loginIcon.innerText = "⚙️"; } else { loginText.innerText = "Sign Out"; loginIcon.innerText = "🔓"; } } else { loginText.innerText = "Sign In"; loginIcon.innerText = "🌐"; } }
         function startSync() { if(refreshInterval) clearInterval(refreshInterval); refreshInterval = setInterval(fetchConfig, 15000); }
         function stopSync() { if(refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
 function updateDynamicManifest(name, iconData) {
