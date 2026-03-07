@@ -329,7 +329,8 @@ async function checkNotifications() {
     );
 
     if (!response.ok) return;
-    const data = await response.json();
+    const raw = await response.json();
+    const data = (raw && typeof raw.data === 'string') ? JSON.parse(raw.data) : raw;
 
     // 1. اشعارات الاطباء النصية — FCM يتولى العرض
     if (data?.recentUpdates?.length) {
