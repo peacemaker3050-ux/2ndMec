@@ -952,7 +952,14 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
         function saveToLocalStorage(data) { try { localStorage.setItem('uniBot_db', JSON.stringify(data)); } catch (e) {} }
         function loadFromLocalStorage() { try { const data = localStorage.getItem('uniBot_db'); if (data) return JSON.parse(data); } catch (e) {} return null; }
         async function fetchConfig() { try { const response = await fetch(`${FIREBASE_DB_URL}/.json`); if (!response.ok) throw new Error("Failed to fetch"); const raw = await response.json();
-const cloudData = typeof raw.data === 'string' ? JSON.parse(raw.data) : raw;
+// Unwrap nested data strings (handles multiple save layers)
+let cloudData = raw;
+while (cloudData && typeof cloudData.data === 'string') {
+    try { cloudData = JSON.parse(cloudData.data); } catch(e) { break; }
+}
+if (cloudData && typeof cloudData === 'object' && cloudData.data && typeof cloudData.data === 'object') {
+    cloudData = cloudData.data;
+}
 CONFIG = { ...defaultConfig, ...cloudData };
 if (cloudData.database) CONFIG.database = cloudData.database;
 else CONFIG.database = defaultDatabase; saveToLocalStorage(CONFIG); applyConfig(CONFIG); initSearchEngine(); updateOnlineStatus(true); checkNewFilesAndNotify(); } catch (error) { console.error("Cloud Sync Failed", error); updateOnlineStatus(false); const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; applyConfig(CONFIG); showToast("📡 Offline Mode: Last update loaded", "info"); initSearchEngine(); checkNewFilesAndNotify(); } else { CONFIG = { ...defaultConfig }; applyConfig(CONFIG); showToast("⚠️ No Data: Check Internet", "error"); initSearchEngine(); } } }
