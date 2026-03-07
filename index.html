@@ -776,21 +776,32 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
         // ==========================================
         
         async function saveUserToken(userEmail, token) {
-            try {
-const response = await fetch(`${FIREBASE_DB_URL}/.json`);
-                let data = await response.json();
-                if (!data.userTokens) data.userTokens = {};
-                if (!data.userTokens[userEmail]) { data.userTokens[userEmail] = []; }
-                const prefix = token.split(':')[0];
-                data.userTokens[userEmail] = data.userTokens[userEmail].filter(t => t.split(':')[0] !== prefix);
-                data.userTokens[userEmail].push(token);
-await fetch(`${FIREBASE_DB_URL}/.json`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: JSON.stringify(data) })
-});                console.log("[FCM] Token saved for:", userEmail);
-            } catch (error) { console.error("[FCM] Error saving token:", error); }
-        }
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+        
+        // ✅ جيب الـ ID token عشان تبعته مع الـ request
+        const idToken = await user.getIdToken();
+        
+        const response = await fetch(`${FIREBASE_DB_URL}/.json?auth=${idToken}`);
+        let data = await response.json();
+        if (!data) data = {};
+        if (!data.userTokens) data.userTokens = {};
+        if (!data.userTokens[userEmail]) data.userTokens[userEmail] = [];
+        const prefix = token.split(':')[0];
+        data.userTokens[userEmail] = data.userTokens[userEmail].filter(t => t.split(':')[0] !== prefix);
+        data.userTokens[userEmail].push(token);
+        
+        await fetch(`${FIREBASE_DB_URL}/.json?auth=${idToken}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        console.log("[FCM] Token saved for:", userEmail);
+    } catch (error) { 
+        console.error("[FCM] Error saving token:", error); 
+    }
+}
 
         async function setupFCMToken(user) {
             if (!messaging || !user) return;
