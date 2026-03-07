@@ -1043,43 +1043,37 @@ else if (DEFAULT_BG_URL) {
         function hasAdminAccess() { const user = auth.currentUser; if(!user) return false; if(user.email === OWNER_EMAIL) return true; if(CONFIG.admins && CONFIG.admins.includes(user.email)) return true; return false; }
 
 function initFirebaseAuth() {
-    if (auth) {
-        auth.onAuthStateChanged((user) => {
-            isAuthInitialized = true;
-            window.updateAuthUI();
-            if (user) { setupFCMToken(user); }
-        });
-        return;
+    if (!auth) {
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            messaging = firebase.messaging();
+        } catch (e) {
+            console.log("Firebase Init Error", e);
+            return;
+        }
     }
-    try {
-        firebase.initializeApp(firebaseConfig);
-        auth = firebase.auth();
-        messaging = firebase.messaging();
-        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-            .then(() => {
-                return auth.getRedirectResult();
-            })
-            .then((result) => {
-                if (result && result.user) {
-                    showToast("Login Successful ✅", "success");
-                }
-                auth.onAuthStateChanged((user) => {
-                    isAuthInitialized = true;
-                    window.updateAuthUI();
-                    if (user) { setupFCMToken(user); }
-                });
-            })
-            .catch((err) => {
-                console.warn("Auth init error:", err);
-                auth.onAuthStateChanged((user) => {
-                    isAuthInitialized = true;
-                    window.updateAuthUI();
-                    if (user) { setupFCMToken(user); }
-                });
+
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .then(() => auth.getRedirectResult())
+        .then((result) => {
+            if (result && result.user) {
+                showToast("Login Successful ✅", "success");
+            }
+            auth.onAuthStateChanged((user) => {
+                isAuthInitialized = true;
+                window.updateAuthUI();
+                if (user) { setupFCMToken(user); }
             });
-    } catch (e) {
-        console.log("Firebase Init Error", e);
-    }
+        })
+        .catch((err) => {
+            console.warn("Auth init error:", err);
+            auth.onAuthStateChanged((user) => {
+                isAuthInitialized = true;
+                window.updateAuthUI();
+                if (user) { setupFCMToken(user); }
+            });
+        });
 }        window.updateAuthUI = function() {
     const loginText = document.getElementById('auth-text');
     const loginIcon = document.getElementById('auth-icon');
