@@ -19,7 +19,7 @@ const firebaseConfig = {
 const FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com";
 
 // ── Cache ──
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
 const CACHE_API     = `uni-api-${CACHE_VERSION}`;
 
