@@ -43,14 +43,23 @@ let dbReady = false;
 let pollingTimer = null;
 
 function initDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('UniBotSW', 2);
-    req.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv', { keyPath: 'k' });
-    };
-    req.onsuccess = e => { idb = e.target.result; dbReady = true; resolve(); };
-    req.onerror  = e => { console.warn('[SW] DB error', e); reject(e); };
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('UniBotSW', 2);
+      req.onupgradeneeded = e => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv', { keyPath: 'k' });
+      };
+      req.onsuccess = e => { idb = e.target.result; dbReady = true; resolve(); };
+      req.onerror  = e => { 
+        console.warn('[SW] DB error', e);
+        dbReady = false;
+        resolve(); // ✅ resolve بدل reject عشان الـ SW ميوقفش
+      };
+    } catch(e) {
+      console.warn('[SW] IndexedDB not available:', e);
+      resolve(); // ✅ لو IndexedDB مش متاح خالص
+    }
   });
 }
 
