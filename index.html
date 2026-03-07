@@ -1141,7 +1141,9 @@ appleLink.href = iconUrl;}        window.addEventListener('online', () => { upda
             // Initialize Dark Mode First
             initTheme();
 
-            const currentUrl = window.location.href; if (currentUrl.includes('/__/auth/handler')) { document.body.innerHTML = "<h1 style='color:#fff; text-align:center; margin-top:20vh; font-family:sans-serif'>Finalizing Login... ✨</h1>"; auth.getRedirectResult().then(() => { window.location.replace(window.location.origin); }).catch(() => { window.location.replace(window.location.origin); }); return; } const localData = loadFromLocalStorage(); if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); }
+            const currentUrl = window.location.href;
+const localData = loadFromLocalStorage();
+if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CONFIG); initSearchEngine(); }
         
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.register('./sw.js')
