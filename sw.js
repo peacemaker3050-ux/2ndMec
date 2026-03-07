@@ -16,8 +16,7 @@ const firebaseConfig = {
   appId: "1:371129360013:web:377ef70759204018a60cc4"
 };
 
-const BIN_ID  = "696e77bfae596e708fe71e9d";
-const BIN_KEY = "$2a$10$TunKuA35QdJp478eIMXxRunQfqgmhDY3YAxBXUXuV/JrgIFhU0Lf2";
+const FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com";
 
 // ── Cache ──
 const CACHE_VERSION = 'v10';
@@ -128,7 +127,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  if (url.hostname.includes('jsonbin.io')) {
+  if (url.hostname.includes('firebaseio.com')) {
     event.respondWith(
       fetch(event.request.clone())
         .then(response => {
@@ -139,7 +138,7 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => {
-          console.log('[SW] Offline: serving JSONBin from cache');
+          console.log('[SW] Offline: serving Firebase from cache');
           return caches.match(event.request);
         })
     );
@@ -147,8 +146,8 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.hostname.includes('googleapis.com') ||
-      url.hostname.includes('gstatic.com') ||
-      url.hostname.includes('firebaseio.com')) {
+      url.hostname.includes('gstatic.com')
+      ) {
     event.respondWith(
       fetch(event.request).catch(() => new Response('', { status: 503 }))
     );
@@ -325,8 +324,8 @@ async function checkNotifications() {
     const lastFileTime  = (await dbGet('lastFileTime'))  || 0;
 
     const response = await fetch(
-      `https://api.jsonbin.io/v3/b/${BIN_ID}/latest?nc=${Date.now()}`,
-      { headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store' }
+      `${FIREBASE_DB_URL}/db.json?nc=${Date.now()}`,
+      { cache: 'no-store' }
     );
 
     if (!response.ok) return;
