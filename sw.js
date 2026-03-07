@@ -324,7 +324,7 @@ async function checkNotifications() {
     const lastFileTime  = (await dbGet('lastFileTime'))  || 0;
 
     const response = await fetch(
-      `${FIREBASE_DB_URL}/db.json?nc=${Date.now()}`,
+      `${FIREBASE_DB_URL}/.json?nc=${Date.now()}`,
       { cache: 'no-store' }
     );
 
