@@ -788,7 +788,7 @@ const response = await fetch(`${FIREBASE_DB_URL}/.json`);
 await fetch(`${FIREBASE_DB_URL}/.json`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify({ data: JSON.stringify(data) })
 });                console.log("[FCM] Token saved for:", userEmail);
             } catch (error) { console.error("[FCM] Error saving token:", error); }
         }
