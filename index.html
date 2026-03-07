@@ -1033,7 +1033,12 @@ else if (DEFAULT_BG_URL) {
     }
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
-        await auth.signInWithRedirect(provider);
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        const result = await auth.signInWithPopup(provider);
+        if (result.user) {
+            showToast("Login Successful ✅", "success");
+            window.updateAuthUI();
+        }
     } catch (error) {
         console.error("Login Error:", error);
         showToast("Login Failed: " + error.message, "error");
@@ -1053,27 +1058,11 @@ function initFirebaseAuth() {
             return;
         }
     }
-
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-        .then(() => auth.getRedirectResult())
-        .then((result) => {
-            if (result && result.user) {
-                showToast("Login Successful ✅", "success");
-            }
-            auth.onAuthStateChanged((user) => {
-                isAuthInitialized = true;
-                window.updateAuthUI();
-                if (user) { setupFCMToken(user); }
-            });
-        })
-        .catch((err) => {
-            console.warn("Auth init error:", err);
-            auth.onAuthStateChanged((user) => {
-                isAuthInitialized = true;
-                window.updateAuthUI();
-                if (user) { setupFCMToken(user); }
-            });
-        });
+    auth.onAuthStateChanged((user) => {
+        isAuthInitialized = true;
+        window.updateAuthUI();
+        if (user) { setupFCMToken(user); }
+    });
 }        window.updateAuthUI = function() {
     const loginText = document.getElementById('auth-text');
     const loginIcon = document.getElementById('auth-icon');
