@@ -21,7 +21,6 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <!-- Added Messaging SDK for Push Notifications -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
     
     <!-- Fuse.js for Fuzzy Search -->
@@ -187,24 +186,183 @@
         .radio-label { flex:1; padding: 8px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; border: 1px solid transparent; font-size: 13px; color: #94a3b8; }
         .radio-label.active { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #fff; }
         input[type="radio"] { display: none; }
-
+        /* ==========================================
+   === GRADE TRACKER STYLES ===
+   ========================================== */
+.grade-modal-container {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #0a0a0f;
+    z-index: 300;
+    display: none;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease;
+    overflow-y: auto;
+}
+.grade-modal-container.active { display: flex; }
+.grade-header {
+    padding: 16px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(10,10,15,0.95);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 10;
+}
+.grade-header-left h2 { font-size: 18px; font-weight: 800; color: #f1f5f9; margin: 0; }
+.grade-welcome { font-size: 12px; color: #6366f1; font-weight: 600; margin-top: 3px; }
+.grade-body { padding: 16px; flex: 1; }
+.gt-summary {
+    background: linear-gradient(135deg, rgba(99,102,241,.18), rgba(168,85,247,.12));
+    border: 1px solid rgba(99,102,241,.25); border-radius: 20px;
+    padding: 18px; margin-bottom: 16px; position: relative; overflow: hidden;
+}
+.gt-summary::before {
+    content:''; position:absolute; top:-40px; left:-40px;
+    width:150px; height:150px; border-radius:50%;
+    background:rgba(99,102,241,.08);
+}
+.gt-sum-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+.gt-sum-label { font-size:10px; color:rgba(255,255,255,.4); letter-spacing:1px; font-family:monospace; margin-bottom:4px; }
+.gt-sum-big { font-size:42px; font-weight:900; line-height:1; letter-spacing:-2px; font-family:monospace; color:#f1f5f9; }
+.gt-sum-big span { font-size:16px; color:rgba(255,255,255,.3); font-weight:400; }
+.gt-grade-pill { display:inline-block; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; margin-top:6px; }
+.gt-pill-mumtaz        { background:rgba(34,197,94,.18);  color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+.gt-pill-jayyid-jiddan { background:rgba(59,130,246,.18); color:#3b82f6; border:1px solid rgba(59,130,246,.3); }
+.gt-pill-jayyid        { background:rgba(234,179,8,.18);  color:#eab308; border:1px solid rgba(234,179,8,.3); }
+.gt-pill-maqbul        { background:rgba(249,115,22,.18); color:#f97316; border:1px solid rgba(249,115,22,.3); }
+.gt-pill-rasib         { background:rgba(239,68,68,.18);  color:#ef4444; border:1px solid rgba(239,68,68,.3); }
+.gt-sum-pct { font-size:28px; font-weight:900; font-family:monospace; }
+.gt-sum-pct-label { font-size:10px; color:#64748b; margin-top:2px; text-align:right; }
+.gt-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
+.gt-stat { background:rgba(0,0,0,.22); border-radius:10px; padding:10px 8px; text-align:center; }
+.gt-stat-val { font-size:14px; font-weight:900; font-family:monospace; }
+.gt-stat-label { font-size:9px; color:#64748b; margin-top:2px; }
+.gt-prog-row { display:flex; justify-content:space-between; font-size:10px; color:#64748b; font-family:monospace; margin-bottom:5px; }
+.gt-prog-bar { height:5px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; }
+.gt-prog-fill { height:100%; border-radius:3px; transition:width .8s cubic-bezier(.34,1.56,.64,1); }
+.gt-sec-title { font-size:10px; letter-spacing:2px; color:#64748b; font-family:monospace; margin-bottom:10px; text-transform:uppercase; }
+.gt-course-card {
+    background: rgba(17,17,24,0.9);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius:14px; padding:14px 16px; margin-bottom:8px;
+    cursor:pointer; position:relative; overflow:hidden;
+    transition:border-color .2s, transform .15s;
+}
+.gt-course-card:hover { border-color:rgba(255,255,255,.15); transform:translateY(-1px); }
+.gt-course-card::after { content:''; position:absolute; right:0; top:0; bottom:0; width:3px; border-radius:0 3px 3px 0; }
+.gt-cc-mumtaz::after        { background:#22c55e; }
+.gt-cc-jayyid-jiddan::after { background:#3b82f6; }
+.gt-cc-jayyid::after        { background:#eab308; }
+.gt-cc-maqbul::after        { background:#f97316; }
+.gt-cc-rasib::after         { background:#ef4444; }
+.gt-cc-empty::after         { background:#64748b; }
+.gt-cc-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.gt-cc-name { font-size:14px; font-weight:700; color:#f1f5f9; }
+.gt-cc-max  { font-size:10px; color:#64748b; font-family:monospace; margin-top:2px; }
+.gt-cc-score { font-size:22px; font-weight:900; font-family:monospace; text-align:right; }
+.gt-cc-pct  { font-size:10px; color:#64748b; font-family:monospace; text-align:right; }
+.gt-cc-bar  { height:3px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; }
+.gt-cc-bar-fill { height:100%; border-radius:2px; transition:width .5s cubic-bezier(.34,1.56,.64,1); }
+.gt-score-modal {
+    position:absolute; inset:0;
+    background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
+    display:flex; align-items:flex-end;
+    z-index:400; opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.gt-score-modal.open { opacity:1; pointer-events:all; }
+.gt-score-box {
+    background:#111118; border:1px solid rgba(255,255,255,0.07);
+    border-radius:24px 24px 0 0; padding:24px 20px 44px;
+    width:100%; transform:translateY(100%);
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+.gt-score-modal.open .gt-score-box { transform:translateY(0); }
+.gt-score-title { font-size:16px; font-weight:900; color:#f1f5f9; margin-bottom:2px; }
+.gt-score-sub   { font-size:11px; color:#64748b; font-family:monospace; margin-bottom:24px; }
+.gt-adjuster { display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:6px; }
+.gt-adj-btn {
+    width:60px; height:60px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.07); background:#1a1a24;
+    color:#f1f5f9; font-size:26px; font-weight:900;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all .15s; user-select:none;
+}
+.gt-adj-btn:hover  { border-color:#6366f1; background:rgba(99,102,241,.15); }
+.gt-adj-btn:active { transform:scale(.9); }
+.gt-adj-num { font-size:54px; font-weight:900; font-family:monospace; min-width:140px; text-align:center; letter-spacing:-2px; transition:color .25s; }
+.gt-adj-info { text-align:center; font-size:11px; color:#64748b; font-family:monospace; margin-bottom:12px; }
+.gt-adj-preview { text-align:center; font-size:13px; font-weight:800; padding:8px 22px; border-radius:20px; margin:0 auto 20px; width:fit-content; }
+.gt-save-btn {
+    width:100%; padding:15px; border-radius:14px; border:none;
+    background:linear-gradient(135deg,#6366f1,#a855f7);
+    color:#fff; font-size:15px; font-weight:800; cursor:pointer; transition:opacity .2s; font-family:inherit;
+}
+.gt-save-btn:hover { opacity:.9; }
+.gt-shared-sec { margin-top:20px; background:rgba(17,17,24,0.9); border:1px solid rgba(99,102,241,.2); border-radius:16px; padding:16px; }
+.gt-shared-title { font-size:10px; letter-spacing:2px; color:#6366f1; font-family:monospace; margin-bottom:12px; text-transform:uppercase; }
+.gt-shared-item { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+.gt-shared-item:last-child { border-bottom:none; }
+.gt-shared-name  { font-size:13px; font-weight:700; color:#f1f5f9; }
+.gt-shared-time  { font-size:10px; color:#64748b; font-family:monospace; margin-top:2px; }
+.gt-shared-score { font-size:17px; font-weight:900; font-family:monospace; }
+.gt-shared-grade { font-size:10px; color:#64748b; font-family:monospace; margin-top:2px; text-align:right; }
+.gt-share-wrap { position:relative; }
+.gt-share-btn {
+    width:38px; height:38px; border-radius:50%;
+    background:rgba(26,26,36,0.9); border:1px solid rgba(255,255,255,0.07);
+    color:#f1f5f9; font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:border-color .2s;
+}
+.gt-share-btn:hover { border-color:#6366f1; }
+.gt-share-dd {
+    position:absolute; top:46px; right:0;
+    background:#111118; border:1px solid rgba(255,255,255,0.07);
+    border-radius:16px; padding:14px; width:220px;
+    z-index:60; box-shadow:0 20px 60px rgba(0,0,0,.6); display:none;
+}
+.gt-share-dd.open { display:block; }
+.gt-share-dd-title { font-size:10px; color:#64748b; font-family:monospace; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:12px; }
+.gt-secret-row { display:flex; align-items:center; justify-content:space-between; background:rgba(26,26,36,0.9); border-radius:10px; padding:10px 12px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.07); }
+.gt-secret-label { font-size:13px; font-weight:700; color:#f1f5f9; display:flex; align-items:center; gap:6px; }
+.gt-toggle-sw { width:38px; height:22px; border-radius:11px; background:#6366f1; border:none; outline:none; position:relative; cursor:pointer; transition:background .2s; flex-shrink:0; }
+.gt-toggle-sw.off { background:#64748b; }
+.gt-toggle-sw::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:2px; right:2px; transition:transform .2s; }
+.gt-toggle-sw.off::after { transform:translateX(-16px); }
+.gt-send-btn { width:100%; padding:11px; border-radius:10px; border:none; background:linear-gradient(135deg,#6366f1,#a855f7); color:#fff; font-size:13px; font-weight:800; cursor:pointer; transition:opacity .2s; font-family:inherit; }
+.gt-send-btn:hover { opacity:.88; }
+.gt-send-btn:disabled { opacity:.4; cursor:not-allowed; }
+body.light-mode .grade-modal-container { background: #f8fafc; }
+body.light-mode .grade-header { background: rgba(248,250,252,0.95); border-color: rgba(0,0,0,0.08); }
+body.light-mode .grade-header-left h2 { color: #0f172a; }
+body.light-mode .gt-course-card { background: #fff; border-color: rgba(0,0,0,0.08); }
+body.light-mode .gt-cc-name { color: #0f172a; }
+body.light-mode .gt-score-box { background: #fff; }
+body.light-mode .gt-score-title { color: #0f172a; }
+body.light-mode .gt-adj-num { color: #0f172a; }
+body.light-mode .gt-adj-btn { background: #f1f5f9; border-color: #e2e8f0; color: #0f172a; }
+body.light-mode .gt-shared-sec { background: #fff; }
+body.light-mode .gt-shared-name { color: #0f172a; }
+body.light-mode .gt-share-dd { background: #fff; }
+body.light-mode .gt-secret-row { background: #f1f5f9; }
+body.light-mode .gt-secret-label { color: #0f172a; }
+body.light-mode .gt-sum-big { color: #0f172a; }
         /* ==========================================
            === NEW STYLES FOR SLIDING PANEL ===
            ========================================== */
         
         /* The Trigger Handle (Visible below header) */
-      .gesture-trigger {
-    width: 40px;
-    height: 5px;
-    background-color: #3b82f6;
-    border-radius: 10px;
-    margin: 8px auto;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.gesture-trigger:active {
-    background-color: #2563eb;
-}
+        .gesture-trigger {
+            width: 40px;
+            height: 5px;
+            background-color: #3b82f6;
+            border-radius: 10px;
+            margin: 8px auto;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .gesture-trigger:active {
+            background-color: #2563eb;
+        }
 
         /* The Sliding Panel Container */
         .new-files-panel {
@@ -229,15 +387,14 @@
         .panel-handle {
             width: 40px;
             height: 5px;
- background-color: #485d7f;
-             border-radius: 10px;
+            background-color: #485d7f;
+            border-radius: 10px;
             margin: 12px auto;
             cursor: grab;
         }
         .panel-handle:active {
             cursor: grabbing;
-
-background-color: #2563eb; 
+            background-color: #2563eb; 
         }
 
         /* Panel Header */
@@ -392,6 +549,142 @@ background-color: #2563eb;
         }
 
         /* ==========================================
+           === NEW: TO-DO LIST STYLES ===
+           ========================================== */
+        .todo-modal-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-dark);
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease;
+        }
+        .todo-modal-container.active { display: flex; }
+        
+        .todo-header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+        }
+        .todo-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .todo-input-area {
+            padding: 15px 20px;
+            background: var(--bg-glass-heavy);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+        }
+        .todo-input {
+            flex: 1;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: #fff;
+            padding: 12px;
+            font-size: 15px;
+            outline: none;
+        }
+        .todo-input:focus { border-color: var(--accent-primary); }
+        .todo-add-btn {
+            background: var(--accent-primary);
+            color: #fff;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: var(--radius-md);
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+        }
+        .todo-add-btn:active { transform: scale(0.9); }
+
+        .todo-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .todo-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+            animation: slideUpFade 0.3s ease;
+        }
+        .todo-item:hover { background: rgba(255,255,255,0.08); }
+        
+        /* Custom Checkbox */
+        .todo-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .todo-item.completed .todo-checkbox {
+            background-color: #22c55e;
+            border-color: #22c55e;
+        }
+        .todo-checkbox svg {
+            width: 16px;
+            height: 16px;
+            color: #fff;
+            display: none;
+        }
+        .todo-item.completed .todo-checkbox svg {
+            display: block;
+        }
+
+        .todo-text {
+            flex: 1;
+            font-size: 15px;
+            color: var(--text-primary);
+            line-height: 1.4;
+            transition: color 0.2s;
+        }
+        .todo-item.completed .todo-text {
+            color: #64748b;
+            text-decoration: line-through;
+        }
+
+        .todo-delete-btn {
+            color: #64748b;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .todo-delete-btn:hover {
+            color: #ef4444;
+            background: rgba(239,68,68,0.1);
+        }
+
+        /* ==========================================
            === LIGHT MODE OVERRIDES ===
            ========================================== */
         body.light-mode {
@@ -535,6 +828,33 @@ background-color: #2563eb;
         body.light-mode .install-text h4 { color: #0f172a; }
         
         body.light-mode .toast { background: #ffffff; color: #0f172a; border: 1px solid rgba(0,0,0,0.05); }
+        
+        /* === TO-DO LIST LIGHT MODE === */
+        body.light-mode .todo-modal-container {
+            background: #f1f5f9;
+        }
+        body.light-mode .todo-header {
+            background: rgba(255,255,255,0.95);
+            border-bottom-color: rgba(0,0,0,0.05);
+        }
+        body.light-mode .todo-title { color: #0f172a; }
+        body.light-mode .todo-input-area {
+            background: #ffffff;
+            border-bottom-color: rgba(0,0,0,0.05);
+        }
+        body.light-mode .todo-input {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        body.light-mode .todo-item {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+        body.light-mode .todo-text { color: #334155; }
+        body.light-mode .todo-item.completed .todo-text { color: #94a3b8; }
+        body.light-mode .todo-checkbox { border-color: #94a3b8; }
+        body.light-mode .todo-delete-btn { color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -549,6 +869,10 @@ background-color: #2563eb;
                 <div class="menu-item install-btn" id="pwa-install-btn" onclick="window.installApp()"><span>📲</span> <span>Install App (PWA)</span></div>
                 <div class="menu-item" onclick="window.showInstallGuide()"><span>📱</span> <span>How to Install (iOS/Android)</span></div>
                 
+                <!-- === TO-DO LIST MENU ITEM === -->
+                <div class="menu-item" onclick="window.openTodoModal()"><span>✅</span> <span>To-Do List</span></div>
+                <!-- ============================= -->
+                <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
                 <!-- === DARK MODE TOGGLE MENU ITEM === -->
                 <div class="menu-item" onclick="window.toggleDarkMode()">
                     <span>🌙</span> <span>Dark Mode</span>
@@ -568,7 +892,7 @@ background-color: #2563eb;
         </header>
 
         <!-- === NEW SLIDING PANEL COMPONENT === -->
-<div class="gesture-trigger" id="slide-trigger"></div>        
+        <div class="gesture-trigger" id="slide-trigger"></div>        
         <div class="new-files-panel" id="new-files-panel">
             <div class="panel-handle" id="panel-close-handle"></div>
             <div class="panel-header">
@@ -584,6 +908,90 @@ background-color: #2563eb;
             </div>
         </div>
         <!-- ========================================= -->
+
+        <!-- === NEW TO-DO LIST MODAL COMPONENT === -->
+        <div class="todo-modal-container" id="todo-modal">
+            <div class="todo-header">
+                <div class="todo-title"><span>📝</span> My Tasks</div>
+                <div class="close-modal" onclick="window.closeTodoModal()">×</div>
+            </div>
+            
+            <div class="todo-input-area">
+                <input type="text" id="new-todo-input" class="todo-input" placeholder="Add a new task...">
+                <button class="todo-add-btn" onclick="window.addTodo()">+</button>
+            </div>
+
+            <div class="todo-list-container" id="todo-list-container">
+                <!-- Javascript will inject tasks here -->
+            </div>
+        </div>
+        <!-- ======================================= -->
+         <!-- === GRADE TRACKER MODAL === -->
+<div class="grade-modal-container" id="grade-modal">
+    <div class="grade-header">
+        <div class="grade-header-left">
+            <h2>📊 Grade Tracker</h2>
+            <div class="grade-welcome" id="gt-welcome"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div class="gt-share-wrap">
+                <button class="gt-share-btn" onclick="window.gtToggleDD()" title="Share">📤</button>
+                <div class="gt-share-dd" id="gt-share-dd">
+                    <div class="gt-share-dd-title">Share Grades</div>
+                    <div class="gt-secret-row">
+                        <div class="gt-secret-label">🔒 Anonymous</div>
+                        <button class="gt-toggle-sw" id="gt-secret-sw" onclick="window.gtToggleSecret()"></button>
+                    </div>
+                    <button class="gt-send-btn" id="gt-send-btn" onclick="window.gtSendGrades()">Share My Grades</button>
+                </div>
+            </div>
+            <div class="close-modal" onclick="window.closeGradeTracker()">×</div>
+        </div>
+    </div>
+    <div class="grade-body">
+        <div class="gt-summary">
+            <div class="gt-sum-top">
+                <div>
+                    <div class="gt-sum-label">TOTAL SCORE</div>
+                    <div class="gt-sum-big" id="gt-sum-big">0 <span>/ 750</span></div>
+                    <div class="gt-grade-pill gt-pill-rasib" id="gt-grade-pill">راسب</div>
+                </div>
+                <div>
+                    <div class="gt-sum-pct" id="gt-sum-pct">0%</div>
+                    <div class="gt-sum-pct-label">Percentage</div>
+                </div>
+            </div>
+            <div class="gt-stats">
+                <div class="gt-stat"><div class="gt-stat-val" id="gt-st-rem" style="color:#3b82f6">750</div><div class="gt-stat-label">Remaining</div></div>
+                <div class="gt-stat"><div class="gt-stat-val" id="gt-st-pass" style="color:#22c55e">0</div><div class="gt-stat-label">Passed</div></div>
+                <div class="gt-stat"><div class="gt-stat-val" id="gt-st-fail" style="color:#ef4444">0</div><div class="gt-stat-label">Failed</div></div>
+            </div>
+            <div class="gt-prog-row"><span>Pass requires 50%</span><span id="gt-prog-lbl">0%</span></div>
+            <div class="gt-prog-bar"><div class="gt-prog-fill" id="gt-prog-fill" style="width:0%;background:#ef4444"></div></div>
+        </div>
+        <div class="gt-sec-title">Subjects</div>
+        <div id="gt-courses-list"></div>
+        <div class="gt-shared-sec" id="gt-shared-sec" style="display:none;">
+            <div class="gt-shared-title">📊 Shared Student Grades</div>
+            <div id="gt-shared-list"></div>
+        </div>
+    </div>
+    <div class="gt-score-modal" id="gt-score-modal">
+        <div class="gt-score-box">
+            <div class="gt-score-title" id="gt-m-name">Subject</div>
+            <div class="gt-score-sub" id="gt-m-sub">out of 0</div>
+            <div class="gt-adjuster">
+                <button class="gt-adj-btn" onmousedown="window.gtStartHold(-1)" onmouseup="window.gtStopHold()" onmouseleave="window.gtStopHold()" ontouchstart="window.gtStartHold(-1)" ontouchend="window.gtStopHold()">−</button>
+                <div class="gt-adj-num" id="gt-adj-num">0</div>
+                <button class="gt-adj-btn" onmousedown="window.gtStartHold(1)" onmouseup="window.gtStopHold()" onmouseleave="window.gtStopHold()" ontouchstart="window.gtStartHold(1)" ontouchend="window.gtStopHold()">+</button>
+            </div>
+            <div class="gt-adj-info" id="gt-adj-info">out of 0</div>
+            <div class="gt-adj-preview gt-pill-rasib" id="gt-adj-prev">راسب · 0%</div>
+            <button class="gt-save-btn" onclick="window.gtSaveScore()">Save Score ✓</button>
+        </div>
+    </div>
+</div>
+<!-- ============================= -->
 
         <div id="chat-area"></div>
         <div class="typing-indicator" id="typing">Syncing...</div>
@@ -617,6 +1025,7 @@ background-color: #2563eb;
             <div class="nav-item" id="nav-2" onclick="window.switchAdminTab(2)"><span>📣</span> <span>Broadcast</span></div>
             <div class="nav-item" id="nav-3" onclick="window.switchAdminTab(3)"><span>📂</span> <span>Data</span></div>
             <div class="nav-item" id="nav-4" onclick="window.switchAdminTab(4)" style="display: none;"><span>📲</span> <span>App</span></div>
+            <div class="nav-item" id="nav-5" onclick="window.switchAdminTab(5)" style="display: none;"><span>📊</span> <span>Grades</span></div>
         </div>
         <div class="admin-content-wrapper">
             <div id="tab-settings" class="tab-content active">
@@ -671,6 +1080,16 @@ background-color: #2563eb;
                 <div class="data-path" id="admin-data-path" style="font-size:13px; color:#94a3b8; margin-bottom:15px; display:flex; align-items:center; gap:5px;">Home</div>
                 <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div class="form-group" style="margin-bottom:0;" id="file-link-input-group" style="display:block;"><input type="text" id="new-item-link" class="form-input" placeholder="Link (Google Drive)..."></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">Add</button></div></div>
             </div>
+            <div id="tab-grades" class="tab-content">
+    <div class="admin-section-title" style="color: #22c55e;">📊 Grade Tracker Config (Owner Only)</div>
+    <p style="font-size:13px; color:#94a3b8; margin-bottom:16px;">Set the max score for each subject. Total must equal 750.</p>
+    <div id="gt-admin-subjects-list"></div>
+    <div id="gt-admin-total-row" style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(99,102,241,.1); border-radius:10px; margin-bottom:16px; border:1px solid rgba(99,102,241,.2);">
+        <span style="font-weight:700;">Total</span>
+        <span id="gt-admin-total" style="font-weight:900; font-family:monospace; font-size:18px; color:#6366f1;">0 / 750</span>
+    </div>
+    <button class="btn-save" style="background:linear-gradient(135deg,#22c55e,#16a34a);" onclick="window.saveGradeConfig()">Save Grade Config</button>
+</div>
             <div id="tab-manifest" class="tab-content"><div class="admin-section-title" style="color: #a855f7;">App Installation Settings</div><p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how app looks when installed.</p><div class="manifest-preview" id="manifest-icon-preview"><span>📲</span></div><div class="form-group"><label class="form-label">App Name (Short)</label><input type="text" id="manifest-app-name" class="form-input" placeholder="UniBot"></div><div class="form-group"><label class="form-label">App Icon (Upload Image)</label><input type="file" id="manifest-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;"><button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button></div><button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button></div>
         </div>
     </div>
@@ -679,7 +1098,7 @@ background-color: #2563eb;
         const DEFAULT_BG_URL = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/110.jpeg"; 
         const firebaseConfig = { apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ", authDomain: "libirary-b2424.firebaseapp.com", projectId: "libirary-b2424", storageBucket: "libirary-b2424.firebasestorage.app", messagingSenderId: "371129360013", appId: "1:371129360013:web:377ef70759204018a60cc4" };
         const OWNER_EMAIL = "peacemaker3050@gmail.com";
-FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"        
+        FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"        
         // VAPID KEY FOR FCM PUSH NOTIFICATIONS
         const VAPID_KEY = "BCmmvd3JEj26OLT_bEl986rldLpJiSPjAzjBsRaVN-OO5RCj_dcLXexMobA4K9Y9-3Zrv4Tc2s1H9uakLoIEf0Y";
 
@@ -696,36 +1115,31 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
         // ==========================================
         const DARK_MODE_KEY = 'uniBot_darkMode';
         
-        // Function to apply the theme visually
         function applyTheme(isDarkMode) {
             const body = document.body;
             const toggleSwitch = document.getElementById('theme-switch');
             
             if (isDarkMode) {
                 body.classList.remove('light-mode');
-                toggleSwitch.classList.add('active'); // Switch is Green/On
+                toggleSwitch.classList.add('active'); 
             } else {
                 body.classList.add('light-mode');
-                toggleSwitch.classList.remove('active'); // Switch is Gray/Off
+                toggleSwitch.classList.remove('active'); 
             }
         }
 
-        // Toggle function attached to the menu item
         window.toggleDarkMode = function() {
-            const currentState = localStorage.getItem(DARK_MODE_KEY) !== 'false'; // Default true
+            const currentState = localStorage.getItem(DARK_MODE_KEY) !== 'false'; 
             const newState = !currentState;
             
             localStorage.setItem(DARK_MODE_KEY, newState);
             applyTheme(newState);
             
-            // Close menu for better UX
             document.getElementById('menu-dropdown').classList.remove('active');
         };
 
-        // Initialize Theme on Load
         function initTheme() {
             const savedState = localStorage.getItem(DARK_MODE_KEY);
-            // Default to Dark Mode (true) if no setting found
             const isDarkMode = savedState === null ? true : savedState === 'true';
             applyTheme(isDarkMode);
         }
@@ -738,6 +1152,126 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
         const LAST_SEEN_FILES_KEY = 'uniBot_lastSeenFiles';
         let isNewFilesPanelOpen = false;
         
+        // ==========================================
+        // === TO-DO LIST LOGIC (NEW) ===
+        // ==========================================
+        let todos = []; // State: [{id, text, completed}]
+
+        function getTodoStorageKey() {
+            // If user is logged in, use email. Otherwise use 'guest'.
+            const user = auth ? auth.currentUser : null;
+            return user ? `todo_list_${user.email}` : 'todo_list_guest';
+        }
+
+        window.openTodoModal = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            document.getElementById('todo-modal').classList.add('active');
+            loadTodos();
+            renderTodos();
+        };
+
+        window.closeTodoModal = function() {
+            document.getElementById('todo-modal').classList.remove('active');
+        };
+
+        function loadTodos() {
+            const key = getTodoStorageKey();
+            const data = localStorage.getItem(key);
+            todos = data ? JSON.parse(data) : [];
+        }
+
+        function saveTodos() {
+            const key = getTodoStorageKey();
+            localStorage.setItem(key, JSON.stringify(todos));
+        }
+
+        window.addTodo = function() {
+            const input = document.getElementById('new-todo-input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+
+            todos.unshift({
+                id: Date.now(),
+                text: text,
+                completed: false
+            });
+
+            input.value = '';
+            saveTodos();
+            renderTodos();
+        };
+
+        window.toggleTodo = function(id) {
+            const index = todos.findIndex(t => t.id === id);
+            if (index !== -1) {
+                todos[index].completed = !todos[index].completed;
+                saveTodos();
+                renderTodos();
+            }
+        };
+
+        window.deleteTodo = function(id) {
+            todos = todos.filter(t => t.id !== id);
+            saveTodos();
+            renderTodos();
+        };
+
+        function renderTodos() {
+            const container = document.getElementById('todo-list-container');
+            container.innerHTML = '';
+
+            if (todos.length === 0) {
+                container.innerHTML = '<div class="empty-state">No tasks yet. Add one above! 📝</div>';
+                return;
+            }
+
+            todos.forEach(todo => {
+                const div = document.createElement('div');
+                div.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+                
+                // Checkbox
+                const checkbox = document.createElement('div');
+                checkbox.className = 'todo-checkbox';
+                checkbox.onclick = () => window.toggleTodo(todo.id);
+                // Checkmark SVG
+                checkbox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+                // Text
+                const span = document.createElement('span');
+                span.className = 'todo-text';
+                span.innerText = todo.text;
+                span.onclick = () => window.toggleTodo(todo.id); // Allow clicking text to toggle too
+
+                // Delete Button
+                const delBtn = document.createElement('div');
+                delBtn.className = 'todo-delete-btn';
+                delBtn.innerHTML = '🗑️';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent toggling when clicking delete
+                    window.deleteTodo(todo.id);
+                };
+
+                div.appendChild(checkbox);
+                div.appendChild(span);
+                div.appendChild(delBtn);
+                container.appendChild(div);
+            });
+        }
+
+        // Add enter key support for input
+        document.addEventListener('DOMContentLoaded', () => {
+            const todoInput = document.getElementById('new-todo-input');
+            if(todoInput) {
+                todoInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        window.addTodo();
+                    }
+                });
+            }
+        });
+        // ==========================================
+
         // ==========================================
         // === PWA INSTALL LOGIC ===
         // ==========================================
@@ -866,7 +1400,6 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
         const isNotif = item.type === 'notif' || (item.link && item.link.startsWith('content:'));
         const icon = isNotif ? '🔔' : '📄';
         keyboardBtn = createButton(`${icon} ${item.name}`, () => handleFileClick(item));
-        // Add ripple effect to keyboard buttons too for consistency?
         keyboardArea.appendChild(keyboardBtn);
         } }); } } }
         function getBotCurrentContent() { if (botNavStack.length < 2) return null; const subject = botNavStack[0]; const doctor = botNavStack[1]; let currentList = database[subject][doctor].root || []; for (let i = 2; i < botNavStack.length; i++) { const folderName = botNavStack[i]; const folder = currentList.find(f => f.name === folderName && f.type === 'folder'); if (folder && folder.children) currentList = folder.children; else return []; } return currentList; }
@@ -900,9 +1433,6 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
         window.adminNavTo = function(index) { if (index === -1) adminNavStack = []; else adminNavStack = adminNavStack.slice(0, index + 1); renderAdminDataView(); }
         window.setAddType = function(type, el) { adminAddType = type; document.querySelectorAll('.radio-label').forEach(l => l.classList.remove('active')); el.classList.add('active'); document.getElementById('file-link-input-group').style.display = type === 'file' ? 'block' : 'none'; }
         
-        // ==========================================
-        // === MODIFIED: addAdminDataItem to include TS ===
-        // ==========================================
         window.addAdminDataItem = function() { 
             const nameInput = document.getElementById('new-item-name'); 
             const linkInput = document.getElementById('new-item-link'); 
@@ -912,7 +1442,7 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
             const newItem = { 
                 id: Date.now().toString(36), 
                 name: name, 
-                ts: Date.now(), // IMPORTANT: Timestamp for New Files logic
+                ts: Date.now(), 
                 type: adminAddType 
             };
 
@@ -941,8 +1471,6 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
             nameInput.value = ''; 
             linkInput.value = ''; 
             initSearchEngine();
-            
-            // Trigger new files check if added recently
             checkNewFilesAndNotify(); 
             sendFCMToAllUsers('🆕 ملف جديد', newItem.name);
         }
@@ -952,7 +1480,6 @@ FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
         function saveToLocalStorage(data) { try { localStorage.setItem('uniBot_db', JSON.stringify(data)); } catch (e) {} }
         function loadFromLocalStorage() { try { const data = localStorage.getItem('uniBot_db'); if (data) return JSON.parse(data); } catch (e) {} return null; }
         async function fetchConfig() { try { const response = await fetch(`${FIREBASE_DB_URL}/.json`); if (!response.ok) throw new Error("Failed to fetch"); const raw = await response.json();
-// Unwrap nested data strings (handles multiple save layers)
 let cloudData = raw;
 while (cloudData && typeof cloudData.data === 'string') {
     try { cloudData = JSON.parse(cloudData.data); } catch(e) { break; }
@@ -970,7 +1497,7 @@ else CONFIG.database = defaultDatabase; saveToLocalStorage(CONFIG); applyConfig(
         dot.classList.remove('offline'); text.innerText = "Online";
         }).catch(() => {
         dot.classList.add('offline'); text.innerText = "Offline";
-        }); const avatarEl = document.getElementById('header-avatar'); if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; } const chatArea = document.getElementById('chat-area'); if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`; // بعد
+        }); const avatarEl = document.getElementById('header-avatar'); if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; } const chatArea = document.getElementById('chat-area'); if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`; 
 else if (DEFAULT_BG_URL) {
     const cachedBg = localStorage.getItem('uniBot_cachedBg');
     if (cachedBg) {
@@ -1018,9 +1545,10 @@ else if (DEFAULT_BG_URL) {
         window.testNotification = function() { document.getElementById('menu-dropdown').classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; } Notification.requestPermission().then(permission => { if (permission === 'granted') { if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }); showToast("Test notification sent...", "success"); } else { new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: CONFIG.appIcon }); showToast("Test notification sent...", "success"); } } else { showToast("Permission denied.", "error"); } }); };
         function hexToRgb(hex) { var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
         function darkenColor(hex, percent) { const rgb = hexToRgb(hex); if (!rgb) return hex; const amt = Math.round(2.55 * percent); const R = (rgb.r - amt) < 0 ? 0 : rgb.r - amt; const G = (rgb.g - amt) < 0 ? 0 : rgb.g - amt; const B = (rgb.b - amt) < 0 ? 0 : rgb.b - amt; return "#" + (0x1000000 + (R << 16) + (G << 8) + B).toString(16).slice(1); }
-        window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none'; if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
+        window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = isOwner ? 'flex' : 'none';
+if (isOwner) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
-        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 4) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
+        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 5) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
         window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
         function renderAdminList() { const container = document.getElementById('admin-list-container'); container.innerHTML = ''; if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; } CONFIG.admins.forEach((adminEmail, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); container.appendChild(div); }); }
         window.addAdmin = function() { const email = document.getElementById('admin-add-input').value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); document.getElementById('admin-add-input').value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
@@ -1122,12 +1650,10 @@ function updateDynamicManifest(name, iconData) {
    const iconUrl = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/icon-512.png";
 manifest.icons.push({ "src": iconUrl, "sizes": "512x512", "type": "image/png" });
     const stringManifest = JSON.stringify(manifest);
-    // data URL بدل blob URL — أكثر توافقاً مع التثبيت
     const dataUrl = 'data:application/manifest+json,' + encodeURIComponent(stringManifest);
     const link = document.querySelector('#dynamic-manifest');
     link.setAttribute('href', dataUrl);
 
-    // Apple touch icon
     let appleLink = document.querySelector('link[rel="apple-touch-icon"]');
     if (!appleLink) {
         appleLink = document.createElement('link');
@@ -1138,7 +1664,6 @@ appleLink.href = iconUrl;}        window.addEventListener('online', () => { upda
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
         window.onload = () => { 
             
-            // Initialize Dark Mode First
             initTheme();
 
             const currentUrl = window.location.href;
@@ -1160,7 +1685,6 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
         
         initFirebaseAuth(); 
         
-        // Initialize New Files Logic
         initNewFilesPanel();
         initNewFilesToggle();
 
@@ -1171,10 +1695,6 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
         renderKeyboard(); 
         startSync(); 
     };
-
-        // ==========================================
-        // === SLIDING PANEL & NEW FILES LOGIC ===
-        // ==========================================
 
         function initNewFilesPanel() {
     const trigger = document.getElementById('slide-trigger');
@@ -1237,13 +1757,12 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
         Object.values(data.userTokens).forEach(list => tokens.push(...list));
         if (!tokens.length) return;
 
-        // بنبعت لكل token عن طريق FCM REST API
         for (const token of tokens) {
             fetch('https://fcm.googleapis.com/fcm/send', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'key=YOUR_SERVER_KEY'  // ← ضيف هنا Server Key من Firebase Console
+                    'Authorization': 'key=YOUR_SERVER_KEY'
                 },
                 body: JSON.stringify({
                     to: token,
@@ -1275,13 +1794,11 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             const div = document.createElement('div');
             div.className = 'new-file-card';
             
-            // Color Logic
             const hoursOld = (Date.now() - file.ts) / (1000 * 60 * 60);
             let colorClass = 'dot-gray';
             if (hoursOld < 8) colorClass = 'dot-green';
             else if (hoursOld < 16) colorClass = 'dot-yellow';
 
-            // File Icon Logic
             let icon = '📄';
             if (file.name.toLowerCase().includes('pdf')) icon = '📕';
             if (file.name.toLowerCase().includes('ppt')) icon = '📊';
@@ -1301,14 +1818,11 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 <div class="status-dot ${colorClass}"></div>
             `;
 
-            // Ripple Effect
             div.addEventListener('click', function(e) {
-                // If it's a file, open it
                 if(file.link && file.link !== '#') {
                      window.open(file.link, '_blank');
                 }
                 
-                // Visual Ripple
                 const rect = this.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
@@ -1328,7 +1842,6 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             const now = Date.now();
             const oneDayMs = 24 * 60 * 60 * 1000;
 
-            // Helper to traverse recursively
             function scan(items, path) {
                 if(!items) return;
                 items.forEach(item => {
@@ -1343,7 +1856,6 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 });
             }
 
-            // Scan whole database
             Object.keys(database).forEach(subj => {
                 const subjData = database[subj];
                 if(subjData.doctors) {
@@ -1356,7 +1868,6 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 }
             });
 
-            // Sort by newest first
             return results.sort((a, b) => b.ts - a.ts);
         }
 
@@ -1379,20 +1890,267 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             const lastSeen = localStorage.getItem(LAST_SEEN_FILES_KEY) || '0';
             const lastSeenNum = parseInt(lastSeen);
             
-            // Check if there is a file newer than our last check
-            const newestFile = recentFiles[0]; // Already sorted desc
+            const newestFile = recentFiles[0]; 
             if (newestFile.ts > lastSeenNum) {
-
-            // Push notification via Service Worker
-           
-                // Update last seen so we don't notify again for this file
                 localStorage.setItem(LAST_SEEN_FILES_KEY, newestFile.ts.toString());
-                
-                // If panel is closed, maybe show a small indicator on the trigger?
-                // (Optional visual enhancement)
             }
         }
+// ==========================================
+        // === GRADE TRACKER LOGIC ===
+        // ==========================================
+        const GT_KEY        = 'gt_scores';
+        const GT_SECRET_KEY = 'gt_secret';
+        let gtCurId     = null;
+        let gtTempScore = 0;
+        let gtHoldT = null, gtHoldI = null;
+        let gtSecretMode = localStorage.getItem(GT_SECRET_KEY) !== 'false';
 
+        function gtGrade(score, max) {
+            if (!max) return { label:'—', cc:'gt-cc-empty', pill:'gt-pill-rasib', color:'#64748b' };
+            const p = (score / max) * 100;
+            if (p >= 85) return { label:'امتياز',   cc:'gt-cc-mumtaz',        pill:'gt-pill-mumtaz',        color:'#22c55e' };
+            if (p >= 75) return { label:'جيد جداً', cc:'gt-cc-jayyid-jiddan', pill:'gt-pill-jayyid-jiddan', color:'#3b82f6' };
+            if (p >= 65) return { label:'جيد',      cc:'gt-cc-jayyid',        pill:'gt-pill-jayyid',        color:'#eab308' };
+            if (p >= 50) return { label:'مقبول',    cc:'gt-cc-maqbul',        pill:'gt-pill-maqbul',        color:'#f97316' };
+            return             { label:'راسب',      cc:'gt-cc-rasib',         pill:'gt-pill-rasib',         color:'#ef4444' };
+        }
+
+        function gtGetCourses() {
+            const gradeConfig = CONFIG.gradeConfig || {};
+            return Object.keys(database || {}).map((name, i) => ({
+                id: i + 1, name: name, max: gradeConfig[name] || 0
+            }));
+        }
+
+        function gtLoadScores() {
+            try { return JSON.parse(localStorage.getItem(GT_KEY) || '{}'); } catch(e) { return {}; }
+        }
+        function gtSaveScores(scores) { localStorage.setItem(GT_KEY, JSON.stringify(scores)); }
+
+        function gtGetWelcome() {
+            const user = auth ? auth.currentUser : null;
+            if (!user) return '';
+            const displayName = user.displayName || user.email.split('@')[0];
+            const isArabic = /[\u0600-\u06FF]/.test(displayName);
+            return isArabic ? `مرحباً ${displayName} 👋` : `Hello ${displayName} 👋`;
+        }
+
+        function gtRender() {
+            const courses  = gtGetCourses();
+            const scores   = gtLoadScores();
+            const TOTAL_MAX = 750;
+            const total  = courses.reduce((s, c) => s + (scores[c.id] || 0), 0);
+            const pct    = TOTAL_MAX > 0 ? ((total / TOTAL_MAX) * 100).toFixed(1) : 0;
+            const g      = gtGrade(total, TOTAL_MAX);
+            const passed = courses.filter(c => (scores[c.id]||0) > 0 && c.max > 0 && ((scores[c.id]||0)/c.max)*100 >= 50).length;
+            const failed = courses.filter(c => (scores[c.id]||0) > 0 && c.max > 0 && ((scores[c.id]||0)/c.max)*100 <  50).length;
+            const prog   = Math.min(100, (total / (TOTAL_MAX * 0.5)) * 100);
+
+            document.getElementById('gt-sum-big').innerHTML = `${total} <span>/ ${TOTAL_MAX}</span>`;
+            document.getElementById('gt-sum-pct').textContent  = pct + '%';
+            document.getElementById('gt-sum-pct').style.color  = g.color;
+            const pill = document.getElementById('gt-grade-pill');
+            pill.textContent = g.label; pill.className = 'gt-grade-pill ' + g.pill;
+            document.getElementById('gt-st-rem').textContent  = TOTAL_MAX - total;
+            document.getElementById('gt-st-pass').textContent = passed;
+            document.getElementById('gt-st-fail').textContent = failed;
+            const pf = document.getElementById('gt-prog-fill');
+            pf.style.width      = prog + '%';
+            pf.style.background = prog >= 100 ? '#22c55e' : prog >= 70 ? '#eab308' : '#ef4444';
+            document.getElementById('gt-prog-lbl').textContent = Math.round(prog) + '%';
+
+            document.getElementById('gt-courses-list').innerHTML = courses.map((c, i) => {
+                const sc = scores[c.id] || 0;
+                const cg = gtGrade(sc, c.max);
+                const cp = c.max ? ((sc / c.max) * 100).toFixed(1) : 0;
+                return `<div class="gt-course-card ${cg.cc}" onclick="window.gtOpenModal(${c.id})" style="animation-delay:${i*.04+.04}s">
+                    <div class="gt-cc-row">
+                        <div><div class="gt-cc-name">${c.name}</div><div class="gt-cc-max">out of ${c.max || '—'}</div></div>
+                        <div><div class="gt-cc-score" style="color:${cg.color}">${sc}</div><div class="gt-cc-pct">${c.max ? cp+'%' : '—'}</div></div>
+                    </div>
+                    <div class="gt-cc-bar"><div class="gt-cc-bar-fill" style="width:${cp}%;background:${cg.color}"></div></div>
+                </div>`;
+            }).join('');
+        }
+
+        window.openGradeTracker = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            document.getElementById('grade-modal').classList.add('active');
+            document.getElementById('gt-welcome').textContent = gtGetWelcome();
+            gtRender();
+            gtLoadShared();
+            gtSyncSecretUI();
+        };
+        window.closeGradeTracker = function() {
+            document.getElementById('grade-modal').classList.remove('active');
+        };
+
+        window.gtOpenModal = function(id) {
+            const courses = gtGetCourses();
+            const scores  = gtLoadScores();
+            const c = courses.find(x => x.id === id);
+            if (!c) return;
+            gtCurId = id; gtTempScore = scores[id] || 0;
+            document.getElementById('gt-m-name').textContent    = c.name;
+            document.getElementById('gt-m-sub').textContent     = 'Tap + or − to change score';
+            document.getElementById('gt-adj-info').textContent  = `out of ${c.max || '—'}`;
+            gtUpdateAdj();
+            document.getElementById('gt-score-modal').classList.add('open');
+        };
+
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('gt-score-modal');
+            if (modal && e.target === modal) { modal.classList.remove('open'); window.gtStopHold(); }
+            if (!e.target.closest('.gt-share-wrap')) {
+                const dd = document.getElementById('gt-share-dd');
+                if (dd) dd.classList.remove('open');
+            }
+        });
+
+        function gtUpdateAdj() {
+            const c  = gtGetCourses().find(x => x.id === gtCurId);
+            if (!c) return;
+            const cg = gtGrade(gtTempScore, c.max);
+            const p  = c.max ? ((gtTempScore / c.max) * 100).toFixed(1) : 0;
+            document.getElementById('gt-adj-num').textContent = gtTempScore;
+            document.getElementById('gt-adj-num').style.color = cg.color;
+            const prev = document.getElementById('gt-adj-prev');
+            prev.textContent = `${cg.label} · ${p}%`;
+            prev.className   = 'gt-adj-preview ' + cg.pill;
+        }
+
+        function gtChangeScore(d) {
+            const c = gtGetCourses().find(x => x.id === gtCurId);
+            if (!c) return;
+            gtTempScore = Math.max(0, Math.min(c.max || 999, gtTempScore + d));
+            gtUpdateAdj();
+        }
+
+        window.gtStartHold = function(d) {
+            gtChangeScore(d);
+            let delay = 320;
+            gtHoldT = setTimeout(function tick() {
+                gtChangeScore(d);
+                delay = Math.max(50, delay - 18);
+                gtHoldI = setTimeout(tick, delay);
+            }, 500);
+        };
+        window.gtStopHold = function() { clearTimeout(gtHoldT); clearTimeout(gtHoldI); };
+
+        window.gtSaveScore = function() {
+            const scores = gtLoadScores();
+            scores[gtCurId] = gtTempScore;
+            gtSaveScores(scores);
+            document.getElementById('gt-score-modal').classList.remove('open');
+            gtRender();
+            showToast('✅ Score saved!', 'success');
+        };
+
+        window.gtToggleDD = function() { document.getElementById('gt-share-dd').classList.toggle('open'); };
+        window.gtToggleSecret = function() {
+            gtSecretMode = !gtSecretMode;
+            localStorage.setItem(GT_SECRET_KEY, gtSecretMode);
+            gtSyncSecretUI();
+        };
+        function gtSyncSecretUI() {
+            const sw = document.getElementById('gt-secret-sw');
+            if (sw) sw.classList.toggle('off', !gtSecretMode);
+        }
+
+        window.gtSendGrades = async function() {
+            const user  = auth ? auth.currentUser : null;
+            const name  = user ? (user.displayName || user.email.split('@')[0]) : 'Student';
+            const courses = gtGetCourses();
+            const scores  = gtLoadScores();
+            const total = courses.reduce((s, c) => s + (scores[c.id] || 0), 0);
+            const pct   = ((total / 750) * 100).toFixed(1);
+            const g     = gtGrade(total, 750);
+            const btn   = document.getElementById('gt-send-btn');
+            btn.textContent = '⏳ Sending...'; btn.disabled = true;
+            const entry = {
+                secret: gtSecretMode,
+                name:   gtSecretMode ? '🔒 Anonymous' : name,
+                email:  gtSecretMode ? '' : (user ? user.email : ''),
+                total, pct, gradeLabel: g.label, color: g.color,
+                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                ts: Date.now()
+            };
+            try {
+                const resp = await fetch(`${FIREBASE_DB_URL}/sharedGrades.json`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(entry)
+                });
+                if (!resp.ok) throw new Error('Failed');
+                showToast(gtSecretMode ? '🔒 Shared anonymously' : '✅ Grades shared!', 'success');
+                document.getElementById('gt-share-dd').classList.remove('open');
+                gtLoadShared();
+            } catch(e) { showToast('❌ Share failed', 'error'); }
+            btn.textContent = 'Share My Grades'; btn.disabled = false;
+        };
+
+        async function gtLoadShared() {
+            const user = auth ? auth.currentUser : null;
+            if (!user || user.email !== OWNER_EMAIL) return;
+            document.getElementById('gt-shared-sec').style.display = 'block';
+            try {
+                const resp = await fetch(`${FIREBASE_DB_URL}/sharedGrades.json`);
+                const data = await resp.json();
+                if (!data) { document.getElementById('gt-shared-list').innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:12px;">No shared grades yet</div>'; return; }
+                const list = Object.values(data).sort((a, b) => b.ts - a.ts).slice(0, 50);
+                document.getElementById('gt-shared-list').innerHTML = list.map(e => `
+                    <div class="gt-shared-item">
+                        <div><div class="gt-shared-name">${e.name}</div><div class="gt-shared-time">${e.time}</div></div>
+                        <div><div class="gt-shared-score" style="color:${e.color}">${e.total}</div><div class="gt-shared-grade">${e.pct}% · ${e.gradeLabel}</div></div>
+                    </div>`).join('');
+            } catch(e) {}
+        }
+
+        function gtRenderAdminConfig() {
+            const gradeConfig = CONFIG.gradeConfig || {};
+            const subjects    = Object.keys(database || {});
+            const container   = document.getElementById('gt-admin-subjects-list');
+            if (!container) return;
+            container.innerHTML = subjects.map(name => `
+                <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                    <label class="form-label" style="flex:1; margin:0;">${name}</label>
+                    <input type="number" min="0" max="750"
+                        id="gt-cfg-${name.replace(/\s/g,'_')}"
+                        class="form-input" style="width:90px; text-align:center;"
+                        value="${gradeConfig[name] || 0}"
+                        oninput="window.gtUpdateAdminTotal()">
+                </div>`).join('');
+            window.gtUpdateAdminTotal();
+        }
+
+        window.gtUpdateAdminTotal = function() {
+            const subjects = Object.keys(database || {});
+            let total = 0;
+            subjects.forEach(name => {
+                const el = document.getElementById('gt-cfg-' + name.replace(/\s/g, '_'));
+                if (el) total += parseInt(el.value) || 0;
+            });
+            const el = document.getElementById('gt-admin-total');
+            if (el) { el.textContent = total + ' / 750'; el.style.color = total === 750 ? '#22c55e' : total > 750 ? '#ef4444' : '#eab308'; }
+        };
+
+        window.saveGradeConfig = function() {
+            const subjects = Object.keys(database || {});
+            let total = 0;
+            const gradeConfig = {};
+            subjects.forEach(name => {
+                const el  = document.getElementById('gt-cfg-' + name.replace(/\s/g, '_'));
+                const val = parseInt(el ? el.value : 0) || 0;
+                gradeConfig[name] = val; total += val;
+            });
+            if (total !== 750) return showToast('❌ Total must equal 750 (currently ' + total + ')', 'error');
+            CONFIG.gradeConfig = gradeConfig;
+            fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PUT', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ data: JSON.stringify(CONFIG) })
+            }).then(res => {
+                if (!res.ok) throw new Error('Save failed');
+                showToast('✅ Grade config saved!', 'success');
+            }).catch(err => showToast('❌ Error: ' + err.message, 'error'));
+        };
     </script>
 </body>
 </html>
