@@ -186,6 +186,36 @@
         .radio-label { flex:1; padding: 8px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; border: 1px solid transparent; font-size: 13px; color: #94a3b8; }
         .radio-label.active { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #fff; }
         input[type="radio"] { display: none; }
+        /* Poll Modal */
+.poll-option-item {
+    position:relative; margin-bottom:10px; border-radius:14px; overflow:hidden;
+    border:1.5px solid rgba(255,255,255,0.07); cursor:pointer;
+    transition:border-color .2s, transform .15s; background:rgba(0,0,0,.2);
+}
+.poll-option-item:hover { border-color:rgba(255,255,255,.2); transform:translateY(-1px); }
+.poll-option-item.pol-selected { border-color:#6366f1; }
+.poll-option-item.pol-winner   { border-color:#22c55e; }
+.pol-fill { position:absolute;inset:0;height:100%;pointer-events:none;transition:width 1s cubic-bezier(.34,1.56,.64,1); }
+.pol-selected .pol-fill { background:rgba(99,102,241,.12); }
+.pol-winner   .pol-fill { background:rgba(34,197,94,.1); }
+.pol-none     .pol-fill { background:rgba(255,255,255,.04); }
+.pol-content  { position:relative;z-index:1;display:flex;align-items:center;gap:12px;padding:14px 16px; }
+.pol-radio    { width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;transition:all .2s; }
+.pol-selected .pol-radio { border-color:#6366f1;background:#6366f1; }
+.pol-winner   .pol-radio { border-color:#22c55e;background:#22c55e; }
+.pol-check    { display:none;color:#fff;font-size:12px;font-weight:900; }
+.pol-selected .pol-check, .pol-winner .pol-check { display:block; }
+.pol-label    { flex:1;font-size:15px;font-weight:700; }
+.pol-pct      { font-size:15px;font-weight:900;font-family:monospace;text-align:left; }
+.pol-selected .pol-pct { color:#6366f1; }
+.pol-winner   .pol-pct { color:#22c55e; }
+.pol-count    { font-size:10px;color:#64748b;font-family:monospace;text-align:left;margin-top:2px; }
+.pol-footer   { text-align:center;padding:12px;border-top:1px solid rgba(255,255,255,.07);font-size:12px;color:#64748b;font-weight:600; }
+.pol-result-banner { background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(16,163,74,.07));border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px; }
+.pol-timer { display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;color:#64748b;font-family:monospace; }
+.pol-timer span { color:#eab308;font-weight:700; }
+body.light-mode .poll-option-item { background:#f8fafc; }
+body.light-mode .pol-label { color:#0f172a; }
         /* ==========================================
    === GRADE TRACKER STYLES ===
    ========================================== */
@@ -873,6 +903,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <div class="menu-item" onclick="window.openTodoModal()"><span>✅</span> <span>To-Do List</span></div>
                 <!-- ============================= -->
                 <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
+                <div class="menu-item" onclick="window.openPollModal()"><span>🗳️</span> <span>الفوت</span></div>
                 <!-- === DARK MODE TOGGLE MENU ITEM === -->
                 <div class="menu-item" onclick="window.toggleDarkMode()">
                     <span>🌙</span> <span>Dark Mode</span>
@@ -926,6 +957,18 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             </div>
         </div>
         <!-- ======================================= -->
+         <!-- === POLL MODAL === -->
+<div class="grade-modal-container" id="poll-modal">
+    <div class="grade-header">
+        <div class="grade-header-left">
+            <h2>🗳️ الفوت</h2>
+            <div class="grade-welcome" id="poll-modal-sub"></div>
+        </div>
+        <div class="close-modal" onclick="window.closePollModal()">×</div>
+    </div>
+    <div class="grade-body" id="poll-modal-body"></div>
+</div>
+<!-- ==================== -->
          <!-- === GRADE TRACKER MODAL === -->
 <div class="grade-modal-container" id="grade-modal">
     <div class="grade-header">
@@ -1026,6 +1069,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             <div class="nav-item" id="nav-3" onclick="window.switchAdminTab(3)"><span>📂</span> <span>Data</span></div>
             <div class="nav-item" id="nav-4" onclick="window.switchAdminTab(4)" style="display: none;"><span>📲</span> <span>App</span></div>
             <div class="nav-item" id="nav-5" onclick="window.switchAdminTab(5)" style="display: none;"><span>📊</span> <span>Grades</span></div>
+            <div class="nav-item" id="nav-6" onclick="window.switchAdminTab(6)"><span>🗳️</span> <span>فوت</span></div>
         </div>
         <div class="admin-content-wrapper">
             <div id="tab-settings" class="tab-content active">
@@ -1080,6 +1124,56 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <div class="data-path" id="admin-data-path" style="font-size:13px; color:#94a3b8; margin-bottom:15px; display:flex; align-items:center; gap:5px;">Home</div>
                 <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div class="form-group" style="margin-bottom:0;" id="file-link-input-group" style="display:block;"><input type="text" id="new-item-link" class="form-input" placeholder="Link (Google Drive)..."></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">Add</button></div></div>
             </div>
+            <div id="tab-poll" class="tab-content">
+
+    <!-- Active Poll Indicator -->
+    <div id="poll-active-bar" style="display:none; align-items:center; justify-content:space-between; background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.2); border-radius:12px; padding:12px 16px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 1.5s infinite;"></div>
+            <div>
+                <div style="font-size:13px;font-weight:700;color:#22c55e;">فوت نشط الآن</div>
+                <div id="poll-active-sub" style="font-size:11px;color:#64748b;font-family:monospace;">ينتهي بعد —</div>
+            </div>
+        </div>
+        <button onclick="window.endPollNow()" style="padding:7px 14px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">إنهاء الفوت</button>
+    </div>
+
+    <div class="admin-section-title" style="color:#6366f1;">🗳️ إنشاء فوت جديد</div>
+
+    <div class="form-group">
+        <label class="form-label">سؤال الفوت</label>
+        <textarea id="poll-question" class="form-textarea" placeholder="مثال: هناخد المحاضرة أونلاين ولا في الكلية؟"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">الاختيارات</label>
+        <div id="poll-options-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+            <div class="poll-opt-row" style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:8px 12px;">
+                <input type="text" value="أونلاين 💻" class="form-input" style="flex:1;background:transparent;border:none;padding:0;">
+                <button onclick="window.delPollOption(this)" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;cursor:pointer;font-size:14px;">✕</button>
+            </div>
+            <div class="poll-opt-row" style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:8px 12px;">
+                <input type="text" value="في الكلية 🏫" class="form-input" style="flex:1;background:transparent;border:none;padding:0;">
+                <button onclick="window.delPollOption(this)" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;cursor:pointer;font-size:14px;">✕</button>
+            </div>
+        </div>
+        <button onclick="window.addPollOption()" style="width:100%;padding:10px;border-radius:10px;border:1px dashed rgba(99,102,241,.4);background:rgba(99,102,241,.06);color:#6366f1;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;">+ إضافة اختيار</button>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">مدة انتهاء الفوت</label>
+        <div style="display:flex;gap:8px;">
+            <input type="number" id="poll-dur-val" class="form-input" value="10" min="1" style="flex:1;">
+            <select id="poll-dur-unit" class="form-input" style="flex:0 0 110px;">
+                <option value="60">دقيقة</option>
+                <option value="3600">ساعة</option>
+                <option value="86400">يوم</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="btn-save" style="background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 4px 15px rgba(99,102,241,.3);" onclick="window.sendPoll()">📢 إرسال الفوت للطلاب</button>
+</div>
             <div id="tab-grades" class="tab-content">
     <div class="admin-section-title" style="color: #22c55e;">📊 Grade Tracker Config (Owner Only)</div>
     <p style="font-size:13px; color:#94a3b8; margin-bottom:16px;">Set the max score for each subject. Total must equal 750.</p>
@@ -1548,7 +1642,7 @@ else if (DEFAULT_BG_URL) {
         window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = isOwner ? 'flex' : 'none';
 if (isOwner) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
-        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 5) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
+        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 6) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
         window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
         function renderAdminList() { const container = document.getElementById('admin-list-container'); container.innerHTML = ''; if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; } CONFIG.admins.forEach((adminEmail, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); container.appendChild(div); }); }
         window.addAdmin = function() { const email = document.getElementById('admin-add-input').value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); document.getElementById('admin-add-input').value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
@@ -2151,6 +2245,208 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 showToast('✅ Grade config saved!', 'success');
             }).catch(err => showToast('❌ Error: ' + err.message, 'error'));
         };
+        // ==========================================
+        // === POLL LOGIC ===
+        // ==========================================
+        let activePoll      = null;
+        let pollTimerInterval = null;
+
+        function pollFmtTime(secs) {
+            if (secs >= 3600) return `${Math.floor(secs/3600)}س ${Math.floor((secs%3600)/60)}د`;
+            if (secs >= 60)   return `${Math.floor(secs/60)}د ${secs%60}ث`;
+            return `${secs}ث`;
+        }
+
+        function pollGrade(score, max) { return max ? Math.round(score/max*100) : 0; }
+
+        window.addPollOption = function() {
+            const list = document.getElementById('poll-options-list');
+            const n    = list.children.length + 1;
+            const div  = document.createElement('div');
+            div.className = 'poll-opt-row';
+            div.style.cssText = 'display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:8px 12px;';
+            div.innerHTML = `<input type="text" placeholder="اختيار ${n}" class="form-input" style="flex:1;background:transparent;border:none;padding:0;"><button onclick="window.delPollOption(this)" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;cursor:pointer;font-size:14px;">✕</button>`;
+            list.appendChild(div);
+        };
+
+        window.delPollOption = function(btn) {
+            const list = document.getElementById('poll-options-list');
+            if (list.children.length <= 2) return showToast('لازم يكون في اختيارين على الأقل', 'error');
+            btn.closest('.poll-opt-row').remove();
+        };
+
+        window.sendPoll = function() {
+            const question = document.getElementById('poll-question').value.trim();
+            if (!question) return showToast('اكتب سؤال الفوت أول', 'error');
+            const inputs  = [...document.querySelectorAll('#poll-options-list input')];
+            const options = inputs.map(i => i.value.trim()).filter(Boolean);
+            if (options.length < 2) return showToast('ضيف اختيارين على الأقل', 'error');
+            const dur  = parseInt(document.getElementById('poll-dur-val').value) || 10;
+            const unit = parseInt(document.getElementById('poll-dur-unit').value);
+            activePoll = {
+                question,
+                options: options.map(text => ({ text, votes: 0 })),
+                endsAt:  Date.now() + dur * unit * 1000,
+                ended:   false,
+                myVote:  null
+            };
+            CONFIG.activePoll = activePoll;
+            fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PUT', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ data: JSON.stringify(CONFIG) })
+            }).then(res => {
+                if (!res.ok) throw new Error('failed');
+                showToast('✅ تم إرسال الفوت — وصل إشعار للطلاب 🔔', 'success');
+                pollUpdateActiveBar();
+                pollStartTimer();
+            }).catch(() => showToast('❌ فشل الإرسال', 'error'));
+        };
+
+        window.endPollNow = function() {
+            if (!activePoll) return;
+            activePoll.ended = true;
+            CONFIG.activePoll = activePoll;
+            fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PUT', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ data: JSON.stringify(CONFIG) })
+            }).then(() => {
+                clearInterval(pollTimerInterval);
+                pollUpdateActiveBar();
+                showToast('🏁 تم إنهاء الفوت — النتيجة ظهرت للطلاب', 'success');
+            });
+        };
+
+        function pollUpdateActiveBar() {
+            const bar = document.getElementById('poll-active-bar');
+            if (!bar) return;
+            if (!activePoll || activePoll.ended) { bar.style.display = 'none'; return; }
+            bar.style.display = 'flex';
+            const rem = Math.max(0, Math.round((activePoll.endsAt - Date.now()) / 1000));
+            document.getElementById('poll-active-sub').textContent = `ينتهي بعد ${pollFmtTime(rem)}`;
+        }
+
+        function pollStartTimer() {
+            clearInterval(pollTimerInterval);
+            pollTimerInterval = setInterval(() => {
+                if (!activePoll || activePoll.ended) return;
+                const rem = activePoll.endsAt - Date.now();
+                pollUpdateActiveBar();
+                const el = document.getElementById('poll-st-timer');
+                if (el) el.textContent = pollFmtTime(Math.max(0, Math.round(rem/1000)));
+                if (rem <= 0) {
+                    activePoll.ended = true;
+                    clearInterval(pollTimerInterval);
+                    pollUpdateActiveBar();
+                    showToast('⏰ انتهى وقت الفوت — النتيجة ظهرت للطلاب', 'success');
+                    renderPollModal();
+                }
+            }, 1000);
+        }
+
+        window.openPollModal = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            activePoll = CONFIG.activePoll || null;
+            document.getElementById('poll-modal').classList.add('active');
+            renderPollModal();
+            if (activePoll && !activePoll.ended) pollStartTimer();
+        };
+        window.closePollModal = function() {
+            document.getElementById('poll-modal').classList.remove('active');
+        };
+
+        function renderPollModal() {
+            const body = document.getElementById('poll-modal-body');
+            const sub  = document.getElementById('poll-modal-sub');
+            if (!activePoll) {
+                body.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#64748b;"><div style="font-size:48px;opacity:.3;margin-bottom:12px;">🗳️</div><div>مفيش فوت نشط دلوقتي</div></div>`;
+                sub.textContent = '';
+                return;
+            }
+            const isEnded   = activePoll.ended || Date.now() >= activePoll.endsAt;
+            const voted     = activePoll.myVote !== null;
+            const showPct   = voted || isEnded;
+            const totalVotes = activePoll.options.reduce((s, o) => s + o.votes, 0) || 1;
+            const maxVotes   = Math.max(...activePoll.options.map(o => o.votes));
+            const rem        = Math.max(0, Math.round((activePoll.endsAt - Date.now()) / 1000));
+
+            sub.textContent = isEnded ? 'انتهى الفوت' : 'فوت نشط';
+
+            let html = '';
+
+            if (isEnded) {
+                const winner = activePoll.options.find(o => o.votes === maxVotes);
+                html += `<div class="pol-result-banner">
+                    <div style="font-size:28px;">🏆</div>
+                    <div>
+                        <div style="font-size:14px;font-weight:900;color:#22c55e;">انتهى الفوت!</div>
+                        <div style="font-size:11px;color:#64748b;margin-top:2px;">الفائز: ${winner.text} (${Math.round(winner.votes/totalVotes*100)}%)</div>
+                    </div>
+                </div>`;
+            }
+
+            html += `<div style="background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(168,85,247,.07));border:1px solid rgba(99,102,241,.2);border-radius:18px;padding:18px;margin-bottom:14px;">
+                <div style="font-size:10px;letter-spacing:1px;color:#6366f1;font-family:monospace;margin-bottom:8px;">${isEnded ? '🏁 انتهى الفوت' : '🗳️ فوت نشط'}</div>
+                <div style="font-size:18px;font-weight:900;line-height:1.4;">${activePoll.question}</div>
+                ${!isEnded ? `<div class="pol-timer">⏱ ينتهي بعد <span id="poll-st-timer">${pollFmtTime(rem)}</span></div>` : ''}
+            </div>`;
+
+            activePoll.options.forEach((opt, i) => {
+                const pct   = showPct ? Math.round(opt.votes / totalVotes * 100) : 0;
+                const isMine = activePoll.myVote === i;
+                const isWin  = isEnded && opt.votes === maxVotes;
+                let cls = 'poll-option-item';
+                if (isMine) cls += ' pol-selected';
+                else if (isWin && isEnded) cls += ' pol-winner';
+                else cls += ' pol-none';
+                const clickable = !voted && !isEnded;
+                html += `<div class="${cls}" id="pol-opt-${i}" onclick="${clickable ? `window.castPollVote(${i})` : ''}">
+                    <div class="pol-fill" style="width:${showPct ? pct : 0}%"></div>
+                    <div class="pol-content">
+                        <div class="pol-radio"><span class="pol-check">✓</span></div>
+                        <div class="pol-label">${opt.text}</div>
+                        ${showPct ? `<div><div class="pol-pct">${pct}%</div><div class="pol-count">${opt.votes} صوت</div></div>` : ''}
+                    </div>
+                </div>`;
+            });
+
+            if (voted && !isEnded) html += `<div class="pol-footer">✅ تم تسجيل صوتك — لا يمكن التغيير</div>`;
+            if (isEnded) html += `<div class="pol-footer">📊 إجمالي الأصوات: ${activePoll.options.reduce((s,o)=>s+o.votes,0)} طالب</div>`;
+
+            body.innerHTML = html;
+
+            setTimeout(() => {
+                activePoll.options.forEach((opt, i) => {
+                    const fill = document.querySelector(`#pol-opt-${i} .pol-fill`);
+                    const totalV = activePoll.options.reduce((s, o) => s + o.votes, 0) || 1;
+                    if (fill && showPct) fill.style.width = Math.round(opt.votes/totalV*100) + '%';
+                });
+            }, 50);
+        }
+
+        window.castPollVote = function(index) {
+            if (!activePoll || activePoll.myVote !== null || activePoll.ended) return;
+            activePoll.myVote = index;
+            activePoll.options[index].votes++;
+            CONFIG.activePoll = activePoll;
+            fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PUT', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ data: JSON.stringify(CONFIG) })
+            }).catch(() => {});
+            renderPollModal();
+            showToast('✅ تم تسجيل صوتك!', 'success');
+        };
+
+        // Load poll from CONFIG on startup
+        (function initPoll() {
+            if (CONFIG.activePoll) {
+                activePoll = CONFIG.activePoll;
+                activePoll.myVote = null; // reset per-device
+                if (!activePoll.ended && Date.now() < activePoll.endsAt) {
+                    pollUpdateActiveBar();
+                    pollStartTimer();
+                }
+            }
+        })();
     </script>
 </body>
 </html>
