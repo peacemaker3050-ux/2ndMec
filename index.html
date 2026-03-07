@@ -216,6 +216,36 @@
 .pol-timer span { color:#eab308;font-weight:700; }
 body.light-mode .poll-option-item { background:#f8fafc; }
 body.light-mode .pol-label { color:#0f172a; }
+/* Favorites */
+.fav-star {
+    position: absolute; top: 6px; left: 8px;
+    font-size: 14px; cursor: pointer;
+    opacity: 0.3; transition: opacity .2s, transform .2s;
+    z-index: 10; user-select: none; line-height: 1;
+}
+.fav-star:hover { opacity: 0.8; transform: scale(1.2); }
+.fav-star.active { opacity: 1; }
+/* Quick Links */
+.ql-student-item {
+    display:flex; align-items:center; gap:14px;
+    padding:16px; margin-bottom:10px;
+    background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.07);
+    border-radius:16px; cursor:pointer;
+    transition:border-color .2s, transform .15s, background .2s;
+    position:relative; overflow:hidden;
+}
+.ql-student-item:hover { border-color:rgba(59,130,246,.4); transform:translateY(-2px); background:rgba(59,130,246,.05); }
+.ql-student-item:active { transform:scale(.98); }
+.ql-student-item::before { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent); transform:translateX(-100%); transition:transform .4s; }
+.ql-student-item:hover::before { transform:translateX(100%); }
+.ql-s-icon { width:48px;height:48px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(99,102,241,.15));border:1px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:22px; }
+.ql-s-title { font-size:15px;font-weight:800; }
+.ql-s-desc  { font-size:11px;color:#64748b;margin-top:3px; }
+.ql-s-arrow { width:32px;height:32px;border-radius:10px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;color:#3b82f6;transition:background .2s; }
+.ql-student-item:hover .ql-s-arrow { background:rgba(59,130,246,.2); }
+.ql-emoji-opt.ql-selected { border-color:rgba(59,130,246,.7) !important; background:rgba(59,130,246,.2) !important; }
+body.light-mode .ql-student-item { background:#fff; border-color:rgba(0,0,0,.08); }
+body.light-mode .ql-s-title { color:#0f172a; }
         /* ==========================================
    === GRADE TRACKER STYLES ===
    ========================================== */
@@ -903,7 +933,9 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <div class="menu-item" onclick="window.openTodoModal()"><span>✅</span> <span>To-Do List</span></div>
                 <!-- ============================= -->
                 <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
-                <div class="menu-item" onclick="window.openPollModal()"><span>🗳️</span> <span>الفوت</span></div>
+                <div class="menu-item" onclick="window.openFavoritesModal()"><span>⭐</span> <span>Favorites</span></div>
+                <div class="menu-item" onclick="window.openQuickLinksModal()"><span>🔗</span> <span>Quick Links</span></div>
+                <div class="menu-item" onclick="window.openPollModal()"><span>🗳️</span> <span>VOTE</span></div>
                 <!-- === DARK MODE TOGGLE MENU ITEM === -->
                 <div class="menu-item" onclick="window.toggleDarkMode()">
                     <span>🌙</span> <span>Dark Mode</span>
@@ -956,12 +988,36 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <!-- Javascript will inject tasks here -->
             </div>
         </div>
+        <!-- === FAVORITES MODAL === -->
+<div class="grade-modal-container" id="favorites-modal">
+    <div class="grade-header">
+        <div class="grade-header-left">
+            <h2>⭐ Favorites</h2>
+            <div class="grade-welcome" id="fav-count-label"></div>
+        </div>
+        <div class="close-modal" onclick="window.closeFavoritesModal()">×</div>
+    </div>
+    <div class="grade-body" id="favorites-modal-body"></div>
+</div>
+<!-- === QUICK LINKS MODAL === -->
+<div class="grade-modal-container" id="quicklinks-modal">
+    <div class="grade-header">
+        <div class="grade-header-left">
+            <h2>🔗 Quick Links</h2>
+            <div class="grade-welcome">Tap any link to open it</div>
+        </div>
+        <div class="close-modal" onclick="window.closeQuickLinksModal()">×</div>
+    </div>
+    <div class="grade-body" id="ql-student-body"></div>
+</div>
+<!-- =========================== -->
+<!-- ========================= -->
         <!-- ======================================= -->
          <!-- === POLL MODAL === -->
 <div class="grade-modal-container" id="poll-modal">
     <div class="grade-header">
         <div class="grade-header-left">
-            <h2>🗳️ الفوت</h2>
+            <h2>🗳️ VOTE</h2>
             <div class="grade-welcome" id="poll-modal-sub"></div>
         </div>
         <div class="close-modal" onclick="window.closePollModal()">×</div>
@@ -1069,7 +1125,8 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             <div class="nav-item" id="nav-3" onclick="window.switchAdminTab(3)"><span>📂</span> <span>Data</span></div>
             <div class="nav-item" id="nav-4" onclick="window.switchAdminTab(4)" style="display: none;"><span>📲</span> <span>App</span></div>
             <div class="nav-item" id="nav-5" onclick="window.switchAdminTab(5)" style="display: none;"><span>📊</span> <span>Grades</span></div>
-            <div class="nav-item" id="nav-6" onclick="window.switchAdminTab(6)"><span>🗳️</span> <span>فوت</span></div>
+            <div class="nav-item" id="nav-6" onclick="window.switchAdminTab(6)"><span>🗳️</span> <span>VOTE</span></div>
+            <div class="nav-item" id="nav-7" onclick="window.switchAdminTab(7)"><span>🔗</span> <span>Links</span></div>
         </div>
         <div class="admin-content-wrapper">
             <div id="tab-settings" class="tab-content active">
@@ -1124,6 +1181,37 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <div class="data-path" id="admin-data-path" style="font-size:13px; color:#94a3b8; margin-bottom:15px; display:flex; align-items:center; gap:5px;">Home</div>
                 <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div class="form-group" style="margin-bottom:0;" id="file-link-input-group" style="display:block;"><input type="text" id="new-item-link" class="form-input" placeholder="Link (Google Drive)..."></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">Add</button></div></div>
             </div>
+            <div id="tab-quicklinks" class="tab-content">
+    <div class="admin-section-title" style="color:#3b82f6;">🔗 Quick Links</div>
+
+    <div class="form-group">
+        <label class="form-label">Icon</label>
+        <div id="ql-emoji-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+            <div class="ql-emoji-opt selected" onclick="window.qlSelectEmoji(this,'🔐')" style="width:38px;height:38px;border-radius:10px;border:1.5px solid rgba(59,130,246,.5);background:rgba(59,130,246,.15);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🔐</div>
+            <div class="ql-emoji-opt" onclick="window.qlSelectEmoji(this,'🌐')" style="width:38px;height:38px;border-radius:10px;border:1.5px solid rgba(255,255,255,.07);background:rgba(0,0,0,.2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🌐</div>
+            <div class="ql-emoji-opt" onclick="window.qlSelectEmoji(this,'🏆')" style="width:38px;height:38px;border-radius:10px;border:1.5px solid rgba(255,255,255,.07);background:rgba(0,0,0,.2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🏆</div>
+            <div class="ql-emoji-opt" onclick="window.qlSelectEmoji(this,'📋')" style="width:38px;height:38px;border-radius:10px;border:1.5px solid rgba(255,255,255,.07);background:rgba(0,0,0,.2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">📋</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">Title</label>
+        <input type="text" id="ql-title" class="form-input" placeholder="e.g. Ibn Al-Haytham Login">
+    </div>
+    <div class="form-group">
+        <label class="form-label">Description (optional)</label>
+        <input type="text" id="ql-desc" class="form-input" placeholder="e.g. Student portal login page">
+    </div>
+    <div class="form-group">
+        <label class="form-label">URL</label>
+        <input type="text" id="ql-url" class="form-input" placeholder="https://...">
+    </div>
+
+    <button class="btn-save" style="background:linear-gradient(135deg,#3b82f6,#6366f1);box-shadow:0 4px 15px rgba(59,130,246,.3);margin-bottom:16px;" onclick="window.qlAddLink()">📎 Add Link & Notify Students</button>
+
+    <div class="admin-section-title" style="color:#3b82f6;">Current Links</div>
+    <div id="ql-admin-list"><div style="text-align:center;padding:20px;color:#64748b;font-size:13px;">No links yet</div></div>
+</div>
             <div id="tab-poll" class="tab-content">
 
     <!-- Active Poll Indicator -->
@@ -1131,48 +1219,48 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         <div style="display:flex; align-items:center; gap:10px;">
             <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 1.5s infinite;"></div>
             <div>
-                <div style="font-size:13px;font-weight:700;color:#22c55e;">فوت نشط الآن</div>
-                <div id="poll-active-sub" style="font-size:11px;color:#64748b;font-family:monospace;">ينتهي بعد —</div>
+                <div style="font-size:13px;font-weight:700;color:#22c55e;">  Voting is active now!</div>
+                <div id="poll-active-sub" style="font-size:11px;color:#64748b;font-family:monospace;"> Expired after —</div>
             </div>
         </div>
-        <button onclick="window.endPollNow()" style="padding:7px 14px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">إنهاء الفوت</button>
+        <button onclick="window.endPollNow()" style="padding:7px 14px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;"> End VOTE</button>
     </div>
 
-    <div class="admin-section-title" style="color:#6366f1;">🗳️ إنشاء فوت جديد</div>
+    <div class="admin-section-title" style="color:#6366f1;">🗳️  New VOTE </div>
 
     <div class="form-group">
-        <label class="form-label">سؤال الفوت</label>
-        <textarea id="poll-question" class="form-textarea" placeholder="مثال: هناخد المحاضرة أونلاين ولا في الكلية؟"></textarea>
+        <label class="form-label"> VOTE Question</label>
+        <textarea id="poll-question" class="form-textarea" placeholder="Write what you want!"></textarea>
     </div>
 
     <div class="form-group">
-        <label class="form-label">الاختيارات</label>
+        <label class="form-label">Options</label>
         <div id="poll-options-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
             <div class="poll-opt-row" style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:8px 12px;">
-                <input type="text" value="أونلاين 💻" class="form-input" style="flex:1;background:transparent;border:none;padding:0;">
+                <input type="text" value="1" class="form-input" style="flex:1;background:transparent;border:none;padding:0;">
                 <button onclick="window.delPollOption(this)" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;cursor:pointer;font-size:14px;">✕</button>
             </div>
             <div class="poll-opt-row" style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:8px 12px;">
-                <input type="text" value="في الكلية 🏫" class="form-input" style="flex:1;background:transparent;border:none;padding:0;">
+                <input type="text" value="2" class="form-input" style="flex:1;background:transparent;border:none;padding:0;">
                 <button onclick="window.delPollOption(this)" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;cursor:pointer;font-size:14px;">✕</button>
             </div>
         </div>
-        <button onclick="window.addPollOption()" style="width:100%;padding:10px;border-radius:10px;border:1px dashed rgba(99,102,241,.4);background:rgba(99,102,241,.06);color:#6366f1;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;">+ إضافة اختيار</button>
+        <button onclick="window.addPollOption()" style="width:100%;padding:10px;border-radius:10px;border:1px dashed rgba(99,102,241,.4);background:rgba(99,102,241,.06);color:#6366f1;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;">+Add Option</button>
     </div>
 
     <div class="form-group">
-        <label class="form-label">مدة انتهاء الفوت</label>
+        <label class="form-label">Voting Duration  </label>
         <div style="display:flex;gap:8px;">
             <input type="number" id="poll-dur-val" class="form-input" value="10" min="1" style="flex:1;">
             <select id="poll-dur-unit" class="form-input" style="flex:0 0 110px;">
-                <option value="60">دقيقة</option>
-                <option value="3600">ساعة</option>
-                <option value="86400">يوم</option>
+                <option value="60">Minutes</option>
+                <option value="3600">Hours</option>
+                <option value="86400">Days</option>
             </select>
         </div>
     </div>
 
-    <button class="btn-save" style="background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 4px 15px rgba(99,102,241,.3);" onclick="window.sendPoll()">📢 إرسال الفوت للطلاب</button>
+    <button class="btn-save" style="background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 4px 15px rgba(99,102,241,.3);" onclick="window.sendPoll()">📢 Send</button>
 </div>
             <div id="tab-grades" class="tab-content">
     <div class="admin-section-title" style="color: #22c55e;">📊 Grade Tracker Config (Owner Only)</div>
@@ -1494,6 +1582,15 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         const isNotif = item.type === 'notif' || (item.link && item.link.startsWith('content:'));
         const icon = isNotif ? '🔔' : '📄';
         keyboardBtn = createButton(`${icon} ${item.name}`, () => handleFileClick(item));
+        if (!isNotif && item.link && item.link !== '#') {
+            const starEl = document.createElement('span');
+            starEl.className = 'fav-star' + (favIsSaved(item.id) ? ' active' : '');
+            starEl.id = 'star-' + item.id;
+            starEl.textContent = '⭐';
+            starEl.onclick = (e) => window.favToggle(item.id, item.name, item.link, e);
+            keyboardBtn.style.position = 'relative';
+            keyboardBtn.appendChild(starEl);
+        }
         keyboardArea.appendChild(keyboardBtn);
         } }); } } }
         function getBotCurrentContent() { if (botNavStack.length < 2) return null; const subject = botNavStack[0]; const doctor = botNavStack[1]; let currentList = database[subject][doctor].root || []; for (let i = 2; i < botNavStack.length; i++) { const folderName = botNavStack[i]; const folder = currentList.find(f => f.name === folderName && f.type === 'folder'); if (folder && folder.children) currentList = folder.children; else return []; } return currentList; }
@@ -1642,7 +1739,7 @@ else if (DEFAULT_BG_URL) {
         window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = isOwner ? 'flex' : 'none';
 if (isOwner) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
-        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 6) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
+        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 7) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
         window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
         function renderAdminList() { const container = document.getElementById('admin-list-container'); container.innerHTML = ''; if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; } CONFIG.admins.forEach((adminEmail, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); container.appendChild(div); }); }
         window.addAdmin = function() { const email = document.getElementById('admin-add-input').value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); document.getElementById('admin-add-input').value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
@@ -2265,22 +2362,22 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             const div  = document.createElement('div');
             div.className = 'poll-opt-row';
             div.style.cssText = 'display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:8px 12px;';
-            div.innerHTML = `<input type="text" placeholder="اختيار ${n}" class="form-input" style="flex:1;background:transparent;border:none;padding:0;"><button onclick="window.delPollOption(this)" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;cursor:pointer;font-size:14px;">✕</button>`;
+            div.innerHTML = `<input type="text" placeholder="Option ${n}" class="form-input" style="flex:1;background:transparent;border:none;padding:0;"><button onclick="window.delPollOption(this)" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(239,68,68,.12);color:#ef4444;cursor:pointer;font-size:14px;">✕</button>`;
             list.appendChild(div);
         };
 
         window.delPollOption = function(btn) {
             const list = document.getElementById('poll-options-list');
-            if (list.children.length <= 2) return showToast('لازم يكون في اختيارين على الأقل', 'error');
+            if (list.children.length <= 2) return showToast('At least two options are required', 'error');
             btn.closest('.poll-opt-row').remove();
         };
 
         window.sendPoll = function() {
             const question = document.getElementById('poll-question').value.trim();
-            if (!question) return showToast('اكتب سؤال الفوت أول', 'error');
+            if (!question) return showToast('At least two options are required', 'error');
             const inputs  = [...document.querySelectorAll('#poll-options-list input')];
             const options = inputs.map(i => i.value.trim()).filter(Boolean);
-            if (options.length < 2) return showToast('ضيف اختيارين على الأقل', 'error');
+            if (options.length < 2) return showToast('Add at least two options', 'error');
             const dur  = parseInt(document.getElementById('poll-dur-val').value) || 10;
             const unit = parseInt(document.getElementById('poll-dur-unit').value);
             activePoll = {
@@ -2296,10 +2393,10 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 body: JSON.stringify({ data: JSON.stringify(CONFIG) })
             }).then(res => {
                 if (!res.ok) throw new Error('failed');
-                showToast('✅ تم إرسال الفوت — وصل إشعار للطلاب 🔔', 'success');
+                showToast('✅VOTE Sent    — 🔔NOW', 'success');
                 pollUpdateActiveBar();
                 pollStartTimer();
-            }).catch(() => showToast('❌ فشل الإرسال', 'error'));
+            }).catch(() => showToast('❌  Failed to Send', 'error'));
         };
 
         window.endPollNow = function() {
@@ -2312,7 +2409,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             }).then(() => {
                 clearInterval(pollTimerInterval);
                 pollUpdateActiveBar();
-                showToast('🏁 تم إنهاء الفوت — النتيجة ظهرت للطلاب', 'success');
+                showToast('🏁Voting has ended — Results are now visible to students.  ', 'success');
             });
         };
 
@@ -2322,7 +2419,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             if (!activePoll || activePoll.ended) { bar.style.display = 'none'; return; }
             bar.style.display = 'flex';
             const rem = Math.max(0, Math.round((activePoll.endsAt - Date.now()) / 1000));
-            document.getElementById('poll-active-sub').textContent = `ينتهي بعد ${pollFmtTime(rem)}`;
+            document.getElementById('poll-active-sub').textContent = ` Expired after ${pollFmtTime(rem)}`;
         }
 
         function pollStartTimer() {
@@ -2337,7 +2434,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                     activePoll.ended = true;
                     clearInterval(pollTimerInterval);
                     pollUpdateActiveBar();
-                    showToast('⏰ انتهى وقت الفوت — النتيجة ظهرت للطلاب', 'success');
+                    showToast('⏰The voting time has ended. — The results are now visible to students.', 'success');
                     renderPollModal();
                 }
             }, 1000);
@@ -2358,7 +2455,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             const body = document.getElementById('poll-modal-body');
             const sub  = document.getElementById('poll-modal-sub');
             if (!activePoll) {
-                body.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#64748b;"><div style="font-size:48px;opacity:.3;margin-bottom:12px;">🗳️</div><div>مفيش فوت نشط دلوقتي</div></div>`;
+                body.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#64748b;"><div style="font-size:48px;opacity:.3;margin-bottom:12px;">🗳️</div><div>No active vote right now.</div></div>`;
                 sub.textContent = '';
                 return;
             }
@@ -2369,7 +2466,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             const maxVotes   = Math.max(...activePoll.options.map(o => o.votes));
             const rem        = Math.max(0, Math.round((activePoll.endsAt - Date.now()) / 1000));
 
-            sub.textContent = isEnded ? 'انتهى الفوت' : 'فوت نشط';
+            sub.textContent = isEnded ? 'VOTE Ended ' : 'Active VOTE ';
 
             let html = '';
 
@@ -2378,16 +2475,16 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 html += `<div class="pol-result-banner">
                     <div style="font-size:28px;">🏆</div>
                     <div>
-                        <div style="font-size:14px;font-weight:900;color:#22c55e;">انتهى الفوت!</div>
-                        <div style="font-size:11px;color:#64748b;margin-top:2px;">الفائز: ${winner.text} (${Math.round(winner.votes/totalVotes*100)}%)</div>
+                        <div style="font-size:14px;font-weight:900;color:#22c55e;">VOTE Ended !</div>
+                        <div style="font-size:11px;color:#64748b;margin-top:2px;">Winning Option: ${winner.text} (${Math.round(winner.votes/totalVotes*100)}%)</div>
                     </div>
                 </div>`;
             }
 
             html += `<div style="background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(168,85,247,.07));border:1px solid rgba(99,102,241,.2);border-radius:18px;padding:18px;margin-bottom:14px;">
-                <div style="font-size:10px;letter-spacing:1px;color:#6366f1;font-family:monospace;margin-bottom:8px;">${isEnded ? '🏁 انتهى الفوت' : '🗳️ فوت نشط'}</div>
+                <div style="font-size:10px;letter-spacing:1px;color:#6366f1;font-family:monospace;margin-bottom:8px;">${isEnded ? '🏁 VOTE Ended ' : '🗳️ Active VOTE '}</div>
                 <div style="font-size:18px;font-weight:900;line-height:1.4;">${activePoll.question}</div>
-                ${!isEnded ? `<div class="pol-timer">⏱ ينتهي بعد <span id="poll-st-timer">${pollFmtTime(rem)}</span></div>` : ''}
+                ${!isEnded ? `<div class="pol-timer">⏱  Expired after <span id="poll-st-timer">${pollFmtTime(rem)}</span></div>` : ''}
             </div>`;
 
             activePoll.options.forEach((opt, i) => {
@@ -2404,13 +2501,13 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                     <div class="pol-content">
                         <div class="pol-radio"><span class="pol-check">✓</span></div>
                         <div class="pol-label">${opt.text}</div>
-                        ${showPct ? `<div><div class="pol-pct">${pct}%</div><div class="pol-count">${opt.votes} صوت</div></div>` : ''}
+                        ${showPct ? `<div><div class="pol-pct">${pct}%</div><div class="pol-count">${opt.votes} VOTES</div></div>` : ''}
                     </div>
                 </div>`;
             });
 
-            if (voted && !isEnded) html += `<div class="pol-footer">✅ تم تسجيل صوتك — لا يمكن التغيير</div>`;
-            if (isEnded) html += `<div class="pol-footer">📊 إجمالي الأصوات: ${activePoll.options.reduce((s,o)=>s+o.votes,0)} طالب</div>`;
+            if (voted && !isEnded) html += `<div class="pol-footer">✅Your vote has been recorded. — It cannot be changed.</div>`;
+            if (isEnded) html += `<div class="pol-footer">📊Total VOTES: ${activePoll.options.reduce((s,o)=>s+o.votes,0)} Student</div>`;
 
             body.innerHTML = html;
 
@@ -2447,6 +2544,172 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 }
             }
         })();
+        // ==========================================
+        // === FAVORITES LOGIC ===
+        // ==========================================
+        const FAV_KEY = 'fav_files';
+
+        function favLoad() {
+            try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch(e) { return []; }
+        }
+        function favSave(list) { localStorage.setItem(FAV_KEY, JSON.stringify(list)); }
+
+        function favIsSaved(fileId) { return favLoad().some(f => f.id === fileId); }
+
+        window.favToggle = function(fileId, fileName, fileLink, e) {
+            e.stopPropagation();
+            const list = favLoad();
+            const idx  = list.findIndex(f => f.id === fileId);
+            if (idx === -1) {
+                list.push({ id: fileId, name: fileName, link: fileLink });
+                favSave(list);
+                showToast('⭐ Added to Favorites', 'success');
+            } else {
+                list.splice(idx, 1);
+                favSave(list);
+                showToast('✕ Removed from Favorites', 'info');
+            }
+            // update star icon
+            const star = document.getElementById('star-' + fileId);
+            if (star) star.classList.toggle('active', idx === -1);
+        };
+
+        window.openFavoritesModal = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            document.getElementById('favorites-modal').classList.add('active');
+            renderFavoritesModal();
+        };
+        window.closeFavoritesModal = function() {
+            document.getElementById('favorites-modal').classList.remove('active');
+        };
+
+        function renderFavoritesModal() {
+            const list  = favLoad();
+            const label = document.getElementById('fav-count-label');
+            const body  = document.getElementById('favorites-modal-body');
+            label.textContent = `${list.length} file${list.length !== 1 ? 's' : ''}`;
+            if (list.length === 0) {
+                body.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#64748b;">
+                    <div style="font-size:48px;opacity:.3;margin-bottom:12px;">⭐</div>
+                    <div>No favorites yet — tap ☆ next to any file</div>
+                </div>`;
+                return;
+            }
+            body.innerHTML = list.map(f => `
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(17,17,24,0.9);border:1px solid rgba(255,255,255,0.07);border-radius:14px;margin-bottom:8px;cursor:pointer;" onclick="window.open('${f.link}','_blank')">
+                    <div style="font-size:22px;">📄</div>
+                    <div style="flex:1;font-size:14px;font-weight:700;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${f.name}</div>
+                    <div style="font-size:11px;color:#64748b;">↗</div>
+                </div>`).join('');
+        }
+        // ==========================================
+        // === QUICK LINKS LOGIC ===
+        // ==========================================
+        let qlSelectedEmoji = '🔐';
+
+        window.qlSelectEmoji = function(el, emoji) {
+            document.querySelectorAll('.ql-emoji-opt').forEach(e => {
+                e.classList.remove('ql-selected');
+                e.style.borderColor = 'rgba(255,255,255,.07)';
+                e.style.background  = 'rgba(0,0,0,.2)';
+            });
+            el.classList.add('ql-selected');
+            el.style.borderColor = 'rgba(59,130,246,.7)';
+            el.style.background  = 'rgba(59,130,246,.2)';
+            qlSelectedEmoji = emoji;
+        };
+
+        window.qlAddLink = function() {
+            const title = document.getElementById('ql-title').value.trim();
+            const desc  = document.getElementById('ql-desc').value.trim();
+            const url   = document.getElementById('ql-url').value.trim();
+            if (!title) return showToast('Enter a title', 'error');
+            if (!url)   return showToast('Enter a URL', 'error');
+            if (!CONFIG.quickLinks) CONFIG.quickLinks = [];
+            CONFIG.quickLinks.push({ id: Date.now(), icon: qlSelectedEmoji, title, desc, url });
+            document.getElementById('ql-title').value = '';
+            document.getElementById('ql-desc').value  = '';
+            document.getElementById('ql-url').value   = '';
+            fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PUT', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ data: JSON.stringify(CONFIG) })
+            }).then(res => {
+                if (!res.ok) throw new Error('failed');
+                showToast('✅ Link added — students notified 🔔', 'success');
+                qlRenderAdmin();
+            }).catch(() => showToast('❌ Save failed', 'error'));
+        };
+
+        window.qlDeleteLink = function(id) {
+            if (!CONFIG.quickLinks) return;
+            CONFIG.quickLinks = CONFIG.quickLinks.filter(l => l.id !== id);
+            fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PUT', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ data: JSON.stringify(CONFIG) })
+            }).then(() => {
+                showToast('🗑️ Link removed', 'success');
+                qlRenderAdmin();
+            }).catch(() => showToast('❌ Save failed', 'error'));
+        };
+
+        function qlRenderAdmin() {
+            const list = CONFIG.quickLinks || [];
+            const container = document.getElementById('ql-admin-list');
+            if (!container) return;
+            if (list.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b;font-size:13px;">No links yet</div>';
+                return;
+            }
+            container.innerHTML = list.map(l => `
+                <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:12px;margin-bottom:8px;">
+                    <div style="font-size:20px;width:32px;text-align:center;">${l.icon}</div>
+                    <div style="flex:1;overflow:hidden;">
+                        <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.title}</div>
+                        <div style="font-size:10px;color:#64748b;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.url}</div>
+                    </div>
+                    <button onclick="window.qlDeleteLink(${l.id})" style="width:30px;height:30px;border-radius:8px;border:none;background:rgba(239,68,68,.1);color:#ef4444;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+                </div>`).join('');
+        }
+
+        window.openQuickLinksModal = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            document.getElementById('quicklinks-modal').classList.add('active');
+            qlRenderStudent();
+        };
+        window.closeQuickLinksModal = function() {
+            document.getElementById('quicklinks-modal').classList.remove('active');
+        };
+
+        function qlRenderStudent() {
+            const list = CONFIG.quickLinks || [];
+            const body = document.getElementById('ql-student-body');
+            if (list.length === 0) {
+                body.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#64748b;"><div style="font-size:48px;opacity:.25;margin-bottom:12px;">🔗</div><div>No links available yet</div></div>`;
+                return;
+            }
+            body.innerHTML = `
+                <div style="background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(99,102,241,.07));border:1px solid rgba(59,130,246,.15);border-radius:16px;padding:16px;margin-bottom:16px;">
+                    <div style="font-size:10px;letter-spacing:1px;color:#3b82f6;font-family:monospace;margin-bottom:6px;">QUICK LINKS</div>
+                    <div style="font-size:16px;font-weight:900;">Useful Links</div>
+                    <div style="font-size:11px;color:#64748b;margin-top:4px;">Tap any link to open it directly</div>
+                </div>
+                ${list.map(l => `
+                <div class="ql-student-item" onclick="window.open('${l.url}','_blank')">
+                    <div class="ql-s-icon">${l.icon}</div>
+                    <div style="flex:1;overflow:hidden;">
+                        <div class="ql-s-title">${l.title}</div>
+                        ${l.desc ? `<div class="ql-s-desc">${l.desc}</div>` : ''}
+                    </div>
+                    <div class="ql-s-arrow">↗</div>
+                </div>`).join('')}`;
+        }
+
+        // Render admin list on panel open
+        const _origOpenAdmin = window.openAdminPanel;
+        window.openAdminPanel = function() {
+            _origOpenAdmin();
+            qlRenderAdmin();
+        };
     </script>
 </body>
 </html>
