@@ -3341,5 +3341,358 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
     </div>
   </div>
 </div>
+<script>
+// ========== SCHEDULE SCREEN ==========
+
+function schGetCurrentDay() {
+  const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  return days[new Date().getDay()];
+}
+function schGetCurrentMins() {
+  const n = new Date(); return n.getHours()*60 + n.getMinutes();
+}
+function sch_toMins(t) {
+  const [tp,per] = t.split(' ');
+  let [h,m] = tp.split(':').map(Number);
+  if(per==='م'&&h!==12) h+=12;
+  if(per==='ص'&&h===12) h=0;
+  return h*60+m;
+}
+
+window.openSchedule = function() {
+  document.getElementById('menu-dropdown').classList.remove('active');
+  document.getElementById('sch-screen').classList.add('active');
+  sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+};
+window.closeSchedule = function() {
+  document.getElementById('sch-screen').classList.remove('active');
+};
+
+let SCH_DATA = {
+  "الأحد": [
+    { id:"ah-p1-lec", type:"lecture", period:1, subject:"انتقال الحرارة", doctor:"أ.د. شريف هادي طاهر / أ.م.د. هاني الصاوي / د. أشرف السيد عبدالعليم / د. محمد حي", hall:"SB4-11", from:"9:00 ص", to:"10:30 ص" },
+    { id:"ah-p2-s1", type:"section", sec:"1", period:2, subject:"تصميم ميكانيكي (1)", doctor:"م. محمد محمود", hall:"SB4-07", from:"10:30 ص", to:"12:00 م" },
+    { id:"ah-p2-s2", type:"section", sec:"2", period:2, subject:"تصميم ميكانيكي (1)", doctor:"م. محمد نشأت", hall:"SB4-08", from:"10:30 ص", to:"12:00 م" },
+    { id:"ah-p2-s3", type:"section", sec:"3", period:2, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"10:30 ص", to:"12:00 م" },
+    { id:"ah-p3-s3", type:"section", sec:"3", period:3, subject:"ميكانيكا الموائع", doctor:"م. يوسف عون", hall:"SB4-09 + معمل 1", from:"12:00 م", to:"1:00 م" },
+    { id:"ah-p4-lec", type:"lecture", period:4, subject:"قضايا مجتمعية", doctor:"د. محمود منصور / د. هشام مرسى", hall:"SB4-11", from:"1:00 م", to:"2:30 م" },
+    { id:"ah-p5-s1", type:"section", sec:"1", period:5, subject:"تصميم ميكانيكي (1)", doctor:"م. مصطفى عبد المجيد", hall:"SB4-03", from:"2:30 م", to:"4:00 م" },
+    { id:"ah-p5-s2", type:"section", sec:"2", period:5, subject:"انتقال الحرارة", doctor:"م. سيد أبو القاسم", hall:"SB4-08 + معمل 2", from:"2:30 م", to:"4:00 م" },
+    { id:"ah-p5-s3", type:"section", sec:"3", period:5, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"2:30 م", to:"4:00 م" },
+    { id:"ah-p6-s2", type:"section", sec:"2", period:6, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"4:00 م", to:"5:30 م" },
+    { id:"ah-p6-s3", type:"section", sec:"3", period:6, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"4:00 م", to:"5:30 م" },
+  ],
+  "الاثنين": [
+    { id:"tn-p1-lec", type:"lecture", period:1, subject:"الاهتزازات الميكانيكية", doctor:"أ.د. سامح شوق / أ.م.د. تامر عبدالفتاح", hall:"SB3-11", from:"9:00 ص", to:"10:30 ص" },
+    { id:"tn-p2-lec", type:"lecture", period:2, subject:"الآلات الكهربية", doctor:"أ.د. محسن الشريف / د. هاني هنزي", hall:"SB3-11", from:"10:30 ص", to:"12:00 م" },
+    { id:"tn-p3-s1", type:"section", sec:"1", period:3, subject:"انتقال الحرارة", doctor:"م.م. عمر الفقي", hall:"SB4-07 + معمل 2", from:"12:00 م", to:"1:00 م" },
+    { id:"tn-p3-s2", type:"section", sec:"2", period:3, subject:"ميكانيكا الموائع", doctor:"م. يوسف صقر", hall:"SB4-08 + معمل 1", from:"12:00 م", to:"1:00 م" },
+    { id:"tn-p3-s3", type:"section", sec:"3", period:3, subject:"الآلات الكهربية", doctor:"م. أحمد نبيل", hall:"SB4-10 + معمل 1", from:"12:00 م", to:"1:00 م" },
+    { id:"tn-p4-s1", type:"section", sec:"1", period:4, subject:"ميكانيكا الموائع", doctor:"م. يوسف صقر", hall:"SB4-07 + معمل 1", from:"1:30 م", to:"2:30 م" },
+    { id:"tn-p4-s2", type:"section", sec:"2", period:4, subject:"الاهتزازات الميكانيكية", doctor:"م.م. الهيم مصطفى", hall:"SB4-08", from:"1:30 م", to:"2:30 م" },
+    { id:"tn-p4-s3", type:"section", sec:"3", period:4, subject:"انتقال الحرارة", doctor:"م. اسلام مدحت", hall:"SB4-10 + معمل 2", from:"1:30 م", to:"2:30 م" },
+  ],
+  "الثلاثاء": [
+    { id:"th-p1-lec", type:"lecture", period:1, subject:"تصميم ميكانيكي (1)", doctor:"أ.د. فريدة سيد أحمد / د. أحمد عبد الفتاح", hall:"SB3-11", from:"9:00 ص", to:"10:30 ص" },
+    { id:"th-p2-lec", type:"lecture", period:2, subject:"ميكانيكا الموائع (2)", doctor:"أ.د. غازي عصاصة / د. محمد حسن شحاته / د. مينا جمال", hall:"SB3-11", from:"10:30 ص", to:"12:00 م" },
+    { id:"th-p3-act", type:"lecture", period:3, subject:"أنشطة طلابية", isActivity:true, doctor:"", hall:"", from:"12:00 م", to:"1:00 م" },
+    { id:"th-p4-s2", type:"section", sec:"2", period:4, subject:"الآلات الكهربية", doctor:"م. أحمد نبيل", hall:"SB4-10 + معمل 1", from:"1:30 م", to:"2:30 م" },
+    { id:"th-p5-s1", type:"section", sec:"1", period:5, subject:"الآلات الكهربية", doctor:"م. أحمد نبيل", hall:"SB4-08 + معمل 1", from:"2:30 م", to:"3:30 م" },
+  ],
+};
+
+const SCH_COLORS = {
+  "انتقال الحرارة":"#4f8ef7", "تصميم ميكانيكي (1)":"#9b6ef7",
+  "الاهتزازات الميكانيكية":"#f76eb2", "ميكانيكا الموائع":"#34d399",
+  "ميكانيكا الموائع (2)":"#10b981", "قضايا مجتمعية":"#f59e0b",
+  "الآلات الكهربية":"#06b6d4", "أنشطة طلابية":"#64748b",
+};
+const SCH_DAYS = ["الأحد","الاثنين","الثلاثاء"];
+let SCH_activeDay = "الأحد", SCH_activeSec = "1", SCH_adminMode = false, SCH_editTarget = null;
+let SCH_upType = "normal", SCH_hasImg = false, SCH_imageBase64 = null;
+
+function sch_getItems(day) {
+  return (SCH_DATA[day]||[]).filter(it =>
+    it.type==='lecture' || (it.type==='section' && it.sec===SCH_activeSec)
+  );
+}
+
+function sch_renderSecs() {
+  const wrap = document.getElementById('sch-sec-row'); if(!wrap) return;
+  wrap.innerHTML = '';
+  ["1","2","3"].forEach(s => {
+    const b = document.createElement('div');
+    b.className = 'sch-sec-btn' + (s===SCH_activeSec?' active':'');
+    b.textContent = 'سكشن ' + s;
+    b.onclick = () => { SCH_activeSec=s; sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow(); };
+    wrap.appendChild(b);
+  });
+}
+
+function sch_renderDays() {
+  const wrap = document.getElementById('sch-days'); if(!wrap) return;
+  wrap.innerHTML = '';
+  SCH_DAYS.forEach(day => {
+    const items = sch_getItems(day);
+    const tab = document.createElement('div');
+    tab.className = 'sch-day-tab' + (day===SCH_activeDay?' active':'');
+    tab.innerHTML = day + (items.length ? `<div class="sch-day-badge">${items.length}</div>` : '');
+    tab.onclick = () => { SCH_activeDay=day; sch_renderDays(); sch_renderTimeline(); sch_updateNow(); };
+    wrap.appendChild(tab);
+  });
+}
+
+function sch_updateNow() {
+  const nowMins = schGetCurrentMins();
+  const todayDay = schGetCurrentDay();
+  const items = sch_getItems(todayDay);
+  let nowIt=null, nextIt=null;
+  for(const it of items) {
+    const f=sch_toMins(it.from), t=sch_toMins(it.to);
+    if(nowMins>=f && nowMins<=t){ nowIt=it; break; }
+  }
+  for(const it of items) {
+    const f=sch_toMins(it.from);
+    if(nowMins<f){ if(!nextIt||f<sch_toMins(nextIt.from)) nextIt=it; }
+  }
+  const nw = document.getElementById('sch-now-wrap');
+  if(nowIt) {
+    const f=sch_toMins(nowIt.from), t=sch_toMins(nowIt.to);
+    const prog=Math.round(((nowMins-f)/(t-f))*100);
+    nw.innerHTML=`<div style="padding:10px 14px 4px"><div class="sch-now-card">
+      <div class="sch-time-left">⏱ ${t-nowMins} د</div>
+      <div class="sch-now-lbl"><div class="sch-now-dot"></div>الآن · ${nowIt.hall||''}</div>
+      <div class="sch-now-subj">${nowIt.subject}</div>
+      <div class="sch-now-meta"><span>👨‍🏫 ${(nowIt.doctor||'').split('/')[0].trim()||'—'}</span><span>🕐 ${nowIt.from} – ${nowIt.to}</span></div>
+      <div class="sch-prog-bar"><div class="sch-prog-fill" style="width:${prog}%"></div></div>
+      <div class="sch-prog-lbls"><span>${nowIt.from}</span><span>${nowIt.to}</span></div>
+    </div></div>`;
+  } else {
+    nw.innerHTML=`<div style="padding:10px 14px 4px"><div class="sch-no-now"><div class="sch-no-now-ico">☕</div><div><div class="sch-no-now-t1">مفيش محاضرة دلوقتي</div><div class="sch-no-now-t2">استغل الوقت في المذاكرة 📚</div></div></div></div>`;
+  }
+  const nx = document.getElementById('sch-next-wrap');
+  if(nextIt) {
+    const mins = sch_toMins(nextIt.from)-nowMins;
+    nx.innerHTML=`<div class="sch-next-card">
+      <div class="sch-next-ico">${nextIt.isActivity?'🎯':'📖'}</div>
+      <div class="sch-next-info"><div class="sch-next-lbl">المحاضرة التالية</div><div class="sch-next-subj">${nextIt.subject}</div><div class="sch-next-time">${nextIt.from} – ${nextIt.to}${nextIt.hall?' · '+nextIt.hall:''}</div></div>
+      <div class="sch-next-cnt"><div class="sch-next-cnt-n">${mins}</div><div class="sch-next-cnt-l">دقيقة</div></div>
+    </div>`;
+  } else { nx.innerHTML=''; }
+}
+
+function sch_renderTimeline() {
+  const wrap = document.getElementById('sch-timeline'); if(!wrap) return;
+  wrap.innerHTML = '';
+  const items = sch_getItems(SCH_activeDay);
+  if(!items.length) {
+    wrap.innerHTML=`<div class="sch-empty"><div class="sch-empty-ico">🎉</div><div class="sch-empty-t1">يومك حر!</div><div class="sch-empty-t2">مفيش محاضرات النهارده<br>استغلها صح 😄</div></div>`;
+    return;
+  }
+  const nowMins=schGetCurrentMins(), isToday=SCH_activeDay===schGetCurrentDay();
+  const byPeriod={};
+  items.forEach(it=>{ if(!byPeriod[it.period]) byPeriod[it.period]=[]; byPeriod[it.period].push(it); });
+  let ci=0;
+  Object.keys(byPeriod).sort((a,b)=>Number(a)-Number(b)).forEach(p => {
+    const group=byPeriod[p];
+    const hasNow=isToday&&group.some(it=>{ const f=sch_toMins(it.from),t=sch_toMins(it.to); return nowMins>=f&&nowMins<=t; });
+    const pg=document.createElement('div'); pg.className='sch-period-group';
+    const ph=document.createElement('div'); ph.className='sch-period-hdr'+(hasNow?' has-now':'');
+    ph.innerHTML=`<div class="sch-period-num">ف${p}</div><div class="sch-period-time">${group[0].from} – ${group[0].to}</div>`;
+    pg.appendChild(ph);
+    const pc=document.createElement('div'); pc.className='sch-period-cards';
+    group.forEach(it => {
+      const f=sch_toMins(it.from), t=sch_toMins(it.to);
+      const isNow=isToday&&nowMins>=f&&nowMins<=t;
+      const isDone=isToday&&nowMins>t;
+      const isLec=it.type==='lecture';
+      const color=SCH_COLORS[it.subject]||'#7a8ba8';
+      const badgeTxt=it.isActivity?'🎯 نشاط':isLec?'📖 محاضرة للكل':'👥 سكشن '+it.sec;
+      const badgeCls=it.isActivity?'act':isLec?'lec':'sec';
+      const card=document.createElement('div');
+      card.className='sch-card'+(isNow?' is-now':'')+(isDone?' is-done':'')+(isLec?' is-lecture':' is-section');
+      card.style.animationDelay=(ci*0.06)+'s';
+      card.innerHTML=`
+        <div class="sch-bar" style="background:${color}"></div>
+        <div class="sch-body">
+          <div class="sch-badge ${badgeCls}">${badgeTxt}</div>
+          <div class="sch-subj">${it.subject}</div>
+          <div class="sch-meta">
+            ${it.doctor?`<span class="sch-chip">👨‍🏫 ${it.doctor.split('/')[0].trim()}</span>`:''}
+            ${it.hall?`<span class="sch-chip">🚪 ${it.hall}</span>`:''}
+          </div>
+        </div>
+        <div class="sch-right">
+          <div class="sch-time-block">
+            ${isNow?'<div class="sch-now-badge">🔴 الآن</div>':''}
+            <div class="sch-t">${it.from}</div>
+            <div class="sch-dur">${t-f}د</div>
+            <div class="sch-t2">${it.to}</div>
+          </div>
+          <button class="sch-edit-btn" data-id="${it.id}">✏️ تعديل</button>
+        </div>`;
+      card.querySelector('.sch-edit-btn').addEventListener('click', e => { e.stopPropagation(); sch_openEdit(it.id); });
+      pc.appendChild(card); ci++;
+    });
+    pg.appendChild(pc); wrap.appendChild(pg);
+  });
+}
+
+function sch_toggleAdmin() {
+  SCH_adminMode=!SCH_adminMode;
+  document.getElementById('sch-screen').classList.toggle('sch-admin-on', SCH_adminMode);
+  const btn=document.getElementById('sch-adm-btn');
+  btn.classList.toggle('on', SCH_adminMode);
+  btn.textContent=SCH_adminMode?'🔓 Admin ON':'🔑 Admin';
+}
+
+function sch_findItem(id) {
+  let found=null;
+  Object.values(SCH_DATA).forEach(arr=>arr.forEach(it=>{ if(it.id===id) found=it; }));
+  return found;
+}
+function sch_openEdit(id) {
+  if(!SCH_adminMode) return;
+  const it=sch_findItem(id); if(!it) return;
+  SCH_editTarget=it;
+  document.getElementById('sch-edit-desc').textContent=it.subject+' · '+it.from+' – '+it.to;
+  document.getElementById('sch-inp-doctor').value=it.doctor||'';
+  document.getElementById('sch-inp-hall').value=it.hall||'';
+  document.getElementById('sch-edit-overlay').classList.add('active');
+}
+function sch_closeEdit() { document.getElementById('sch-edit-overlay').classList.remove('active'); SCH_editTarget=null; }
+function sch_saveEdit() {
+  if(!SCH_editTarget) return;
+  SCH_editTarget.doctor=document.getElementById('sch-inp-doctor').value;
+  SCH_editTarget.hall=document.getElementById('sch-inp-hall').value;
+  sch_closeEdit(); sch_renderTimeline(); sch_updateNow();
+  sch_toast('✅ تم حفظ التعديل');
+}
+function sch_toast(msg) {
+  const t=document.createElement('div'); t.className='sch-toast'; t.textContent=msg;
+  document.getElementById('sch-screen').appendChild(t);
+  setTimeout(()=>t.remove(), 2000);
+}
+
+function sch_saveKey(v) { localStorage.setItem('sch_api_key', v.trim()); }
+function sch_toggleEye() {
+  const inp=document.getElementById('sch-api-key');
+  inp.type=inp.type==='password'?'text':'password';
+  document.getElementById('sch-eye-btn').textContent=inp.type==='password'?'👁':'🙈';
+}
+function sch_openUpload() {
+  document.getElementById('sch-api-key').value=localStorage.getItem('sch_api_key')||'';
+  document.getElementById('sch-upload-scr').classList.add('active');
+}
+function sch_closeUpload() {
+  document.getElementById('sch-upload-scr').classList.remove('active');
+  document.getElementById('sch-anlz-ov').classList.remove('active');
+  document.getElementById('sch-suc-ov').classList.remove('active');
+}
+function sch_triggerUp() { document.getElementById('sch-fi').click(); }
+function sch_handleFile(e) {
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    SCH_imageBase64=ev.target.result.split(',')[1];
+    document.getElementById('sch-uimg').src=ev.target.result;
+    document.getElementById('sch-uimg').style.display='block';
+    document.getElementById('sch-uph').style.display='none';
+    document.getElementById('sch-uchg').style.display='block';
+    document.getElementById('sch-uz').classList.add('has-img');
+    SCH_hasImg=true; sch_checkRdy();
+  };
+  r.readAsDataURL(f);
+}
+function sch_selType(t) {
+  SCH_upType=t;
+  document.getElementById('sch-tp-n').classList.toggle('active',t==='normal');
+  document.getElementById('sch-tp-r').classList.toggle('active',t==='ramadan');
+  document.getElementById('sch-date-w').style.display=t==='ramadan'?'block':'none';
+  sch_checkRdy();
+}
+function sch_checkRdy() {
+  const ok=SCH_hasImg&&(SCH_upType==='normal'||document.getElementById('sch-end-d').value);
+  document.getElementById('sch-ab').disabled=!ok;
+}
+
+async function sch_startAnalysis() {
+  document.getElementById('sch-anlz-ov').classList.add('active');
+  const steps=['sch-st1','sch-st2','sch-st3','sch-st4','sch-st5'];
+  let si=0;
+  function adv() {
+    if(si>0){ const pr=document.getElementById(steps[si-1]); pr.classList.remove('active'); pr.classList.add('done'); pr.querySelector('.sch-a-ico').textContent='✅'; }
+    if(si<steps.length){ document.getElementById(steps[si]).classList.add('active'); si++; }
+  }
+  adv();
+  const timer=setInterval(()=>{ if(si<steps.length) adv(); else clearInterval(timer); }, 2000);
+  try {
+    const result=await sch_callAI(SCH_imageBase64);
+    clearInterval(timer); while(si<=steps.length) adv();
+    if(result&&result.days) {
+      SCH_DATA=result.days;
+      Object.values(SCH_DATA).forEach(arr=>arr.forEach(it=>{ it.id=it.id||('ai-'+Math.random().toString(36).slice(2,8)); }));
+    }
+    setTimeout(sch_showSuc, 400);
+  } catch(err) {
+    clearInterval(timer);
+    document.getElementById('sch-anlz-ov').classList.remove('active');
+    steps.forEach((s,i)=>{ const el=document.getElementById(s); el.classList.remove('done','active'); if(i===0)el.classList.add('active'); el.querySelector('.sch-a-ico').textContent=['🔍','🔵','👥','🕐','☁️'][i]; });
+    sch_toast('❌ ' + err.message);
+  }
+}
+
+async function sch_callAI(base64) {
+  const KEY=localStorage.getItem('sch_api_key')||'';
+  if(!KEY) throw new Error('محتاج تحط الـ API Key الأول');
+  const PROMPT=`أنت محلل جداول دراسية جامعية.
+## قاعدة التصنيف:
+- الخلايا ذات الخلفية الزرقاء الممتدة على عرض الجدول = "lecture"
+- أي خلية في عمود سكشن معين = "section" حتى لو مكتوب فيها معمل
+- رقم السكشن من رقم العمود: الأول="1"، الثاني="2"، الثالث="3"
+أرجع JSON فقط بدون أي نص:
+{"days":{"الأحد":[{"type":"lecture","subject":"","doctor":"","hall":"","from":"9:00 ص","to":"10:30 ص","period":1}]}}
+قواعد: أوقات 12 ساعة مع ص/م — تجاهل الخلايا الفارغة — لا تضيف isLab`;
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},{type:'text',text:PROMPT}]}]})
+  });
+  if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
+  const data=await resp.json();
+  const raw=data.content.map(c=>c.text||'').join('');
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+function sch_showSuc() {
+  document.getElementById('sch-anlz-ov').classList.remove('active');
+  document.getElementById('sch-suc-ov').classList.add('active');
+  const prev=document.getElementById('sch-suc-prev'); prev.innerHTML='';
+  Object.keys(SCH_DATA).forEach(d=>{
+    const items=SCH_DATA[d]||[];
+    const row=document.createElement('div'); row.className='sch-sp-row';
+    const dots=items.slice(0,4).map(it=>`<div class="sch-sp-dot" style="background:${SCH_COLORS[it.subject]||'#4f8ef7'}"></div>`).join('');
+    row.innerHTML=`<div class="sch-sp-day">${d}</div><div class="sch-sp-txt">${items.filter(i=>i.type==='lecture').length} محاضرة · ${items.filter(i=>i.type==='section').length} سكشن</div><div style="display:flex;gap:3px">${dots}</div>`;
+    prev.appendChild(row);
+  });
+}
+
+function sch_finishUp() {
+  sch_closeUpload();
+  ['sch-st1','sch-st2','sch-st3','sch-st4','sch-st5'].forEach((s,i)=>{
+    const el=document.getElementById(s); el.classList.remove('done','active');
+    if(i===0) el.classList.add('active');
+    el.querySelector('.sch-a-ico').textContent=['🔍','🔵','👥','🕐','☁️'][i];
+  });
+  SCH_hasImg=false; SCH_imageBase64=null;
+  document.getElementById('sch-uimg').style.display='none';
+  document.getElementById('sch-uph').style.display='block';
+  document.getElementById('sch-uchg').style.display='none';
+  document.getElementById('sch-uz').classList.remove('has-img');
+  document.getElementById('sch-ab').disabled=true;
+  sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+}
+// ========== END SCHEDULE SCREEN ==========
+</script>
 </body>
 </html>
