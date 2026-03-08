@@ -406,6 +406,232 @@ body.light-mode .gt-share-dd { background: #fff; }
 body.light-mode .gt-secret-row { background: #f1f5f9; }
 body.light-mode .gt-secret-label { color: #0f172a; }
 body.light-mode .gt-sum-big { color: #0f172a; }
+/* ========== SCHEDULE SCREEN ========== */
+.sch-screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #0a0e1a;
+    z-index: 300;
+    display: none;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease;
+    overflow: hidden;
+}
+.sch-screen.active { display: flex; }
+/* schedule header */
+.sch-hdr { padding: 16px 16px 10px; background: #111627; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+.sch-hdr-row { display: flex; align-items: center; gap: 10px; }
+.sch-back-btn { width: 34px; height: 34px; background: rgba(255,255,255,.06); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border: none; color: #7a8ba8; flex-shrink: 0; }
+.sch-hdr-center { flex: 1; text-align: center; }
+.sch-hdr-title { font-size: 15px; font-weight: 800; color: #e8eef8; font-family: 'Cairo', sans-serif; }
+.sch-hdr-sub { font-size: 10px; color: #7a8ba8; margin-top: 1px; font-family: 'Cairo', sans-serif; }
+.sch-ramadan { display: flex; align-items: center; gap: 4px; background: linear-gradient(135deg,rgba(245,158,11,.15),rgba(239,68,68,.1)); border: 1px solid rgba(245,158,11,.3); border-radius: 20px; padding: 4px 9px; font-size: 10px; font-weight: 700; color: #fbbf24; flex-shrink: 0; animation: sch-rpulse 3s infinite; font-family: 'Cairo', sans-serif; }
+@keyframes sch-rpulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)} 50%{box-shadow:0 0 12px 3px rgba(245,158,11,.18)} }
+/* now card */
+.sch-now-wrap { padding: 10px 14px 4px; flex-shrink: 0; }
+.sch-now-card { background: linear-gradient(135deg,#4f8ef7,#9b6ef7); border-radius: 18px; padding: 14px 16px; position: relative; overflow: hidden; }
+.sch-now-card::before { content: ''; position: absolute; top: -28px; right: -28px; width: 100px; height: 100px; background: rgba(255,255,255,.07); border-radius: 50%; }
+.sch-now-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: rgba(255,255,255,.7); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; font-family: 'Cairo', sans-serif; }
+.sch-now-dot { width: 7px; height: 7px; background: #fff; border-radius: 50%; animation: sch-ndot 1.5s infinite; }
+@keyframes sch-ndot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+.sch-now-subj { font-size: 17px; font-weight: 900; color: #fff; margin-bottom: 3px; line-height: 1.3; font-family: 'Cairo', sans-serif; }
+.sch-now-meta { font-size: 11px; color: rgba(255,255,255,.75); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; font-family: 'Cairo', sans-serif; }
+.sch-prog-bar { height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; overflow: hidden; }
+.sch-prog-fill { height: 100%; background: #fff; border-radius: 2px; box-shadow: 0 0 8px rgba(255,255,255,.5); transition: width 1s linear; }
+.sch-prog-lbls { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255,255,255,.6); margin-top: 4px; font-family: 'Cairo', sans-serif; }
+.sch-time-left { position: absolute; top: 13px; left: 13px; background: rgba(255,255,255,.2); border-radius: 8px; padding: 3px 8px; font-size: 11px; font-weight: 700; color: #fff; backdrop-filter: blur(4px); font-family: 'Cairo', sans-serif; }
+.sch-no-now { background: #111627; border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 13px 15px; display: flex; align-items: center; gap: 12px; }
+.sch-no-now-ico { font-size: 26px; }
+.sch-no-now-t1 { font-size: 13px; font-weight: 800; color: #e8eef8; font-family: 'Cairo', sans-serif; }
+.sch-no-now-t2 { font-size: 11px; color: #7a8ba8; margin-top: 2px; font-family: 'Cairo', sans-serif; }
+/* next card */
+.sch-next-card { margin: 0 14px 8px; background: #111627; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+.sch-next-ico { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; background: rgba(79,142,247,.12); border: 1px solid rgba(79,142,247,.2); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.sch-next-info { flex: 1; min-width: 0; }
+.sch-next-lbl { font-size: 10px; color: #7a8ba8; font-weight: 600; letter-spacing: 1px; font-family: 'Cairo', sans-serif; }
+.sch-next-subj { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e8eef8; font-family: 'Cairo', sans-serif; }
+.sch-next-time { font-size: 11px; color: #4f8ef7; font-weight: 600; margin-top: 1px; font-family: 'Cairo', sans-serif; }
+.sch-next-cnt { background: rgba(79,142,247,.1); border: 1px solid rgba(79,142,247,.2); border-radius: 8px; padding: 5px 9px; text-align: center; flex-shrink: 0; }
+.sch-next-cnt-n { font-size: 17px; font-weight: 900; color: #4f8ef7; line-height: 1; font-family: 'Cairo', sans-serif; }
+.sch-next-cnt-l { font-size: 9px; color: #7a8ba8; font-family: 'Cairo', sans-serif; }
+/* sec selector */
+.sch-sec-row { display: flex; gap: 6px; padding: 6px 14px 4px; flex-shrink: 0; }
+.sch-sec-btn { flex: 1; padding: 9px 6px; border-radius: 11px; cursor: pointer; font-size: 12px; font-weight: 700; color: #7a8ba8; background: #111627; border: 1px solid rgba(255,255,255,0.07); transition: all .2s; text-align: center; font-family: 'Cairo', sans-serif; }
+.sch-sec-btn.active { background: rgba(79,142,247,.15); color: #4f8ef7; border-color: rgba(79,142,247,.4); }
+/* day tabs */
+.sch-days-wrap { padding: 4px 14px 6px; flex-shrink: 0; }
+.sch-days { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.sch-days::-webkit-scrollbar { display: none; }
+.sch-day-tab { flex-shrink: 0; padding: 8px 14px; border-radius: 11px; cursor: pointer; font-size: 12px; font-weight: 700; color: #7a8ba8; background: #111627; border: 1px solid rgba(255,255,255,0.07); transition: all .2s; position: relative; font-family: 'Cairo', sans-serif; }
+.sch-day-tab .sch-day-badge { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; border-radius: 50%; background: #9b6ef7; color: #fff; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid #0a0e1a; }
+.sch-day-tab.active { background: #4f8ef7; color: #fff; border-color: #4f8ef7; box-shadow: 0 3px 14px rgba(79,142,247,.3); }
+/* timeline */
+.sch-timeline { flex: 1; overflow-y: auto; padding: 6px 14px 80px; scrollbar-width: none; }
+.sch-timeline::-webkit-scrollbar { display: none; }
+.sch-period-group { position: relative; margin-bottom: 4px; }
+.sch-period-hdr { display: flex; align-items: center; gap: 10px; padding: 8px 4px 6px; }
+.sch-period-num { width: 24px; height: 24px; border-radius: 8px; background: #161d30; border: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #7a8ba8; flex-shrink: 0; font-family: 'Cairo', sans-serif; }
+.sch-period-time { font-size: 11px; font-weight: 700; color: #7a8ba8; font-family: 'Cairo', sans-serif; }
+.sch-period-hdr.has-now .sch-period-num { background: rgba(79,142,247,.2); border-color: rgba(79,142,247,.4); color: #4f8ef7; }
+.sch-period-cards { display: flex; flex-direction: column; gap: 7px; margin-bottom: 2px; }
+.sch-card { background: #111627; border-radius: 14px; padding: 12px 13px; border: 1px solid rgba(255,255,255,0.07); display: flex; gap: 10px; align-items: stretch; position: relative; overflow: hidden; transition: transform .2s; cursor: pointer; animation: sch-lecIn .4s cubic-bezier(.34,1.56,.64,1) both; }
+.sch-card:active { transform: scale(.98); }
+.sch-card.is-now { border-color: rgba(79,142,247,.45); background: linear-gradient(135deg,rgba(79,142,247,.09),rgba(155,110,247,.05)); }
+.sch-card.is-done { opacity: .35; }
+.sch-card.is-lecture { border-right: 3px solid rgba(79,142,247,.5); }
+.sch-card.is-section { border-right: 3px solid rgba(155,110,247,.5); }
+@keyframes sch-lecIn { from{opacity:0;transform:translateX(10px) scale(.97)} to{opacity:1;transform:translateX(0) scale(1)} }
+.sch-bar { width: 3px; border-radius: 3px; flex-shrink: 0; align-self: stretch; }
+.sch-body { flex: 1; min-width: 0; }
+.sch-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 5px; margin-bottom: 3px; font-family: 'Cairo', sans-serif; }
+.sch-badge.lec { background: rgba(79,142,247,.15); color: #4f8ef7; }
+.sch-badge.sec { background: rgba(155,110,247,.15); color: #9b6ef7; }
+.sch-badge.act { background: rgba(100,116,139,.15); color: #94a3b8; }
+.sch-subj { font-size: 14px; font-weight: 800; color: #e8eef8; margin-bottom: 3px; line-height: 1.3; font-family: 'Cairo', sans-serif; }
+.sch-meta { display: flex; flex-wrap: wrap; gap: 5px; }
+.sch-chip { display: flex; align-items: center; gap: 3px; font-size: 10px; color: #7a8ba8; font-weight: 600; font-family: 'Cairo', sans-serif; }
+.sch-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; flex-shrink: 0; gap: 6px; min-width: 52px; }
+.sch-time-block { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.sch-t { font-size: 11px; font-weight: 800; color: #e8eef8; font-family: 'Cairo', sans-serif; }
+.sch-dur { font-size: 9px; color: #7a8ba8; background: rgba(255,255,255,.05); padding: 2px 5px; border-radius: 5px; font-family: 'Cairo', sans-serif; }
+.sch-t2 { font-size: 10px; color: #7a8ba8; font-family: 'Cairo', sans-serif; }
+.sch-now-badge { background: linear-gradient(135deg,#4f8ef7,#9b6ef7); color: #fff; font-size: 9px; font-weight: 800; padding: 3px 7px; border-radius: 6px; text-align: center; white-space: nowrap; font-family: 'Cairo', sans-serif; }
+.sch-edit-btn { background: rgba(79,142,247,.1); border: 1px solid rgba(79,142,247,.25); border-radius: 7px; color: #4f8ef7; font-size: 10px; font-weight: 700; padding: 3px 7px; cursor: pointer; display: none; font-family: 'Cairo', sans-serif; transition: all .2s; white-space: nowrap; align-self: flex-end; }
+.sch-admin-on .sch-edit-btn { display: block; }
+/* empty day */
+.sch-empty { text-align: center; padding: 44px 20px; display: flex; flex-direction: column; align-items: center; gap: 11px; }
+.sch-empty-ico { font-size: 52px; animation: sch-flt 3s ease-in-out infinite; }
+@keyframes sch-flt { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.sch-empty-t1 { font-size: 17px; font-weight: 800; font-family: 'Cairo', sans-serif; color: #e8eef8; }
+.sch-empty-t2 { font-size: 12px; color: #7a8ba8; line-height: 1.7; font-family: 'Cairo', sans-serif; }
+/* edit sheet */
+.sch-edit-overlay { position: absolute; inset: 0; background: rgba(10,14,26,.92); backdrop-filter: blur(14px); z-index: 400; display: none; align-items: flex-end; justify-content: center; }
+.sch-edit-overlay.active { display: flex; animation: fadeIn .2s ease; }
+.sch-edit-sheet { background: #111627; border-radius: 22px 22px 0 0; width: 100%; padding: 22px 18px 38px; animation: sch-sheetUp .3s cubic-bezier(.16,1,.3,1); }
+@keyframes sch-sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.sch-edit-handle { width: 34px; height: 4px; background: rgba(255,255,255,.12); border-radius: 2px; margin: 0 auto 18px; }
+.sch-edit-title { font-size: 15px; font-weight: 800; margin-bottom: 3px; color: #e8eef8; font-family: 'Cairo', sans-serif; }
+.sch-edit-desc { font-size: 11px; color: #7a8ba8; margin-bottom: 18px; line-height: 1.6; font-family: 'Cairo', sans-serif; }
+.sch-field-lbl { font-size: 11px; font-weight: 700; color: #7a8ba8; letter-spacing: 1px; margin-bottom: 6px; font-family: 'Cairo', sans-serif; }
+.sch-inp { width: 100%; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,0.07); border-radius: 11px; padding: 11px 13px; color: #e8eef8; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 700; outline: none; transition: border-color .2s; direction: rtl; margin-bottom: 12px; }
+.sch-inp:focus { border-color: rgba(79,142,247,.5); }
+.sch-edit-btns { display: flex; gap: 8px; margin-top: 4px; }
+.sch-btn-cancel { flex: 1; padding: 12px; border-radius: 11px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,0.07); color: #7a8ba8; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
+.sch-btn-save { flex: 2; padding: 12px; border-radius: 11px; background: linear-gradient(135deg,#4f8ef7,#9b6ef7); border: none; color: #fff; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; }
+/* upload screen inside schedule */
+.sch-upload { position: absolute; inset: 0; background: #0a0e1a; z-index: 350; display: none; flex-direction: column; animation: sch-slideUp .35s cubic-bezier(.16,1,.3,1); }
+.sch-upload.active { display: flex; }
+@keyframes sch-slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+.sch-upload-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.sch-slbl { font-size: 10px; font-weight: 700; color: #7a8ba8; letter-spacing: 1px; margin-bottom: 7px; font-family: 'Cairo', sans-serif; }
+.sch-upload-zone { border: 2px dashed rgba(79,142,247,.3); border-radius: 15px; padding: 26px 16px; text-align: center; cursor: pointer; transition: all .3s; background: rgba(79,142,247,.03); position: relative; overflow: hidden; }
+.sch-upload-zone:hover { border-color: rgba(79,142,247,.6); background: rgba(79,142,247,.07); }
+.sch-upload-zone.has-img { border-style: solid; border-color: rgba(79,142,247,.5); padding: 0; }
+.sch-upload-prev { width: 100%; border-radius: 13px; display: block; max-height: 200px; object-fit: contain; }
+.sch-upload-ico { font-size: 34px; margin-bottom: 7px; }
+.sch-upload-txt { font-size: 14px; font-weight: 700; color: #e8eef8; margin-bottom: 3px; font-family: 'Cairo', sans-serif; }
+.sch-upload-sub { font-size: 11px; color: #7a8ba8; font-family: 'Cairo', sans-serif; }
+.sch-upload-chg { position: absolute; bottom: 8px; right: 8px; background: rgba(10,14,26,.85); backdrop-filter: blur(8px); color: #e8eef8; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 7px; cursor: pointer; border: 1px solid rgba(255,255,255,0.07); font-family: 'Cairo', sans-serif; }
+.sch-type-row { display: flex; gap: 7px; }
+.sch-type-btn { flex: 1; padding: 10px 6px; border-radius: 12px; background: #111627; border: 1px solid rgba(255,255,255,0.07); cursor: pointer; text-align: center; transition: all .2s; }
+.sch-type-btn.active { border-color: rgba(79,142,247,.5); background: rgba(79,142,247,.08); }
+.sch-type-ico { font-size: 18px; margin-bottom: 3px; }
+.sch-type-lbl { font-size: 12px; font-weight: 700; color: #e8eef8; font-family: 'Cairo', sans-serif; }
+.sch-type-sub { font-size: 10px; color: #7a8ba8; font-family: 'Cairo', sans-serif; }
+.sch-date-row { background: #111627; border: 1px solid rgba(255,255,255,0.07); border-radius: 11px; padding: 11px 13px; display: flex; align-items: center; gap: 10px; }
+.sch-date-row label { font-size: 12px; color: #7a8ba8; font-weight: 600; flex-shrink: 0; font-family: 'Cairo', sans-serif; }
+.sch-date-row input { flex: 1; background: transparent; border: none; outline: none; color: #e8eef8; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 700; text-align: left; direction: ltr; }
+.sch-apikey-wrap { background: rgba(245,158,11,.05); border: 1px solid rgba(245,158,11,.2); border-radius: 13px; padding: 12px 13px; }
+.sch-apikey-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.sch-apikey-eye { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,0.07); border-radius: 9px; width: 36px; height: 36px; cursor: pointer; font-size: 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.sch-apikey-hint { font-size: 10px; color: #7a8ba8; font-family: 'Cairo', sans-serif; }
+.sch-anlz-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: linear-gradient(135deg,#4f8ef7,#9b6ef7); color: #fff; font-size: 14px; font-weight: 800; font-family: 'Cairo', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.sch-anlz-btn:disabled { opacity: .4; cursor: not-allowed; }
+/* analyzing overlay */
+.sch-anlz-ov { position: absolute; inset: 0; background: rgba(10,14,26,.96); backdrop-filter: blur(12px); z-index: 360; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 15px; }
+.sch-anlz-ov.active { display: flex; }
+.sch-ai-gem { width: 64px; height: 64px; background: linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 26px; animation: sch-spinP 2s ease-in-out infinite; box-shadow: 0 14px 44px rgba(79,142,247,.3); }
+@keyframes sch-spinP { 0%,100%{transform:scale(1) rotate(0deg)} 25%{transform:scale(1.05) rotate(4deg)} 75%{transform:scale(1.05) rotate(-4deg)} }
+.sch-anlz-title { font-size: 16px; font-weight: 800; font-family: 'Cairo', sans-serif; color: #e8eef8; }
+.sch-anlz-steps { display: flex; flex-direction: column; gap: 6px; width: 268px; }
+.sch-a-step { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #7a8ba8; font-weight: 600; padding: 9px 12px; border-radius: 10px; background: #111627; border: 1px solid rgba(255,255,255,0.07); transition: all .4s; font-family: 'Cairo', sans-serif; }
+.sch-a-step.done { color: #4ade80; border-color: rgba(74,222,128,.2); background: rgba(74,222,128,.06); }
+.sch-a-step.active { color: #e8eef8; border-color: rgba(79,142,247,.3); background: rgba(79,142,247,.06); }
+/* success overlay */
+.sch-suc-ov { position: absolute; inset: 0; background: #0a0e1a; z-index: 370; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; }
+.sch-suc-ov.active { display: flex; }
+.sch-suc-ico { font-size: 64px; animation: sch-sBounce .6s cubic-bezier(.34,1.56,.64,1); }
+@keyframes sch-sBounce { from{transform:scale(0) rotate(-20deg)} to{transform:scale(1) rotate(0)} }
+.sch-suc-t1 { font-size: 21px; font-weight: 900; text-align: center; color: #e8eef8; font-family: 'Cairo', sans-serif; }
+.sch-suc-t2 { font-size: 12px; color: #7a8ba8; text-align: center; line-height: 1.8; font-family: 'Cairo', sans-serif; }
+.sch-suc-prev { width: 100%; background: #111627; border: 1px solid rgba(255,255,255,0.07); border-radius: 13px; padding: 12px; }
+.sch-sp-row { display: flex; align-items: center; gap: 9px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.sch-sp-row:last-child { border-bottom: none; }
+.sch-sp-day { font-size: 12px; font-weight: 800; color: #4f8ef7; width: 55px; flex-shrink: 0; font-family: 'Cairo', sans-serif; }
+.sch-sp-txt { font-size: 11px; color: #7a8ba8; flex: 1; font-family: 'Cairo', sans-serif; }
+.sch-sp-dot { width: 7px; height: 7px; border-radius: 3px; }
+.sch-suc-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: linear-gradient(135deg,#4f8ef7,#9b6ef7); color: #fff; font-size: 14px; font-weight: 800; font-family: 'Cairo', sans-serif; cursor: pointer; }
+/* fab + admin toggle */
+.sch-fab { position: absolute; bottom: 24px; right: 24px; width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg,#4f8ef7,#9b6ef7); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border: none; box-shadow: 0 7px 22px rgba(79,142,247,.35); color: #fff; transition: all .2s; font-family: 'Cairo', sans-serif; }
+.sch-admin-toggle { position: absolute; bottom: 24px; left: 24px; background: rgba(12,18,32,.92); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.07); border-radius: 11px; padding: 8px 11px; font-size: 10px; font-weight: 700; color: #7a8ba8; cursor: pointer; font-family: 'Cairo', sans-serif; }
+.sch-admin-toggle.on { color: #4ade80; border-color: rgba(74,222,128,.3); }
+/* toast */
+.sch-toast { position: absolute; bottom: 86px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #4ade80; padding: 9px 16px; border-radius: 11px; font-size: 12px; font-weight: 700; z-index: 999; border: 1px solid rgba(74,222,128,.3); pointer-events: none; font-family: 'Cairo', sans-serif; animation: fadeIn .3s ease; }
+
+/* ── LIGHT MODE ── */
+body.light-mode .sch-screen { background: #dde3ec; }
+body.light-mode .sch-hdr { background: #d2dce8; border-bottom-color: rgba(0,0,0,0.08); }
+body.light-mode .sch-hdr-title { color: #1e293b; }
+body.light-mode .sch-hdr-sub { color: #64748b; }
+body.light-mode .sch-back-btn { background: rgba(0,0,0,.06); color: #475569; }
+body.light-mode .sch-no-now { background: #cdd6e3; border-color: rgba(0,0,0,0.07); }
+body.light-mode .sch-no-now-t1 { color: #1e293b; }
+body.light-mode .sch-no-now-t2 { color: #64748b; }
+body.light-mode .sch-next-card { background: #cdd6e3; border-color: rgba(0,0,0,0.07); }
+body.light-mode .sch-next-subj { color: #1e293b; }
+body.light-mode .sch-next-lbl { color: #64748b; }
+body.light-mode .sch-sec-btn { background: #cdd6e3; border-color: rgba(0,0,0,0.07); color: #64748b; }
+body.light-mode .sch-sec-btn.active { background: rgba(79,142,247,.15); color: #2563eb; border-color: rgba(79,142,247,.4); }
+body.light-mode .sch-day-tab { background: #cdd6e3; border-color: rgba(0,0,0,0.07); color: #64748b; }
+body.light-mode .sch-day-tab.active { background: #4f8ef7; color: #fff; }
+body.light-mode .sch-day-tab .sch-day-badge { border-color: #dde3ec; }
+body.light-mode .sch-period-num { background: #c4cfdd; border-color: rgba(0,0,0,0.07); color: #64748b; }
+body.light-mode .sch-period-time { color: #64748b; }
+body.light-mode .sch-card { background: #cdd6e3; border-color: rgba(0,0,0,0.07); }
+body.light-mode .sch-card.is-now { background: linear-gradient(135deg,rgba(79,142,247,.12),rgba(155,110,247,.07)); border-color: rgba(79,142,247,.4); }
+body.light-mode .sch-card.is-done { opacity: .4; }
+body.light-mode .sch-subj { color: #1e293b; }
+body.light-mode .sch-chip { color: #475569; }
+body.light-mode .sch-t { color: #1e293b; }
+body.light-mode .sch-t2 { color: #64748b; }
+body.light-mode .sch-dur { color: #64748b; background: rgba(0,0,0,.05); }
+body.light-mode .sch-empty-t1 { color: #1e293b; }
+body.light-mode .sch-empty-t2 { color: #64748b; }
+body.light-mode .sch-edit-overlay { background: rgba(200,210,225,.92); }
+body.light-mode .sch-edit-sheet { background: #dde3ec; }
+body.light-mode .sch-edit-title { color: #1e293b; }
+body.light-mode .sch-edit-desc { color: #64748b; }
+body.light-mode .sch-field-lbl { color: #64748b; }
+body.light-mode .sch-inp { background: #c4cfdd; border-color: rgba(0,0,0,0.1); color: #1e293b; }
+body.light-mode .sch-btn-cancel { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,0.08); color: #475569; }
+body.light-mode .sch-upload { background: #dde3ec; }
+body.light-mode .sch-upload-zone { border-color: rgba(79,142,247,.3); background: rgba(79,142,247,.04); }
+body.light-mode .sch-type-btn { background: #cdd6e3; border-color: rgba(0,0,0,0.07); }
+body.light-mode .sch-type-lbl { color: #1e293b; }
+body.light-mode .sch-type-sub { color: #64748b; }
+body.light-mode .sch-date-row { background: #cdd6e3; border-color: rgba(0,0,0,0.07); }
+body.light-mode .sch-date-row label { color: #64748b; }
+body.light-mode .sch-date-row input { color: #1e293b; }
+body.light-mode .sch-apikey-wrap { background: rgba(245,158,11,.07); }
+body.light-mode .sch-apikey-eye { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.08); }
+body.light-mode .sch-apikey-hint { color: #64748b; }
+body.light-mode .sch-inp::placeholder { color: #94a3b8; }
+body.light-mode .sch-anlz-ov { background: rgba(200,210,225,.97); }
+body.light-mode .sch-a-step { background: #cdd6e3; border-color: rgba(0,0,0,0.07); color: #64748b; }
+body.light-mode .sch-a-step.active { background: rgba(79,142,247,.1); border-color: rgba(79,142,247,.3); color: #1e293b; }
+body.light-mode .sch-suc-ov { background: #dde3ec; }
+body.light-mode .sch-suc-t1 { color: #1e293b; }
+body.light-mode .sch-
         /* ==========================================
            === NEW STYLES FOR SLIDING PANEL ===
            ========================================== */
@@ -1126,6 +1352,7 @@ body.light-mode .sai-key-close { background: rgba(0,0,0,0.06); color: #475569; }
                 <!-- ============================= -->
                 <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
                 <div class="menu-item" onclick="window.openQuickLinksModal()"><span>🔗</span> <span>Quick Links</span></div>
+                <div class="menu-item" onclick="window.openSchedule()"><span>🗓️</span> <span>Sheduler</span></div>
                 <div class="menu-item" onclick="window.openFavoritesModal()"><span>⭐</span> <span>Favorites</span></div>
                 <div class="menu-item" onclick="window.openTodoModal()"><span>📌</span> <span>To-Do List</span></div>
                 <div class="menu-item" onclick="window.openPollModal()"><span>🗳️</span> <span>VOTE</span></div>
@@ -3389,6 +3616,470 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
       </div>
     </div>
   </div>
+  <!-- ========== SCHEDULE SCREEN ========== -->
+<div class="sch-screen" id="sch-screen">
+
+  <div class="sch-hdr">
+    <div class="sch-hdr-row">
+      <button class="sch-back-btn" onclick="window.closeSchedule()">‹</button>
+      <div class="sch-hdr-center">
+        <div class="sch-hdr-title">جدول الهندسة الميكانيكية</div>
+        <div class="sch-hdr-sub">الفرقة الثانية — الفصل الثاني 2025/2026</div>
+      </div>
+      <div class="sch-ramadan-badge" id="sch-ramadan-badge" style="display:none">🌙 رمضان</div>
+    </div>
+  </div>
+
+  <div class="sch-sec-row" id="sch-sec-row"></div>
+  <div id="sch-now-wrap"></div>
+  <div id="sch-next-wrap"></div>
+  <div class="sch-days-wrap"><div class="sch-days" id="sch-days"></div></div>
+  <div class="sch-timeline" id="sch-timeline"></div>
+
+  <button class="sch-fab" onclick="sch_openUpload()">📷</button>
+  <button class="sch-admin-toggle" id="sch-adm-btn" onclick="sch_toggleAdmin()">🔑 Admin</button>
+
+  <!-- Edit Sheet -->
+  <div class="sch-edit-overlay" id="sch-edit-overlay" onclick="if(event.target===this)sch_closeEdit()">
+    <div class="sch-edit-sheet">
+      <div class="sch-edit-handle"></div>
+      <div class="sch-edit-title">✏️ تعديل بيانات المحاضرة</div>
+      <div class="sch-edit-desc" id="sch-edit-desc"></div>
+      <div class="sch-field-lbl">👨‍🏫 اسم الدكتور / المعيد</div>
+      <input class="sch-inp" id="sch-inp-doctor" placeholder="اسم الدكتور أو المعيد...">
+      <div class="sch-field-lbl">🚪 القاعة / المعمل</div>
+      <input class="sch-inp" id="sch-inp-hall" placeholder="رقم القاعة أو المعمل...">
+      <div class="sch-edit-btns">
+        <button class="sch-btn-cancel" onclick="sch_closeEdit()">إلغاء</button>
+        <button class="sch-btn-save" onclick="sch_saveEdit()">💾 حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Screen -->
+  <div class="sch-upload-scr" id="sch-upload-scr">
+    <div class="sch-hdr">
+      <div class="sch-hdr-row">
+        <button class="sch-back-btn" onclick="sch_closeUpload()">‹</button>
+        <div class="sch-hdr-center"><div class="sch-hdr-title">تحديث الجدول بالـ AI ✦</div></div>
+      </div>
+    </div>
+    <div class="sch-upload-body">
+      <div class="sch-apikey-wrap">
+        <div class="sch-slbl">🔑 Anthropic API Key</div>
+        <div class="sch-apikey-row">
+          <input class="sch-inp" id="sch-api-key" type="password" placeholder="sk-ant-..." oninput="sch_saveKey(this.value)" style="margin-bottom:0;flex:1">
+          <button class="sch-apikey-eye" id="sch-eye-btn" onclick="sch_toggleEye()">👁</button>
+        </div>
+        <div class="sch-apikey-hint">بيتحفظ على جهازك بس — مش بيتبعت لحد</div>
+      </div>
+      <div>
+        <div class="sch-slbl">📷 صورة الجدول</div>
+        <div class="sch-upload-zone" id="sch-uz" onclick="sch_triggerUp()">
+          <div id="sch-uph">
+            <div class="sch-upload-ico">📷</div>
+            <div class="sch-upload-txt">اضغط لرفع صورة الجدول</div>
+            <div class="sch-upload-sub">صورة واضحة للجدول الرسمي</div>
+          </div>
+          <img id="sch-uimg" class="sch-upload-prev" style="display:none">
+          <div class="sch-upload-chg" id="sch-uchg" style="display:none">تغيير ✎</div>
+        </div>
+        <input type="file" id="sch-fi" accept="image/*" style="display:none" onchange="sch_handleFile(event)">
+      </div>
+      <div>
+        <div class="sch-slbl">🗂️ نوع الجدول</div>
+        <div class="sch-type-row">
+          <div class="sch-type-btn active" id="sch-tp-n" onclick="sch_selType('normal')"><div class="sch-type-ico">📅</div><div class="sch-type-lbl">جدول عادي</div><div class="sch-type-sub">طوال الترم</div></div>
+          <div class="sch-type-btn" id="sch-tp-r" onclick="sch_selType('ramadan')"><div class="sch-type-ico">🌙</div><div class="sch-type-lbl">جدول رمضان</div><div class="sch-type-sub">مؤقت بتاريخ</div></div>
+        </div>
+      </div>
+      <div id="sch-date-w" style="display:none">
+        <div class="sch-slbl">📅 تاريخ انتهاء رمضان</div>
+        <div class="sch-date-row"><label>ينتهي في</label><input type="date" id="sch-end-d" oninput="sch_checkRdy()"></div>
+      </div>
+      <button class="sch-anlz-btn" id="sch-ab" onclick="sch_startAnalysis()" disabled><span>✦</span> حلل بالـ AI وحفظ الجدول</button>
+    </div>
+    <div class="sch-anlz-ov" id="sch-anlz-ov">
+      <div class="sch-ai-gem">✦</div>
+      <div class="sch-anlz-title">Shoubra AI بيقرأ الجدول...</div>
+      <div class="sch-anlz-steps">
+        <div class="sch-a-step active" id="sch-st1"><span class="sch-a-ico">🔍</span> بيحلل الصورة</div>
+        <div class="sch-a-step" id="sch-st2"><span class="sch-a-ico">🔵</span> بيحدد المستطيلات الزرقاء</div>
+        <div class="sch-a-step" id="sch-st3"><span class="sch-a-ico">👥</span> بيفصل بيانات السكاشن</div>
+        <div class="sch-a-step" id="sch-st4"><span class="sch-a-ico">🕐</span> بيرتب الترتيب الزمني</div>
+        <div class="sch-a-step" id="sch-st5"><span class="sch-a-ico">☁️</span> بيحفظ للطلاب</div>
+      </div>
+    </div>
+    <div class="sch-suc-ov" id="sch-suc-ov">
+      <div class="sch-suc-ico">✅</div>
+      <div class="sch-suc-t1">الجدول اتحفظ!</div>
+      <div class="sch-suc-t2">الجدول اتنظّم <strong style="color:#4f8ef7">محاضرات وسكاشن</strong><br>مرتبين بالوقت لكل يوم 🎉</div>
+      <div class="sch-suc-prev" id="sch-suc-prev"></div>
+      <button class="sch-suc-btn" onclick="sch_finishUp()">عرض الجدول 🗓️</button>
+    </div>
+  </div>
+
 </div>
+<!-- ========== END SCHEDULE SCREEN ========== -->
+</div>
+<script>
+// ========== SCHEDULE SCREEN ==========
+
+// helpers
+function schGetCurrentDay() {
+  const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  return days[new Date().getDay()];
+}
+function schGetCurrentMins() {
+  const n = new Date(); return n.getHours()*60 + n.getMinutes();
+}
+function sch_toMins(t) {
+  const [tp,per] = t.split(' ');
+  let [h,m] = tp.split(':').map(Number);
+  if(per==='م'&&h!==12) h+=12;
+  if(per==='ص'&&h===12) h=0;
+  return h*60+m;
+}
+
+// open / close
+window.openSchedule = function() {
+  document.getElementById('menu-dropdown').classList.remove('active');
+  document.getElementById('sch-screen').classList.add('active');
+  sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+};
+window.closeSchedule = function() {
+  document.getElementById('sch-screen').classList.remove('active');
+};
+
+// DATA
+let SCH_DATA = {
+  "الأحد": [
+    { id:"ah-p1-lec", type:"lecture", period:1, subject:"انتقال الحرارة", doctor:"أ.د. شريف هادي طاهر / أ.م.د. هاني الصاوي / د. أشرف السيد عبدالعليم / د. محمد حي", hall:"SB4-11", from:"9:00 ص", to:"10:30 ص" },
+    { id:"ah-p2-s1", type:"section", sec:"1", period:2, subject:"تصميم ميكانيكي (1)", doctor:"م. محمد محمود", hall:"SB4-07", from:"10:30 ص", to:"12:00 م" },
+    { id:"ah-p2-s2", type:"section", sec:"2", period:2, subject:"تصميم ميكانيكي (1)", doctor:"م. محمد نشأت", hall:"SB4-08", from:"10:30 ص", to:"12:00 م" },
+    { id:"ah-p2-s3", type:"section", sec:"3", period:2, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"10:30 ص", to:"12:00 م" },
+    { id:"ah-p3-s3", type:"section", sec:"3", period:3, subject:"ميكانيكا الموائع", doctor:"م. يوسف عون", hall:"SB4-09 + معمل 1", from:"12:00 م", to:"1:00 م" },
+    { id:"ah-p4-lec", type:"lecture", period:4, subject:"قضايا مجتمعية", doctor:"د. محمود منصور / د. هشام مرسى", hall:"SB4-11", from:"1:00 م", to:"2:30 م" },
+    { id:"ah-p5-s1", type:"section", sec:"1", period:5, subject:"تصميم ميكانيكي (1)", doctor:"م. مصطفى عبد المجيد", hall:"SB4-03", from:"2:30 م", to:"4:00 م" },
+    { id:"ah-p5-s2", type:"section", sec:"2", period:5, subject:"انتقال الحرارة", doctor:"م. سيد أبو القاسم", hall:"SB4-08 + معمل 2", from:"2:30 م", to:"4:00 م" },
+    { id:"ah-p5-s3", type:"section", sec:"3", period:5, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"2:30 م", to:"4:00 م" },
+    { id:"ah-p6-s2", type:"section", sec:"2", period:6, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"4:00 م", to:"5:30 م" },
+    { id:"ah-p6-s3", type:"section", sec:"3", period:6, subject:"الاهتزازات الميكانيكية", doctor:"م.م. حسن الشقرقي / م.م. مصطفى محمود", hall:"SB4-09", from:"4:00 م", to:"5:30 م" },
+  ],
+  "الاثنين": [
+    { id:"tn-p1-lec", type:"lecture", period:1, subject:"الاهتزازات الميكانيكية", doctor:"أ.د. سامح شوق / أ.م.د. تامر عبدالفتاح", hall:"SB3-11", from:"9:00 ص", to:"10:30 ص" },
+    { id:"tn-p2-lec", type:"lecture", period:2, subject:"الآلات الكهربية", doctor:"أ.د. محسن الشريف / د. هاني هنزي", hall:"SB3-11", from:"10:30 ص", to:"12:00 م" },
+    { id:"tn-p3-s1", type:"section", sec:"1", period:3, subject:"انتقال الحرارة", doctor:"م.م. عمر الفقي", hall:"SB4-07 + معمل 2", from:"12:00 م", to:"1:00 م" },
+    { id:"tn-p3-s2", type:"section", sec:"2", period:3, subject:"ميكانيكا الموائع", doctor:"م. يوسف صقر", hall:"SB4-08 + معمل 1", from:"12:00 م", to:"1:00 م" },
+    { id:"tn-p3-s3", type:"section", sec:"3", period:3, subject:"الآلات الكهربية", doctor:"م. أحمد نبيل", hall:"SB4-10 + معمل 1", from:"12:00 م", to:"1:00 م" },
+    { id:"tn-p4-s1", type:"section", sec:"1", period:4, subject:"ميكانيكا الموائع", doctor:"م. يوسف صقر", hall:"SB4-07 + معمل 1", from:"1:30 م", to:"2:30 م" },
+    { id:"tn-p4-s2", type:"section", sec:"2", period:4, subject:"الاهتزازات الميكانيكية", doctor:"م.م. الهيم مصطفى", hall:"SB4-08", from:"1:30 م", to:"2:30 م" },
+    { id:"tn-p4-s3", type:"section", sec:"3", period:4, subject:"انتقال الحرارة", doctor:"م. اسلام مدحت", hall:"SB4-10 + معمل 2", from:"1:30 م", to:"2:30 م" },
+  ],
+  "الثلاثاء": [
+    { id:"th-p1-lec", type:"lecture", period:1, subject:"تصميم ميكانيكي (1)", doctor:"أ.د. فريدة سيد أحمد / د. أحمد عبد الفتاح", hall:"SB3-11", from:"9:00 ص", to:"10:30 ص" },
+    { id:"th-p2-lec", type:"lecture", period:2, subject:"ميكانيكا الموائع (2)", doctor:"أ.د. غازي عصاصة / د. محمد حسن شحاته / د. مينا جمال", hall:"SB3-11", from:"10:30 ص", to:"12:00 م" },
+    { id:"th-p3-act", type:"lecture", period:3, subject:"أنشطة طلابية", isActivity:true, doctor:"", hall:"", from:"12:00 م", to:"1:00 م" },
+    { id:"th-p4-s2", type:"section", sec:"2", period:4, subject:"الآلات الكهربية", doctor:"م. أحمد نبيل", hall:"SB4-10 + معمل 1", from:"1:30 م", to:"2:30 م" },
+    { id:"th-p5-s1", type:"section", sec:"1", period:5, subject:"الآلات الكهربية", doctor:"م. أحمد نبيل", hall:"SB4-08 + معمل 1", from:"2:30 م", to:"3:30 م" },
+  ],
+};
+
+const SCH_COLORS = {
+  "انتقال الحرارة":"#4f8ef7", "تصميم ميكانيكي (1)":"#9b6ef7",
+  "الاهتزازات الميكانيكية":"#f76eb2", "ميكانيكا الموائع":"#34d399",
+  "ميكانيكا الموائع (2)":"#10b981", "قضايا مجتمعية":"#f59e0b",
+  "الآلات الكهربية":"#06b6d4", "أنشطة طلابية":"#64748b",
+};
+const SCH_DAYS = ["الأحد","الاثنين","الثلاثاء"];
+let SCH_activeDay = "الأحد", SCH_activeSec = "1", SCH_adminMode = false, SCH_editTarget = null;
+let SCH_upType = "normal", SCH_hasImg = false, SCH_imageBase64 = null;
+
+function sch_getItems(day) {
+  return (SCH_DATA[day]||[]).filter(it =>
+    it.type==='lecture' || (it.type==='section' && it.sec===SCH_activeSec)
+  );
+}
+
+function sch_renderSecs() {
+  const wrap = document.getElementById('sch-sec-row'); if(!wrap) return;
+  wrap.innerHTML = '';
+  ["1","2","3"].forEach(s => {
+    const b = document.createElement('div');
+    b.className = 'sch-sec-btn' + (s===SCH_activeSec?' active':'');
+    b.textContent = 'سكشن ' + s;
+    b.onclick = () => { SCH_activeSec=s; sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow(); };
+    wrap.appendChild(b);
+  });
+}
+
+function sch_renderDays() {
+  const wrap = document.getElementById('sch-days'); if(!wrap) return;
+  wrap.innerHTML = '';
+  SCH_DAYS.forEach(day => {
+    const items = sch_getItems(day);
+    const tab = document.createElement('div');
+    tab.className = 'sch-day-tab' + (day===SCH_activeDay?' active':'');
+    tab.innerHTML = day + (items.length ? `<div class="sch-day-badge">${items.length}</div>` : '');
+    tab.onclick = () => { SCH_activeDay=day; sch_renderDays(); sch_renderTimeline(); sch_updateNow(); };
+    wrap.appendChild(tab);
+  });
+}
+
+function sch_updateNow() {
+  const nowMins = schGetCurrentMins();
+  const todayDay = schGetCurrentDay();
+  const items = sch_getItems(todayDay);
+  let nowIt=null, nextIt=null;
+  for(const it of items) {
+    const f=sch_toMins(it.from), t=sch_toMins(it.to);
+    if(nowMins>=f && nowMins<=t){ nowIt=it; break; }
+  }
+  for(const it of items) {
+    const f=sch_toMins(it.from);
+    if(nowMins<f){ if(!nextIt||f<sch_toMins(nextIt.from)) nextIt=it; }
+  }
+  const nw = document.getElementById('sch-now-wrap');
+  if(nowIt) {
+    const f=sch_toMins(nowIt.from), t=sch_toMins(nowIt.to);
+    const prog=Math.round(((nowMins-f)/(t-f))*100);
+    nw.innerHTML=`<div style="padding:10px 14px 4px"><div class="sch-now-card">
+      <div class="sch-time-left">⏱ ${t-nowMins} د</div>
+      <div class="sch-now-lbl"><div class="sch-now-dot"></div>الآن · ${nowIt.hall||''}</div>
+      <div class="sch-now-subj">${nowIt.subject}</div>
+      <div class="sch-now-meta"><span>👨‍🏫 ${(nowIt.doctor||'').split('/')[0].trim()||'—'}</span><span>🕐 ${nowIt.from} – ${nowIt.to}</span></div>
+      <div class="sch-prog-bar"><div class="sch-prog-fill" style="width:${prog}%"></div></div>
+      <div class="sch-prog-lbls"><span>${nowIt.from}</span><span>${nowIt.to}</span></div>
+    </div></div>`;
+  } else {
+    nw.innerHTML=`<div style="padding:10px 14px 4px"><div class="sch-no-now"><div class="sch-no-now-ico">☕</div><div><div class="sch-no-now-t1">مفيش محاضرة دلوقتي</div><div class="sch-no-now-t2">استغل الوقت في المذاكرة 📚</div></div></div></div>`;
+  }
+  const nx = document.getElementById('sch-next-wrap');
+  if(nextIt) {
+    const mins = sch_toMins(nextIt.from)-nowMins;
+    nx.innerHTML=`<div class="sch-next-card">
+      <div class="sch-next-ico">${nextIt.isActivity?'🎯':'📖'}</div>
+      <div class="sch-next-info"><div class="sch-next-lbl">المحاضرة التالية</div><div class="sch-next-subj">${nextIt.subject}</div><div class="sch-next-time">${nextIt.from} – ${nextIt.to}${nextIt.hall?' · '+nextIt.hall:''}</div></div>
+      <div class="sch-next-cnt"><div class="sch-next-cnt-n">${mins}</div><div class="sch-next-cnt-l">دقيقة</div></div>
+    </div>`;
+  } else { nx.innerHTML=''; }
+}
+
+function sch_renderTimeline() {
+  const wrap = document.getElementById('sch-timeline'); if(!wrap) return;
+  wrap.innerHTML = '';
+  const items = sch_getItems(SCH_activeDay);
+  if(!items.length) {
+    wrap.innerHTML=`<div class="sch-empty"><div class="sch-empty-ico">🎉</div><div class="sch-empty-t1">يومك حر!</div><div class="sch-empty-t2">مفيش محاضرات النهارده<br>استغلها صح 😄</div></div>`;
+    return;
+  }
+  const nowMins=schGetCurrentMins(), isToday=SCH_activeDay===schGetCurrentDay();
+  const byPeriod={};
+  items.forEach(it=>{ if(!byPeriod[it.period]) byPeriod[it.period]=[]; byPeriod[it.period].push(it); });
+  let ci=0;
+  Object.keys(byPeriod).sort((a,b)=>Number(a)-Number(b)).forEach(p => {
+    const group=byPeriod[p];
+    const hasNow=isToday&&group.some(it=>{ const f=sch_toMins(it.from),t=sch_toMins(it.to); return nowMins>=f&&nowMins<=t; });
+    const pg=document.createElement('div'); pg.className='sch-period-group';
+    const ph=document.createElement('div'); ph.className='sch-period-hdr'+(hasNow?' has-now':'');
+    ph.innerHTML=`<div class="sch-period-num">ف${p}</div><div class="sch-period-time">${group[0].from} – ${group[0].to}</div>`;
+    pg.appendChild(ph);
+    const pc=document.createElement('div'); pc.className='sch-period-cards';
+    group.forEach(it => {
+      const f=sch_toMins(it.from), t=sch_toMins(it.to);
+      const isNow=isToday&&nowMins>=f&&nowMins<=t;
+      const isDone=isToday&&nowMins>t;
+      const isLec=it.type==='lecture';
+      const color=SCH_COLORS[it.subject]||'#7a8ba8';
+      const badgeTxt=it.isActivity?'🎯 نشاط':isLec?'📖 محاضرة للكل':'👥 سكشن '+it.sec;
+      const badgeCls=it.isActivity?'act':isLec?'lec':'sec';
+      const card=document.createElement('div');
+      card.className='sch-card'+(isNow?' is-now':'')+(isDone?' is-done':'')+(isLec?' is-lecture':' is-section');
+      card.style.animationDelay=(ci*0.06)+'s';
+      card.innerHTML=`
+        <div class="sch-bar" style="background:${color}"></div>
+        <div class="sch-body">
+          <div class="sch-badge ${badgeCls}">${badgeTxt}</div>
+          <div class="sch-subj">${it.subject}</div>
+          <div class="sch-meta">
+            ${it.doctor?`<span class="sch-chip">👨‍🏫 ${it.doctor.split('/')[0].trim()}</span>`:''}
+            ${it.hall?`<span class="sch-chip">🚪 ${it.hall}</span>`:''}
+          </div>
+        </div>
+        <div class="sch-right">
+          <div class="sch-time-block">
+            ${isNow?'<div class="sch-now-badge">🔴 الآن</div>':''}
+            <div class="sch-t">${it.from}</div>
+            <div class="sch-dur">${t-f}د</div>
+            <div class="sch-t2">${it.to}</div>
+          </div>
+          <button class="sch-edit-btn" data-id="${it.id}">✏️ تعديل</button>
+        </div>`;
+      card.querySelector('.sch-edit-btn').addEventListener('click', e => { e.stopPropagation(); sch_openEdit(it.id); });
+      pc.appendChild(card); ci++;
+    });
+    pg.appendChild(pc); wrap.appendChild(pg);
+  });
+}
+
+// admin
+function sch_toggleAdmin() {
+  SCH_adminMode=!SCH_adminMode;
+  document.getElementById('sch-screen').classList.toggle('sch-admin-on', SCH_adminMode);
+  const btn=document.getElementById('sch-adm-btn');
+  btn.classList.toggle('on', SCH_adminMode);
+  btn.textContent=SCH_adminMode?'🔓 Admin ON':'🔑 Admin';
+}
+
+// edit
+function sch_findItem(id) {
+  let found=null;
+  Object.values(SCH_DATA).forEach(arr=>arr.forEach(it=>{ if(it.id===id) found=it; }));
+  return found;
+}
+function sch_openEdit(id) {
+  if(!SCH_adminMode) return;
+  const it=sch_findItem(id); if(!it) return;
+  SCH_editTarget=it;
+  document.getElementById('sch-edit-desc').textContent=it.subject+' · '+it.from+' – '+it.to;
+  document.getElementById('sch-inp-doctor').value=it.doctor||'';
+  document.getElementById('sch-inp-hall').value=it.hall||'';
+  document.getElementById('sch-edit-overlay').classList.add('active');
+}
+function sch_closeEdit() { document.getElementById('sch-edit-overlay').classList.remove('active'); SCH_editTarget=null; }
+function sch_saveEdit() {
+  if(!SCH_editTarget) return;
+  SCH_editTarget.doctor=document.getElementById('sch-inp-doctor').value;
+  SCH_editTarget.hall=document.getElementById('sch-inp-hall').value;
+  sch_closeEdit(); sch_renderTimeline(); sch_updateNow();
+  sch_toast('✅ تم حفظ التعديل');
+}
+function sch_toast(msg) {
+  const t=document.createElement('div'); t.className='sch-toast'; t.textContent=msg;
+  document.getElementById('sch-screen').appendChild(t);
+  setTimeout(()=>t.remove(), 2000);
+}
+
+// upload
+function sch_saveKey(v) { localStorage.setItem('sch_api_key', v.trim()); }
+function sch_toggleEye() {
+  const inp=document.getElementById('sch-api-key');
+  inp.type=inp.type==='password'?'text':'password';
+  document.getElementById('sch-eye-btn').textContent=inp.type==='password'?'👁':'🙈';
+}
+function sch_openUpload() {
+  document.getElementById('sch-api-key').value=localStorage.getItem('sch_api_key')||'';
+  document.getElementById('sch-upload-scr').classList.add('active');
+}
+function sch_closeUpload() {
+  document.getElementById('sch-upload-scr').classList.remove('active');
+  document.getElementById('sch-anlz-ov').classList.remove('active');
+  document.getElementById('sch-suc-ov').classList.remove('active');
+}
+function sch_triggerUp() { document.getElementById('sch-fi').click(); }
+function sch_handleFile(e) {
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    SCH_imageBase64=ev.target.result.split(',')[1];
+    document.getElementById('sch-uimg').src=ev.target.result;
+    document.getElementById('sch-uimg').style.display='block';
+    document.getElementById('sch-uph').style.display='none';
+    document.getElementById('sch-uchg').style.display='block';
+    document.getElementById('sch-uz').classList.add('has-img');
+    SCH_hasImg=true; sch_checkRdy();
+  };
+  r.readAsDataURL(f);
+}
+function sch_selType(t) {
+  SCH_upType=t;
+  document.getElementById('sch-tp-n').classList.toggle('active',t==='normal');
+  document.getElementById('sch-tp-r').classList.toggle('active',t==='ramadan');
+  document.getElementById('sch-date-w').style.display=t==='ramadan'?'block':'none';
+  sch_checkRdy();
+}
+function sch_checkRdy() {
+  const ok=SCH_hasImg&&(SCH_upType==='normal'||document.getElementById('sch-end-d').value);
+  document.getElementById('sch-ab').disabled=!ok;
+}
+
+async function sch_startAnalysis() {
+  document.getElementById('sch-anlz-ov').classList.add('active');
+  const steps=['sch-st1','sch-st2','sch-st3','sch-st4','sch-st5'];
+  let si=0;
+  function adv() {
+    if(si>0){ const pr=document.getElementById(steps[si-1]); pr.classList.remove('active'); pr.classList.add('done'); pr.querySelector('.sch-a-ico').textContent='✅'; }
+    if(si<steps.length){ document.getElementById(steps[si]).classList.add('active'); si++; }
+  }
+  adv();
+  const timer=setInterval(()=>{ if(si<steps.length) adv(); else clearInterval(timer); }, 2000);
+  try {
+    const result=await sch_callAI(SCH_imageBase64);
+    clearInterval(timer); while(si<=steps.length) adv();
+    if(result&&result.days) {
+      SCH_DATA=result.days;
+      Object.values(SCH_DATA).forEach(arr=>arr.forEach(it=>{ it.id=it.id||('ai-'+Math.random().toString(36).slice(2,8)); }));
+    }
+    setTimeout(sch_showSuc, 400);
+  } catch(err) {
+    clearInterval(timer);
+    document.getElementById('sch-anlz-ov').classList.remove('active');
+    steps.forEach((s,i)=>{ const el=document.getElementById(s); el.classList.remove('done','active'); if(i===0)el.classList.add('active'); el.querySelector('.sch-a-ico').textContent=['🔍','🔵','👥','🕐','☁️'][i]; });
+    sch_toast('❌ ' + err.message);
+  }
+}
+
+async function sch_callAI(base64) {
+  const KEY=localStorage.getItem('sch_api_key')||'';
+  if(!KEY) throw new Error('محتاج تحط الـ API Key الأول');
+  const PROMPT=`أنت محلل جداول دراسية جامعية.
+## قاعدة التصنيف:
+- الخلايا ذات الخلفية الزرقاء الممتدة على عرض الجدول = "lecture"
+- أي خلية في عمود سكشن معين = "section" حتى لو مكتوب فيها معمل
+- رقم السكشن من رقم العمود: الأول="1"، الثاني="2"، الثالث="3"
+أرجع JSON فقط بدون أي نص:
+{"days":{"الأحد":[{"type":"lecture","subject":"","doctor":"","hall":"","from":"9:00 ص","to":"10:30 ص","period":1}]}}
+قواعد: أوقات 12 ساعة مع ص/م — تجاهل الخلايا الفارغة — لا تضيف isLab`;
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},{type:'text',text:PROMPT}]}]})
+  });
+  if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
+  const data=await resp.json();
+  const raw=data.content.map(c=>c.text||'').join('');
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+function sch_showSuc() {
+  document.getElementById('sch-anlz-ov').classList.remove('active');
+  document.getElementById('sch-suc-ov').classList.add('active');
+  const prev=document.getElementById('sch-suc-prev'); prev.innerHTML='';
+  Object.keys(SCH_DATA).forEach(d=>{
+    const items=SCH_DATA[d]||[];
+    const row=document.createElement('div'); row.className='sch-sp-row';
+    const dots=items.slice(0,4).map(it=>`<div class="sch-sp-dot" style="background:${SCH_COLORS[it.subject]||'#4f8ef7'}"></div>`).join('');
+    row.innerHTML=`<div class="sch-sp-day">${d}</div><div class="sch-sp-txt">${items.filter(i=>i.type==='lecture').length} محاضرة · ${items.filter(i=>i.type==='section').length} سكشن</div><div style="display:flex;gap:3px">${dots}</div>`;
+    prev.appendChild(row);
+  });
+}
+
+function sch_finishUp() {
+  sch_closeUpload();
+  ['sch-st1','sch-st2','sch-st3','sch-st4','sch-st5'].forEach((s,i)=>{
+    const el=document.getElementById(s); el.classList.remove('done','active');
+    if(i===0) el.classList.add('active');
+    el.querySelector('.sch-a-ico').textContent=['🔍','🔵','👥','🕐','☁️'][i];
+  });
+  SCH_hasImg=false; SCH_imageBase64=null;
+  document.getElementById('sch-uimg').style.display='none';
+  document.getElementById('sch-uph').style.display='block';
+  document.getElementById('sch-uchg').style.display='none';
+  document.getElementById('sch-uz').classList.remove('has-img');
+  document.getElementById('sch-ab').disabled=true;
+  sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+}
+// ========== END SCHEDULE SCREEN ==========
+</script>
 </body>
 </html>
