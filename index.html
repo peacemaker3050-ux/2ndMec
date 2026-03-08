@@ -3616,112 +3616,11 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
       </div>
     </div>
   </div>
-  <!-- ========== SCHEDULE SCREEN ========== -->
+
+
+</div>
+<!-- ========== SCHEDULE SCREEN ========== -->
 <div class="sch-screen" id="sch-screen">
-
-  <div class="sch-hdr">
-    <div class="sch-hdr-row">
-      <button class="sch-back-btn" onclick="window.closeSchedule()">‹</button>
-      <div class="sch-hdr-center">
-        <div class="sch-hdr-title">جدول الهندسة الميكانيكية</div>
-        <div class="sch-hdr-sub">الفرقة الثانية — الفصل الثاني 2025/2026</div>
-      </div>
-      <div class="sch-ramadan-badge" id="sch-ramadan-badge" style="display:none">🌙 رمضان</div>
-    </div>
-  </div>
-
-  <div class="sch-sec-row" id="sch-sec-row"></div>
-  <div id="sch-now-wrap"></div>
-  <div id="sch-next-wrap"></div>
-  <div class="sch-days-wrap"><div class="sch-days" id="sch-days"></div></div>
-  <div class="sch-timeline" id="sch-timeline"></div>
-
-  <button class="sch-fab" onclick="sch_openUpload()">📷</button>
-  <button class="sch-admin-toggle" id="sch-adm-btn" onclick="sch_toggleAdmin()">🔑 Admin</button>
-
-  <!-- Edit Sheet -->
-  <div class="sch-edit-overlay" id="sch-edit-overlay" onclick="if(event.target===this)sch_closeEdit()">
-    <div class="sch-edit-sheet">
-      <div class="sch-edit-handle"></div>
-      <div class="sch-edit-title">✏️ تعديل بيانات المحاضرة</div>
-      <div class="sch-edit-desc" id="sch-edit-desc"></div>
-      <div class="sch-field-lbl">👨‍🏫 اسم الدكتور / المعيد</div>
-      <input class="sch-inp" id="sch-inp-doctor" placeholder="اسم الدكتور أو المعيد...">
-      <div class="sch-field-lbl">🚪 القاعة / المعمل</div>
-      <input class="sch-inp" id="sch-inp-hall" placeholder="رقم القاعة أو المعمل...">
-      <div class="sch-edit-btns">
-        <button class="sch-btn-cancel" onclick="sch_closeEdit()">إلغاء</button>
-        <button class="sch-btn-save" onclick="sch_saveEdit()">💾 حفظ</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Upload Screen -->
-  <div class="sch-upload-scr" id="sch-upload-scr">
-    <div class="sch-hdr">
-      <div class="sch-hdr-row">
-        <button class="sch-back-btn" onclick="sch_closeUpload()">‹</button>
-        <div class="sch-hdr-center"><div class="sch-hdr-title">تحديث الجدول بالـ AI ✦</div></div>
-      </div>
-    </div>
-    <div class="sch-upload-body">
-      <div class="sch-apikey-wrap">
-        <div class="sch-slbl">🔑 Anthropic API Key</div>
-        <div class="sch-apikey-row">
-          <input class="sch-inp" id="sch-api-key" type="password" placeholder="sk-ant-..." oninput="sch_saveKey(this.value)" style="margin-bottom:0;flex:1">
-          <button class="sch-apikey-eye" id="sch-eye-btn" onclick="sch_toggleEye()">👁</button>
-        </div>
-        <div class="sch-apikey-hint">بيتحفظ على جهازك بس — مش بيتبعت لحد</div>
-      </div>
-      <div>
-        <div class="sch-slbl">📷 صورة الجدول</div>
-        <div class="sch-upload-zone" id="sch-uz" onclick="sch_triggerUp()">
-          <div id="sch-uph">
-            <div class="sch-upload-ico">📷</div>
-            <div class="sch-upload-txt">اضغط لرفع صورة الجدول</div>
-            <div class="sch-upload-sub">صورة واضحة للجدول الرسمي</div>
-          </div>
-          <img id="sch-uimg" class="sch-upload-prev" style="display:none">
-          <div class="sch-upload-chg" id="sch-uchg" style="display:none">تغيير ✎</div>
-        </div>
-        <input type="file" id="sch-fi" accept="image/*" style="display:none" onchange="sch_handleFile(event)">
-      </div>
-      <div>
-        <div class="sch-slbl">🗂️ نوع الجدول</div>
-        <div class="sch-type-row">
-          <div class="sch-type-btn active" id="sch-tp-n" onclick="sch_selType('normal')"><div class="sch-type-ico">📅</div><div class="sch-type-lbl">جدول عادي</div><div class="sch-type-sub">طوال الترم</div></div>
-          <div class="sch-type-btn" id="sch-tp-r" onclick="sch_selType('ramadan')"><div class="sch-type-ico">🌙</div><div class="sch-type-lbl">جدول رمضان</div><div class="sch-type-sub">مؤقت بتاريخ</div></div>
-        </div>
-      </div>
-      <div id="sch-date-w" style="display:none">
-        <div class="sch-slbl">📅 تاريخ انتهاء رمضان</div>
-        <div class="sch-date-row"><label>ينتهي في</label><input type="date" id="sch-end-d" oninput="sch_checkRdy()"></div>
-      </div>
-      <button class="sch-anlz-btn" id="sch-ab" onclick="sch_startAnalysis()" disabled><span>✦</span> حلل بالـ AI وحفظ الجدول</button>
-    </div>
-    <div class="sch-anlz-ov" id="sch-anlz-ov">
-      <div class="sch-ai-gem">✦</div>
-      <div class="sch-anlz-title">Shoubra AI بيقرأ الجدول...</div>
-      <div class="sch-anlz-steps">
-        <div class="sch-a-step active" id="sch-st1"><span class="sch-a-ico">🔍</span> بيحلل الصورة</div>
-        <div class="sch-a-step" id="sch-st2"><span class="sch-a-ico">🔵</span> بيحدد المستطيلات الزرقاء</div>
-        <div class="sch-a-step" id="sch-st3"><span class="sch-a-ico">👥</span> بيفصل بيانات السكاشن</div>
-        <div class="sch-a-step" id="sch-st4"><span class="sch-a-ico">🕐</span> بيرتب الترتيب الزمني</div>
-        <div class="sch-a-step" id="sch-st5"><span class="sch-a-ico">☁️</span> بيحفظ للطلاب</div>
-      </div>
-    </div>
-    <div class="sch-suc-ov" id="sch-suc-ov">
-      <div class="sch-suc-ico">✅</div>
-      <div class="sch-suc-t1">الجدول اتحفظ!</div>
-      <div class="sch-suc-t2">الجدول اتنظّم <strong style="color:#4f8ef7">محاضرات وسكاشن</strong><br>مرتبين بالوقت لكل يوم 🎉</div>
-      <div class="sch-suc-prev" id="sch-suc-prev"></div>
-      <button class="sch-suc-btn" onclick="sch_finishUp()">عرض الجدول 🗓️</button>
-    </div>
-  </div>
-
-</div>
-<!-- ========== END SCHEDULE SCREEN ========== -->
-</div>
 <script>
 // ========== SCHEDULE SCREEN ==========
 
