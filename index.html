@@ -1994,9 +1994,14 @@ manifest.icons.push({ "src": iconUrl, "sizes": "512x512", "type": "image/png" })
         document.head.appendChild(appleLink);
     }
 appleLink.href = iconUrl;}      window.addEventListener('appinstalled', () => {
+    localStorage.setItem('pwa_installed', 'true');
     const btn = document.getElementById('install-guide-btn');
     if (btn) btn.style.display = 'none';
-});  window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
+});
+if (localStorage.getItem('pwa_installed') === 'true') {
+    const btn = document.getElementById('install-guide-btn');
+    if (btn) btn.style.display = 'none';
+}  window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
         window.onload = () => { 
             
