@@ -176,7 +176,7 @@ self.addEventListener('fetch', event => {
         })
         .catch(() => {
           if (event.request.mode === 'navigate') {
-            return caches.match('./index.html') || caches.match('./');
+            return caches.match('./index.html').then(r => r || caches.match('./'));
           }
           return new Response('', { status: 503 });
         });
