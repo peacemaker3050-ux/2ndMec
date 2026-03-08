@@ -3980,10 +3980,10 @@ function sch_toggleEye() {
 }
 function sch_openUpload() {
   document.getElementById('sch-api-key').value=localStorage.getItem('sch_api_key')||'';
-  document.getElementById('sch-upload-scr').classList.add('active');
+  document.getElementById('sch-upload-scr').style.display='flex';
 }
 function sch_closeUpload() {
-  document.getElementById('sch-upload-scr').classList.remove('active');
+  document.getElementById('sch-upload-scr').style.display='none';
   document.getElementById('sch-anlz-ov').classList.remove('active');
   document.getElementById('sch-suc-ov').classList.remove('active');
 }
