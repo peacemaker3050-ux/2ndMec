@@ -1998,7 +1998,7 @@ appleLink.href = iconUrl;}      window.addEventListener('appinstalled', () => {
     const btn = document.getElementById('install-guide-btn');
     if (btn) btn.style.display = 'none';
 });
-if (localStorage.getItem('pwa_installed') === 'true') {
+if (window.matchMedia('(display-mode: standalone)').matches) {
     const btn = document.getElementById('install-guide-btn');
     if (btn) btn.style.display = 'none';
 }  window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
