@@ -3622,7 +3622,7 @@ function sch_updateNow() {
   }
   const nx = document.getElementById('sch-next-wrap');
   if(nextIt) {
-    const mins = sch_toMins(nextIt.from)-nowMins;
+    const mins = sch_toMins(nextIt.from) - schGetCurrentMins();
     nx.innerHTML=`<div class="sch-next-card">
       <div class="sch-next-ico">${nextIt.isActivity?'🎯':'📖'}</div>
       <div class="sch-next-info"><div class="sch-next-lbl">المحاضرة التالية</div><div class="sch-next-subj">${nextIt.subject}</div><div class="sch-next-time">${nextIt.from} – ${nextIt.to}${nextIt.hall?' · '+nextIt.hall:''}</div></div>
