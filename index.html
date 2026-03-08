@@ -1058,30 +1058,34 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             <div class="header-actions" id="menu-btn">⋮</div>
             <div id="search-dropdown" class="search-dropdown"></div>
             <div class="menu-dropdown" id="menu-dropdown">
+                
                 <div class="menu-item install-btn" id="pwa-install-btn" onclick="window.installApp()"><span>📲</span> <span>Install App (PWA)</span></div>
-                <div class="menu-item" onclick="window.showInstallGuide()"><span>📱</span> <span>How to Install (iOS/Android)</span></div>
+                <div class="menu-item" id="install-guide-btn" onclick="window.showInstallGuide()"><span>📱</span> <span>How to Install (iOS/Android)</span></div>
                 
                 <!-- === TO-DO LIST MENU ITEM === -->
-                <div class="menu-item" onclick="window.openTodoModal()"><span>📌</span> <span>To-Do List</span></div>
-                <!-- ============================= -->
-                 <div class="menu-item" onclick="window.openShoubraAI()"><span>✦</span> <span>Shoubra AI</span></div>
-                <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
-                <div class="menu-item" onclick="window.openFavoritesModal()"><span>⭐</span> <span>Favorites</span></div>
-                <div class="menu-item" onclick="window.openQuickLinksModal()"><span>🔗</span> <span>Quick Links</span></div>
-                <div class="menu-item" onclick="window.openPollModal()"><span>🗳️</span> <span>VOTE</span></div>
-                <!-- === DARK MODE TOGGLE MENU ITEM === -->
-                <div class="menu-item" onclick="window.toggleDarkMode()">
+                 <div class="menu-item" onclick="window.toggleDarkMode()">
                     <span>🌙</span> <span>Dark Mode</span>
                     <div class="menu-toggle-switch" id="theme-switch">
                         <div class="toggle-thumb"></div>
                     </div>
                 </div>
+                <div class="menu-item" onclick="window.forceReload()"><span>⚡</span> <span>Force Reload</span></div>
+                <div class="menu-item" onclick="window.openShoubraAI()"><span>✦</span> <span>Shoubra AI</span></div>
+                <!-- ============================= -->
+                <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
+                <div class="menu-item" onclick="window.openQuickLinksModal()"><span>🔗</span> <span>Quick Links</span></div>
+                <div class="menu-item" onclick="window.openFavoritesModal()"><span>⭐</span> <span>Favorites</span></div>
+                <div class="menu-item" onclick="window.openTodoModal()"><span>📌</span> <span>To-Do List</span></div>
+                <div class="menu-item" onclick="window.openPollModal()"><span>🗳️</span> <span>VOTE</span></div>
+                <!-- === DARK MODE TOGGLE MENU ITEM === -->
+                
                 <!-- ==================================== -->
 
                 <div class="menu-item notif-toggle" onclick="window.enableNotifications()"><span>🔔</span> <span>Enable Notifications</span></div>
                 <div class="menu-item notif-test" onclick="window.testNotification()"><span>🧪</span> <span>Test Notification</span></div>
-                <div class="menu-item google-auth" id="google-login-btn" onclick="window.handleMenuAuthClick()"><span id="auth-icon">🌐</span> <span id="auth-text">Loading...</span></div>
                 <div class="menu-item" onclick="window.forceReload()"><span>⚡</span> <span>Force Reload</span></div>
+                <div class="menu-item google-auth" id="google-login-btn" onclick="window.handleMenuAuthClick()"><span id="auth-icon">🌐</span> <span id="auth-text">Loading...</span></div>
+
             </div>
         </header>
 
@@ -1989,7 +1993,10 @@ manifest.icons.push({ "src": iconUrl, "sizes": "512x512", "type": "image/png" })
         appleLink.rel = 'apple-touch-icon';
         document.head.appendChild(appleLink);
     }
-appleLink.href = iconUrl;}        window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
+appleLink.href = iconUrl;}      window.addEventListener('appinstalled', () => {
+    const btn = document.getElementById('install-guide-btn');
+    if (btn) btn.style.display = 'none';
+});  window.addEventListener('online', () => { updateOnlineStatus(true); fetchConfig(); });
         window.addEventListener('offline', () => { updateOnlineStatus(false); });
         window.onload = () => { 
             
