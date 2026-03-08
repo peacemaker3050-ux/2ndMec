@@ -406,6 +406,16 @@ body.light-mode .gt-share-dd { background: #fff; }
 body.light-mode .gt-secret-row { background: #f1f5f9; }
 body.light-mode .gt-secret-label { color: #0f172a; }
 body.light-mode .gt-sum-big { color: #0f172a; }
+.sch-screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #0a0e1a;
+    z-index: 300;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+.sch-screen.active { display: flex; }
         /* ==========================================
            === NEW STYLES FOR SLIDING PANEL ===
            ========================================== */
