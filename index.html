@@ -1084,7 +1084,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
 .sai-drawer.open { left:0; }
 .sai-drawer-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.5); z-index:9; display:none; backdrop-filter:blur(2px); }
 .sai-drawer-overlay.open { display:block; }
-.sai-drawer-header { padding:52px 16px 16px; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between; }
+.sai-drawer-header { padding:16px 16px 16px; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between; }
 .sai-drawer-logo { display:flex; align-items:center; gap:8px; }
 .sai-drawer-gem { width:26px; height:26px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; }
 .sai-drawer-title { font-size:14px; font-weight:800; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
@@ -3499,7 +3499,9 @@ function schGetCurrentDay() {
   return days[new Date().getDay()];
 }
 function schGetCurrentMins() {
-  const n = new Date(); return n.getHours()*60 + n.getMinutes();
+  const n = new Date();
+  const egyptMins = (n.getUTCHours() + 2) % 24 * 60 + n.getUTCMinutes();
+  return egyptMins;
 }
 function sch_toMins(t) {
   const [tp,per] = t.split(' ');
