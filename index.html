@@ -414,7 +414,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         .gesture-trigger {
             width: 40px;
             height: 5px;
-            background-color: #3b82f6;
+            background-color: #485d7f;
             border-radius: 10px;
             margin: 8px auto;
             cursor: pointer;
@@ -1500,17 +1500,24 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         const safeEmail = userEmail.replace(/\./g, '_');
         
         const response = await fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}.json?auth=${idToken}`);
-        let tokens = await response.json();
-        if (!tokens || !Array.isArray(tokens)) tokens = [];
-        
+        let userData = await response.json();
+        let tokens = [];
+        if (userData && typeof userData === 'object' && userData.tokens) {
+            tokens = userData.tokens;
+        } else if (Array.isArray(userData)) {
+            tokens = userData;
+        }
+
         const prefix = token.split(':')[0];
         tokens = tokens.filter(t => t.split(':')[0] !== prefix);
         tokens.push(token);
-        
+
+        const newFilesEnabled = localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true';
+
         await fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}.json?auth=${idToken}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(tokens)
+            body: JSON.stringify({ tokens: tokens, newFilesEnabled: newFilesEnabled })
         });
         console.log("[FCM] Token saved for:", userEmail);
     } catch (error) { 
@@ -1928,6 +1935,18 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 localStorage.setItem(NEW_FILES_TOGGLE_KEY, state);
                 sendToggleToSW(state);
                 showToast(state ? "✅ New Files Alerts ON" : "🔕 New Files Alerts OFF", "info");
+                // Sync to Firebase
+                const user = auth.currentUser;
+                if (user) {
+                    user.getIdToken().then(idToken => {
+                        const safeEmail = user.email.replace(/\./g, '_');
+                        fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}/newFilesEnabled.json?auth=${idToken}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(state)
+                        });
+                    });
+                }
             });
         }
         function sendToggleToSW(state) {
