@@ -3621,6 +3621,119 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
 </div>
 <!-- ========== SCHEDULE SCREEN ========== -->
 <div class="sch-screen" id="sch-screen">
+    <!-- Header -->
+  <div class="sch-hdr">
+    <div class="sch-hdr-row">
+      <button class="sch-back-btn" onclick="window.closeSchedule()">←</button>
+      <div class="sch-hdr-center">
+        <div class="sch-hdr-title">الجدول الدراسي</div>
+        <div class="sch-hdr-sub">الفصل الدراسي الثاني</div>
+      </div>
+      <button id="sch-adm-btn" style="background:rgba(255,255,255,.06);border:none;border-radius:10px;padding:5px 10px;color:#7a8ba8;font-size:11px;font-weight:700;cursor:pointer;font-family:'Cairo',sans-serif;" onclick="sch_toggleAdmin()">🔑 Admin</button>
+    </div>
+  </div>
+
+  <!-- Now Card -->
+  <div id="sch-now-wrap"></div>
+
+  <!-- Next Card -->
+  <div id="sch-next-wrap"></div>
+
+  <!-- Section Selector -->
+  <div class="sch-sec-row" id="sch-sec-row"></div>
+
+  <!-- Day Tabs -->
+  <div class="sch-days-wrap">
+    <div class="sch-days" id="sch-days"></div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="sch-timeline" id="sch-timeline"></div>
+
+  <!-- Upload FAB -->
+  <div style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:50;">
+    <button onclick="sch_openUpload()" style="background:linear-gradient(135deg,#4f8ef7,#9b6ef7);border:none;border-radius:30px;padding:12px 24px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:'Cairo',sans-serif;box-shadow:0 6px 24px rgba(79,142,247,.4);">📷 رفع جدول جديد</button>
+  </div>
+
+  <!-- Edit Overlay -->
+  <div class="sch-edit-overlay" id="sch-edit-overlay">
+    <div style="background:#111627;border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:500px;">
+      <div style="font-size:16px;font-weight:800;color:#e8eef8;margin-bottom:4px;font-family:'Cairo',sans-serif;">✏️ تعديل المحاضرة</div>
+      <div class="sch-edit-desc" id="sch-edit-desc"></div>
+      <div class="sch-field-lbl">👨‍🏫 الدكتور</div>
+      <input id="sch-inp-doctor" style="width:100%;background:#1a2235;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;color:#e8eef8;font-family:'Cairo',sans-serif;font-size:14px;margin-bottom:14px;box-sizing:border-box;">
+      <div class="sch-field-lbl">🚪 القاعة</div>
+      <input id="sch-inp-hall" style="width:100%;background:#1a2235;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;color:#e8eef8;font-family:'Cairo',sans-serif;font-size:14px;margin-bottom:20px;box-sizing:border-box;">
+      <div style="display:flex;gap:10px;">
+        <button onclick="sch_closeEdit()" style="flex:1;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#7a8ba8;font-size:14px;font-weight:700;cursor:pointer;font-family:'Cairo',sans-serif;">إلغاء</button>
+        <button onclick="sch_saveEdit()" style="flex:2;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#4f8ef7,#9b6ef7);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:'Cairo',sans-serif;">حفظ التعديل</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Screen -->
+  <div id="sch-upload-scr" style="position:absolute;inset:0;background:#0a0e1a;z-index:350;display:none;flex-direction:column;padding:20px;overflow-y:auto;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <button onclick="sch_closeUpload()" style="background:rgba(255,255,255,.06);border:none;border-radius:10px;width:34px;height:34px;color:#7a8ba8;font-size:18px;cursor:pointer;">←</button>
+      <div style="font-size:15px;font-weight:800;color:#e8eef8;font-family:'Cairo',sans-serif;">📷 رفع جدول جديد</div>
+    </div>
+    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:14px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:8px;font-family:'Cairo',sans-serif;">🔑 Anthropic API Key</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="sch-api-key" type="password" placeholder="sk-ant-..." oninput="sch_saveKey(this.value)" style="flex:1;background:#1a2235;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#e8eef8;font-family:monospace;font-size:13px;">
+        <button id="sch-eye-btn" onclick="sch_toggleEye()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;width:36px;height:36px;cursor:pointer;">👁</button>
+      </div>
+      <div style="font-size:10px;color:#7a8ba8;margin-top:6px;font-family:'Cairo',sans-serif;">الـ Key بيتحفظ على جهازك بس</div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#7a8ba8;margin-bottom:8px;font-family:'Cairo',sans-serif;">نوع الجدول</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <div id="sch-tp-n" onclick="sch_selType('normal')" style="flex:1;padding:12px;border-radius:12px;background:rgba(79,142,247,.15);border:2px solid rgba(79,142,247,.5);cursor:pointer;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px;">📅</div>
+        <div style="font-size:12px;font-weight:700;color:#e8eef8;font-family:'Cairo',sans-serif;">عادي</div>
+      </div>
+      <div id="sch-tp-r" onclick="sch_selType('ramadan')" style="flex:1;padding:12px;border-radius:12px;background:#111627;border:2px solid rgba(255,255,255,.07);cursor:pointer;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px;">🌙</div>
+        <div style="font-size:12px;font-weight:700;color:#e8eef8;font-family:'Cairo',sans-serif;">رمضان</div>
+      </div>
+    </div>
+    <div id="sch-date-w" style="display:none;background:#111627;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;margin-bottom:14px;">
+      <label style="font-size:11px;color:#7a8ba8;font-family:'Cairo',sans-serif;">تاريخ انتهاء رمضان</label>
+      <input type="date" id="sch-end-d" oninput="sch_checkRdy()" style="background:transparent;border:none;color:#e8eef8;font-family:inherit;font-size:14px;width:100%;margin-top:4px;">
+    </div>
+    <div id="sch-uz" onclick="sch_triggerUp()" style="border:2px dashed rgba(79,142,247,.3);border-radius:16px;background:rgba(79,142,247,.04);padding:24px;text-align:center;cursor:pointer;margin-bottom:14px;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
+      <img id="sch-uimg" style="display:none;max-height:130px;border-radius:10px;object-fit:contain;">
+      <div id="sch-uph">
+        <div style="font-size:36px;margin-bottom:8px;">📷</div>
+        <div style="font-size:14px;font-weight:700;color:#e8eef8;font-family:'Cairo',sans-serif;">اضغط لرفع صورة الجدول</div>
+        <div style="font-size:11px;color:#7a8ba8;font-family:'Cairo',sans-serif;margin-top:4px;">PNG, JPG, WEBP</div>
+      </div>
+      <button id="sch-uchg" onclick="event.stopPropagation();sch_triggerUp()" style="display:none;background:rgba(79,142,247,.15);border:1px solid rgba(79,142,247,.3);border-radius:8px;padding:6px 14px;color:#4f8ef7;font-size:12px;font-weight:700;cursor:pointer;font-family:'Cairo',sans-serif;">🔄 تغيير الصورة</button>
+      <input id="sch-fi" type="file" accept="image/*" style="display:none;" onchange="sch_handleFile(event)">
+    </div>
+    <button id="sch-ab" disabled onclick="sch_startAnalysis()" style="width:100%;padding:15px;border-radius:14px;border:none;background:linear-gradient(135deg,#4f8ef7,#9b6ef7);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:'Cairo',sans-serif;opacity:0.4;">🔍 تحليل الجدول بالـ AI</button>
+  </div>
+
+  <!-- Analysis Overlay -->
+  <div class="sch-anlz-ov" id="sch-anlz-ov">
+    <div style="font-size:28px;animation:sch-flt 2s ease-in-out infinite">🔍</div>
+    <div style="font-size:16px;font-weight:800;color:#e8eef8;font-family:'Cairo',sans-serif;">جاري تحليل الجدول...</div>
+    <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px;">
+      <div id="sch-st1" class="sch-a-step" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#111627;border:1px solid rgba(255,255,255,.07);font-size:12px;font-family:'Cairo',sans-serif;color:#7a8ba8;"><span class="sch-a-ico">🔍</span> تحليل الصورة</div>
+      <div id="sch-st2" class="sch-a-step" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#111627;border:1px solid rgba(255,255,255,.07);font-size:12px;font-family:'Cairo',sans-serif;color:#7a8ba8;"><span class="sch-a-ico">🔵</span> تحديد المحاضرات</div>
+      <div id="sch-st3" class="sch-a-step" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#111627;border:1px solid rgba(255,255,255,.07);font-size:12px;font-family:'Cairo',sans-serif;color:#7a8ba8;"><span class="sch-a-ico">👥</span> تصنيف السكاشن</div>
+      <div id="sch-st4" class="sch-a-step" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#111627;border:1px solid rgba(255,255,255,.07);font-size:12px;font-family:'Cairo',sans-serif;color:#7a8ba8;"><span class="sch-a-ico">🕐</span> استخراج الأوقات</div>
+      <div id="sch-st5" class="sch-a-step" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#111627;border:1px solid rgba(255,255,255,.07);font-size:12px;font-family:'Cairo',sans-serif;color:#7a8ba8;"><span class="sch-a-ico">☁️</span> حفظ البيانات</div>
+    </div>
+  </div>
+
+  <!-- Success Overlay -->
+  <div class="sch-suc-ov" id="sch-suc-ov">
+    <div style="font-size:52px;animation:sch-flt 3s ease-in-out infinite">🎉</div>
+    <div class="sch-suc-t1" style="font-size:20px;font-weight:800;color:#e8eef8;font-family:'Cairo',sans-serif;">تم تحليل الجدول!</div>
+    <div style="font-size:13px;color:#7a8ba8;font-family:'Cairo',sans-serif;text-align:center;">الجدول اتحفظ وهيبان في الشاشة الرئيسية</div>
+    <div id="sch-suc-prev" style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:6px;margin:10px 0;"></div>
+    <button onclick="sch_finishUp()" style="width:100%;max-width:300px;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#4f8ef7,#9b6ef7);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:'Cairo',sans-serif;">✅ عرض الجدول</button>
+  </div>
 <script>
 // ========== SCHEDULE SCREEN ==========
 
