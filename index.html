@@ -915,6 +915,138 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         body.light-mode .todo-item.completed .todo-text { color: #94a3b8; }
         body.light-mode .todo-checkbox { border-color: #94a3b8; }
         body.light-mode .todo-delete-btn { color: #94a3b8; }
+        
+#shoubra-ai-modal { position:fixed; inset:0; z-index:9999; display:none; }
+#shoubra-ai-modal.active { display:flex; }
+.sai-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); }
+.sai-panel { position:relative; z-index:1; width:100%; max-width:480px; height:100%; margin:0 auto; background:#0e1420; display:flex; flex-direction:column; box-shadow:0 0 60px rgba(0,0,0,0.8); }
+.sai-header { padding:52px 18px 14px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:10px; background:#0e1420; flex-shrink:0; }
+.sai-back { width:34px; height:34px; background:rgba(255,255,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; cursor:pointer; color:#8a9ab5; flex-shrink:0; border:none; }
+.sai-gem { width:34px; height:34px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.sai-info { flex:1; }
+.sai-title { font-size:15px; font-weight:800; color:#eef2ff; display:flex; align-items:center; gap:6px; }
+.sai-badge { font-size:9px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7); color:white; padding:2px 7px; border-radius:20px; font-weight:700; }
+.sai-sub { font-size:10px; color:#5a6a85; margin-top:2px; }
+.sai-menu-btn { width:34px; height:34px; background:rgba(255,255,255,0.05); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; color:#8a9ab5; border:none; }
+.sai-drawer { position:absolute; top:0; left:-280px; width:280px; height:100%; background:#131a28; border-right:1px solid rgba(255,255,255,0.1); z-index:10; display:flex; flex-direction:column; transition:left 0.3s cubic-bezier(0.4,0,0.2,1); }
+.sai-drawer.open { left:0; }
+.sai-drawer-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.5); z-index:9; display:none; backdrop-filter:blur(2px); }
+.sai-drawer-overlay.open { display:block; }
+.sai-drawer-header { padding:52px 16px 16px; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between; }
+.sai-drawer-logo { display:flex; align-items:center; gap:8px; }
+.sai-drawer-gem { width:26px; height:26px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; }
+.sai-drawer-title { font-size:14px; font-weight:800; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.sai-drawer-close { width:28px; height:28px; background:rgba(255,255,255,0.05); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#8a9ab5; cursor:pointer; border:none; }
+.sai-new-btn { margin:12px; background:linear-gradient(135deg,rgba(79,142,247,0.15),rgba(155,110,247,0.15)); border:1px solid rgba(79,142,247,0.2); border-radius:12px; padding:10px 14px; color:#93c5fd; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; width:calc(100% - 24px); transition:all 0.2s; }
+.sai-new-btn:hover { background:rgba(79,142,247,0.2); }
+.sai-drawer-section { padding:8px 14px 4px; font-size:9px; color:#5a6a85; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+.sai-drawer-list { flex:1; overflow-y:auto; padding:4px 8px; }
+.sai-drawer-list::-webkit-scrollbar { width:3px; }
+.sai-drawer-list::-webkit-scrollbar-thumb { background:#1a2235; border-radius:3px; }
+.sai-drawer-item { padding:9px 10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:8px; transition:background 0.15s; position:relative; }
+.sai-drawer-item:hover { background:rgba(255,255,255,0.04); }
+.sai-drawer-item.active { background:rgba(79,142,247,0.1); }
+.sai-drawer-item.active::after { content:''; position:absolute; left:0; top:20%; height:60%; width:2px; background:#4f8ef7; border-radius:0 2px 2px 0; }
+.sai-di-icon { font-size:13px; flex-shrink:0; }
+.sai-di-text { font-size:11px; color:#8a9ab5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
+.sai-drawer-item.active .sai-di-text { color:#93c5fd; }
+.sai-di-del { font-size:10px; color:#5a6a85; opacity:0; transition:opacity 0.15s; cursor:pointer; }
+.sai-drawer-item:hover .sai-di-del { opacity:1; }
+.sai-drawer-footer { border-top:1px solid rgba(255,255,255,0.06); padding:10px 8px; display:flex; flex-direction:column; gap:2px; }
+.sai-footer-item { padding:8px 10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:11px; color:#8a9ab5; transition:all 0.15s; }
+.sai-footer-item:hover { background:rgba(255,255,255,0.04); color:#dde4f0; }
+.sai-footer-item.danger:hover { background:rgba(239,68,68,0.08); color:#f87171; }
+.sai-lang-toggle { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; }
+.sai-lang-pills { display:flex; gap:4px; }
+.sai-lang-pill { padding:3px 10px; border-radius:20px; cursor:pointer; font-size:10px; font-weight:700; transition:all 0.2s; border:1px solid rgba(255,255,255,0.1); color:#5a6a85; }
+.sai-lang-pill.active { background:linear-gradient(135deg,rgba(79,142,247,0.15),rgba(155,110,247,0.15)); border-color:rgba(79,142,247,0.3); color:#93c5fd; }
+.sai-body { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
+.sai-body::-webkit-scrollbar { width:3px; }
+.sai-body::-webkit-scrollbar-thumb { background:#1a2235; border-radius:3px; }
+.sai-welcome { display:flex; flex-direction:column; align-items:center; padding:24px 0 16px; gap:12px; text-align:center; }
+.sai-welcome-gem { width:56px; height:56px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); border-radius:20px; display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 12px 40px rgba(79,142,247,0.2); animation:saiFloat 4s ease-in-out infinite; }
+@keyframes saiFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.sai-welcome-title { font-size:18px; font-weight:800; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.sai-welcome-sub { font-size:12px; color:#8a9ab5; line-height:1.7; }
+.sai-quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; }
+.sai-quick-card { background:#131a28; border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:12px; cursor:pointer; transition:all 0.2s; text-align:left; }
+.sai-quick-card:hover { background:#1a2235; border-color:rgba(79,142,247,0.25); transform:translateY(-2px); }
+.sai-qc-icon { font-size:20px; margin-bottom:6px; }
+.sai-qc-title { font-size:11px; font-weight:700; color:#dde4f0; margin-bottom:2px; }
+.sai-qc-sub { font-size:10px; color:#5a6a85; line-height:1.4; }
+.sai-msg-user { display:flex; justify-content:flex-end; animation:saiMsgIn 0.25s ease; }
+@keyframes saiMsgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.sai-user-bubble { background:#1a2235; border:1px solid rgba(255,255,255,0.1); border-radius:20px 20px 4px 20px; padding:12px 16px; font-size:13px; line-height:1.7; max-width:82%; color:#dde4f0; }
+.sai-attachments { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.sai-chip { display:flex; align-items:center; gap:5px; background:rgba(79,142,247,0.12); border:1px solid rgba(79,142,247,0.2); border-radius:8px; padding:4px 8px; font-size:10px; color:#93c5fd; }
+.sai-msg-bot { display:flex; gap:10px; align-items:flex-start; animation:saiMsgIn 0.3s ease; }
+.sai-bot-gem { width:30px; height:30px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; margin-top:2px; }
+.sai-bot-content { flex:1; min-width:0; }
+.sai-bot-label { font-size:10px; font-weight:700; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+.sai-bot-dot { width:5px; height:5px; background:#4f8ef7; border-radius:50%; animation:saiDotPulse 2s infinite; }
+@keyframes saiDotPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.sai-bot-bubble { font-size:13px; line-height:1.85; color:#dde4f0; white-space:pre-wrap; }
+.sai-bot-bubble .sai-hl { color:#93c5fd; font-weight:600; }
+.sai-bot-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+.sai-bot-action { display:flex; align-items:center; gap:4px; padding:4px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:20px; font-size:10px; color:#8a9ab5; cursor:pointer; transition:all 0.15s; }
+.sai-bot-action:hover { background:rgba(255,255,255,0.07); color:#dde4f0; }
+.sai-typing-msg { display:flex; gap:10px; align-items:flex-start; }
+.sai-typing-bubble { background:#131a28; border:1px solid rgba(255,255,255,0.06); border-radius:20px 20px 20px 4px; padding:12px 16px; display:flex; gap:5px; align-items:center; }
+.sai-typing-dot { width:7px; height:7px; border-radius:50%; animation:saiTyping 1.3s infinite; }
+.sai-typing-dot:nth-child(1){background:#4f8ef7} .sai-typing-dot:nth-child(2){background:#9b6ef7;animation-delay:0.2s} .sai-typing-dot:nth-child(3){background:#f76eb2;animation-delay:0.4s}
+@keyframes saiTyping { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+.sai-suggestions { padding:0 16px 8px; display:flex; gap:6px; overflow-x:auto; flex-shrink:0; }
+.sai-suggestions::-webkit-scrollbar{display:none}
+.sai-sug { white-space:nowrap; background:#131a28; border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:6px 12px; font-size:11px; color:#8a9ab5; cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+.sai-sug:hover { background:#1a2235; border-color:rgba(79,142,247,0.3); color:#93c5fd; }
+.sai-input-zone { padding:10px 14px 32px; background:#0e1420; border-top:1px solid rgba(255,255,255,0.06); position:relative; flex-shrink:0; }
+.sai-attach-popup { position:absolute; bottom:calc(100% + 8px); left:14px; background:#131a28; border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:8px; display:none; flex-direction:column; gap:2px; box-shadow:0 16px 48px rgba(0,0,0,0.5); min-width:170px; z-index:10; }
+.sai-attach-popup.open { display:flex; }
+.sai-attach-opt { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; cursor:pointer; font-size:12px; color:#8a9ab5; transition:all 0.15s; }
+.sai-attach-opt:hover { background:rgba(255,255,255,0.05); color:#dde4f0; }
+.sai-attach-icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+.sai-files-preview { display:none; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.sai-files-preview.show { display:flex; }
+.sai-file-pill { display:flex; align-items:center; gap:6px; background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.2); border-radius:10px; padding:5px 10px; font-size:11px; color:#93c5fd; }
+.sai-file-pill-x { cursor:pointer; opacity:0.6; font-size:10px; }
+.sai-file-pill-x:hover { opacity:1; }
+.sai-input-box { background:#131a28; border:1px solid rgba(255,255,255,0.1); border-radius:20px; display:flex; align-items:flex-end; gap:6px; padding:8px 8px 8px 14px; transition:border-color 0.2s, box-shadow 0.2s; }
+.sai-input-box:focus-within { border-color:rgba(79,142,247,0.4); box-shadow:0 0 0 3px rgba(79,142,247,0.06); }
+.sai-inp { flex:1; background:transparent; border:none; outline:none; color:#dde4f0; font-size:13px; font-family:inherit; resize:none; min-height:22px; max-height:100px; line-height:1.6; padding:2px 0; }
+.sai-inp::placeholder { color:#5a6a85; }
+.sai-inp-btns { display:flex; align-items:center; gap:2px; }
+.sai-inp-btn { width:32px; height:32px; background:transparent; border:none; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; color:#5a6a85; cursor:pointer; transition:all 0.15s; }
+.sai-inp-btn:hover { background:rgba(255,255,255,0.06); color:#dde4f0; }
+.sai-send { width:34px; height:34px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7); border:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:14px; color:white; cursor:pointer; box-shadow:0 4px 16px rgba(79,142,247,0.3); transition:all 0.15s; }
+.sai-send:hover { opacity:0.85; transform:scale(1.05); }
+.sai-send:active { transform:scale(0.95); }
+.sai-key-screen { display:flex; flex-direction:column; height:100%; overflow-y:auto; }
+.sai-key-header { padding:52px 24px 16px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.sai-key-close { width:30px; height:30px; background:rgba(255,255,255,0.06); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; color:#8a9ab5; cursor:pointer; border:none; }
+.sai-key-body { flex:1; display:flex; flex-direction:column; align-items:center; padding:0 24px 32px; }
+.sai-key-gem-wrap { position:relative; margin-bottom:24px; }
+.sai-key-gem { width:72px; height:72px; background:linear-gradient(135deg,#4f8ef7,#9b6ef7,#f76eb2); border-radius:24px; display:flex; align-items:center; justify-content:center; font-size:30px; box-shadow:0 16px 48px rgba(79,142,247,0.25); animation:saiFloat 4s ease-in-out infinite; }
+.sai-key-glow { position:absolute; inset:-20px; background:radial-gradient(circle,rgba(79,142,247,0.18) 0%,transparent 70%); border-radius:50%; animation:saiGlow 4s ease-in-out infinite; }
+@keyframes saiGlow { 0%,100%{opacity:0.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.15)} }
+.sai-key-title { font-size:22px; font-weight:800; color:#eef2ff; margin-bottom:8px; text-align:center; }
+.sai-key-sub { font-size:12px; color:#8a9ab5; text-align:center; line-height:1.8; margin-bottom:28px; }
+.sai-steps { width:100%; display:flex; flex-direction:column; gap:0; margin-bottom:24px; }
+.sai-step { display:flex; gap:12px; position:relative; }
+.sai-step:not(:last-child)::after { content:''; position:absolute; left:14px; top:30px; width:2px; height:calc(100% - 6px); background:rgba(255,255,255,0.1); }
+.sai-step-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; position:relative; z-index:1; margin-top:2px; }
+.sai-step-content { padding-bottom:18px; flex:1; }
+.sai-step-title { font-size:13px; font-weight:700; color:#dde4f0; margin-bottom:3px; }
+.sai-step-desc { font-size:11px; color:#8a9ab5; line-height:1.7; }
+.sai-step-link { display:inline-flex; align-items:center; gap:6px; margin-top:8px; background:linear-gradient(135deg,rgba(79,142,247,0.15),rgba(155,110,247,0.15)); border:1px solid rgba(79,142,247,0.25); border-radius:10px; padding:7px 12px; font-size:11px; color:#93c5fd; text-decoration:none; font-weight:600; transition:all 0.2s; }
+.sai-step-link:hover { background:rgba(79,142,247,0.2); }
+.sai-key-input-wrap { width:100%; position:relative; margin-bottom:12px; }
+.sai-key-input { width:100%; background:#131a28; border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:14px 48px 14px 18px; color:#dde4f0; font-size:12px; font-family:inherit; outline:none; letter-spacing:1px; transition:border-color 0.25s,box-shadow 0.25s; }
+.sai-key-input:focus { border-color:rgba(79,142,247,0.5); box-shadow:0 0 0 3px rgba(79,142,247,0.08); }
+.sai-key-input::placeholder { color:#5a6a85; letter-spacing:0; }
+.sai-key-eye { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#5a6a85; font-size:15px; cursor:pointer; }
+.sai-key-btn { width:100%; background:linear-gradient(135deg,#4f8ef7,#9b6ef7); border:none; border-radius:14px; padding:15px; color:white; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; transition:opacity 0.2s,transform 0.15s; box-shadow:0 8px 32px rgba(79,142,247,0.3); }
+.sai-key-btn:hover { opacity:0.9; transform:translateY(-1px); }
+.sai-error-msg { color:#f87171; font-size:12px; text-align:center; margin-top:8px; display:none; }
     </style>
 </head>
 <body>
@@ -932,6 +1064,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <!-- === TO-DO LIST MENU ITEM === -->
                 <div class="menu-item" onclick="window.openTodoModal()"><span>✅</span> <span>To-Do List</span></div>
                 <!-- ============================= -->
+                 <div class="menu-item" onclick="window.openShoubraAI()"><span>✦</span> <span>Shoubra AI</span></div>
                 <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
                 <div class="menu-item" onclick="window.openFavoritesModal()"><span>⭐</span> <span>Favorites</span></div>
                 <div class="menu-item" onclick="window.openQuickLinksModal()"><span>🔗</span> <span>Quick Links</span></div>
@@ -2730,5 +2863,477 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             qlRenderAdmin();
         };
     </script>
+    <script>
+// ══ SHOUBRA AI ══
+(function() {
+  const STORAGE_KEY = 'shoubraAI_key';
+  const CHATS_KEY   = 'shoubraAI_chats';
+  let saiLang = 'en';
+  let saiChats = [];
+  let saiCurrentId = null;
+  let saiAttachments = [];
+  let saiIsTyping = false;
+
+  // ── Open / Close ──
+  window.openShoubraAI = function() {
+    document.getElementById('shoubra-ai-modal').classList.add('active');
+    document.getElementById('menu-dropdown').classList.remove('active');
+    const key = localStorage.getItem(STORAGE_KEY);
+    if (key) { saiShowChat(); } else { saiShowKeyScreen(); }
+    saiLoadChats();
+  };
+
+  window.closeShoubraAI = function() {
+    document.getElementById('shoubra-ai-modal').classList.remove('active');
+  };
+
+  function saiShowKeyScreen() {
+    document.getElementById('sai-key-screen').style.display = 'flex';
+    document.getElementById('sai-chat-screen').style.display = 'none';
+  }
+
+  function saiShowChat() {
+    document.getElementById('sai-key-screen').style.display = 'none';
+    document.getElementById('sai-chat-screen').style.display = 'flex';
+    if (!saiCurrentId) saiNewChat();
+    else saiRenderChat();
+  }
+
+  // ── API Key ──
+  window.saiSaveKey = function() {
+    const input = document.getElementById('sai-api-key-input');
+    const key = input.value.trim();
+    const errEl = document.getElementById('sai-key-error');
+    if (!key.startsWith('AIza') || key.length < 30) {
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    localStorage.setItem(STORAGE_KEY, key);
+    saiShowChat();
+  };
+
+  window.saiChangeKey = function() {
+    localStorage.removeItem(STORAGE_KEY);
+    saiCloseDrawer();
+    saiShowKeyScreen();
+  };
+
+  // ── Drawer ──
+  function saiOpenDrawer() {
+    document.getElementById('sai-drawer').classList.add('open');
+    document.getElementById('sai-drawer-overlay').classList.add('open');
+  }
+  function saiCloseDrawer() {
+    document.getElementById('sai-drawer').classList.remove('open');
+    document.getElementById('sai-drawer-overlay').classList.remove('open');
+  }
+  window.saiOpenDrawer  = saiOpenDrawer;
+  window.saiCloseDrawer = saiCloseDrawer;
+
+  // ── Language ──
+  window.saiSetLang = function(lang, el) {
+    saiLang = lang;
+    document.querySelectorAll('.sai-lang-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    const inp = document.getElementById('sai-inp');
+    inp.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    inp.placeholder = lang === 'ar' ? 'اسأل عن أي حاجة...' : 'Ask anything...';
+  };
+
+  // ── Chats ──
+  function saiLoadChats() {
+    try { saiChats = JSON.parse(localStorage.getItem(CHATS_KEY)) || []; } catch { saiChats = []; }
+    saiRenderDrawerList();
+  }
+
+  function saiSaveChats() {
+    localStorage.setItem(CHATS_KEY, JSON.stringify(saiChats));
+  }
+
+  window.saiNewChat = function() {
+    const id = 'chat_' + Date.now();
+    saiChats.unshift({ id, title: 'New Chat', messages: [], ts: Date.now() });
+    saiCurrentId = id;
+    saiSaveChats();
+    saiRenderDrawerList();
+    saiRenderChat();
+    saiCloseDrawer();
+  };
+
+  window.saiClearChats = function() {
+    saiChats = [];
+    saiCurrentId = null;
+    saiSaveChats();
+    saiRenderDrawerList();
+    saiNewChat();
+    saiCloseDrawer();
+  };
+
+  window.saiClearCurrentChat = function() {
+    const chat = saiChats.find(c => c.id === saiCurrentId);
+    if (chat) { chat.messages = []; chat.title = 'New Chat'; saiSaveChats(); saiRenderChat(); saiRenderDrawerList(); }
+  };
+
+  function saiGetCurrentChat() {
+    return saiChats.find(c => c.id === saiCurrentId);
+  }
+
+  function saiRenderDrawerList() {
+    const el = document.getElementById('sai-drawer-list');
+    if (!el) return;
+    el.innerHTML = saiChats.map(c => `
+      <div class="sai-drawer-item ${c.id === saiCurrentId ? 'active' : ''}" onclick="saiSelectChat('${c.id}')">
+        <span class="sai-di-icon">💬</span>
+        <span class="sai-di-text">${c.title}</span>
+        <span class="sai-di-del" onclick="event.stopPropagation();saiDeleteChat('${c.id}')">🗑️</span>
+      </div>
+    `).join('');
+  }
+
+  window.saiSelectChat = function(id) {
+    saiCurrentId = id;
+    saiRenderDrawerList();
+    saiRenderChat();
+    saiCloseDrawer();
+  };
+
+  window.saiDeleteChat = function(id) {
+    saiChats = saiChats.filter(c => c.id !== id);
+    if (saiCurrentId === id) { saiCurrentId = null; if (saiChats.length) saiCurrentId = saiChats[0].id; else saiNewChat(); }
+    saiSaveChats();
+    saiRenderDrawerList();
+    saiRenderChat();
+  };
+
+  function saiRenderChat() {
+    const body = document.getElementById('sai-body');
+    const chat = saiGetCurrentChat();
+    if (!chat || !chat.messages.length) {
+      body.innerHTML = `
+        <div class="sai-welcome">
+          <div class="sai-welcome-gem">✦</div>
+          <div class="sai-welcome-title">Shoubra AI</div>
+          <div class="sai-welcome-sub">Ask me anything about your subjects,<br>upload images or PDFs to analyze</div>
+          <div class="sai-quick-grid">
+            <div class="sai-quick-card" onclick="saiQuickAsk('Explain Heat Transfer basics')">
+              <div class="sai-qc-icon">🔥</div>
+              <div class="sai-qc-title">Heat Transfer</div>
+              <div class="sai-qc-sub">Explain the basics</div>
+            </div>
+            <div class="sai-quick-card" onclick="saiQuickAsk('What are the latest notifications from doctors?')">
+              <div class="sai-qc-icon">🔔</div>
+              <div class="sai-qc-title">Notifications</div>
+              <div class="sai-qc-sub">Latest doctor updates</div>
+            </div>
+            <div class="sai-quick-card" onclick="saiQuickAsk('Help me solve a Fluid Mechanics problem')">
+              <div class="sai-qc-icon">💧</div>
+              <div class="sai-qc-title">Fluid Mechanics</div>
+              <div class="sai-qc-sub">Solve a problem</div>
+            </div>
+            <div class="sai-quick-card" onclick="saiQuickAsk('Explain Vibration fundamentals')">
+              <div class="sai-qc-icon">🌀</div>
+              <div class="sai-qc-title">Vibration</div>
+              <div class="sai-qc-sub">Fundamentals</div>
+            </div>
+          </div>
+        </div>`;
+      saiRenderSuggestions([]);
+      return;
+    }
+    body.innerHTML = chat.messages.map(m => m.role === 'user' ? `
+      <div class="sai-msg-user">
+        <div class="sai-user-bubble">
+          ${m.files && m.files.length ? `<div class="sai-attachments">${m.files.map(f=>`<div class="sai-chip">${f}</div>`).join('')}</div>` : ''}
+          ${m.text}
+        </div>
+      </div>` : `
+      <div class="sai-msg-bot">
+        <div class="sai-bot-gem">✦</div>
+        <div class="sai-bot-content">
+          <div class="sai-bot-label"><div class="sai-bot-dot"></div> Shoubra AI</div>
+          <div class="sai-bot-bubble">${m.text}</div>
+          <div class="sai-bot-actions">
+            <div class="sai-bot-action" onclick="navigator.clipboard.writeText(this.closest('.sai-bot-content').querySelector('.sai-bot-bubble').innerText)">📋 Copy</div>
+          </div>
+        </div>
+      </div>`).join('');
+    body.scrollTop = body.scrollHeight;
+    saiRenderSuggestions(chat.messages);
+  }
+
+  function saiRenderSuggestions(messages) {
+    const el = document.getElementById('sai-suggestions');
+    if (!messages.length) { el.innerHTML = ''; return; }
+    const sugs = saiLang === 'ar'
+      ? ['اشرح أكتر', 'مثال محلول', 'المحاضرة التالية', 'ملخص']
+      : ['Explain more', 'Solved example', 'Next lecture', 'Summarize'];
+    el.innerHTML = sugs.map(s => `<div class="sai-sug" onclick="saiQuickAsk('${s}')">${s}</div>`).join('');
+  }
+
+  function saiQuickAsk(text) {
+    document.getElementById('sai-inp').value = text;
+    window.saiSend();
+  }
+  window.saiQuickAsk = saiQuickAsk;
+
+  // ── Attach ──
+  window.saiToggleAttach = function() {
+    document.getElementById('sai-attach-popup').classList.toggle('open');
+  };
+
+  window.saiAttach = function(type) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = type === 'image' ? 'image/*' : 'application/pdf';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const preview = document.getElementById('sai-files-preview');
+      preview.classList.add('show');
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const base64 = ev.target.result.split(',')[1];
+        saiAttachments.push({ name: file.name, type: file.type, data: base64 });
+        const pill = document.createElement('div');
+        pill.className = 'sai-file-pill';
+        pill.innerHTML = `${type === 'image' ? '🖼️' : '📄'} ${file.name} <span class="sai-file-pill-x" onclick="this.parentElement.remove()">✕</span>`;
+        preview.appendChild(pill);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+    document.getElementById('sai-attach-popup').classList.remove('open');
+  };
+
+  // ── Send ──
+  window.saiSend = async function() {
+    const inp = document.getElementById('sai-inp');
+    const text = inp.value.trim();
+    if (!text && !saiAttachments.length) return;
+    if (saiIsTyping) return;
+
+    const key = localStorage.getItem(STORAGE_KEY);
+    if (!key) { saiShowKeyScreen(); return; }
+
+    inp.value = '';
+    inp.style.height = 'auto';
+
+    let chat = saiGetCurrentChat();
+    if (!chat) { window.saiNewChat(); chat = saiGetCurrentChat(); }
+
+    const fileNames = saiAttachments.map(a => (a.type.includes('image') ? '🖼️ ' : '📄 ') + a.name);
+    chat.messages.push({ role: 'user', text, files: fileNames });
+    if (chat.title === 'New Chat' && text) chat.title = text.slice(0, 40);
+    saiSaveChats();
+    saiRenderChat();
+    saiRenderDrawerList();
+
+    // Show typing
+    const body = document.getElementById('sai-body');
+    const typingEl = document.createElement('div');
+    typingEl.className = 'sai-typing-msg';
+    typingEl.innerHTML = `<div class="sai-bot-gem">✦</div><div class="sai-typing-bubble"><div class="sai-typing-dot"></div><div class="sai-typing-dot"></div><div class="sai-typing-dot"></div></div>`;
+    body.appendChild(typingEl);
+    body.scrollTop = body.scrollHeight;
+    saiIsTyping = true;
+
+    // Build context from CONFIG
+    let systemContext = `You are Shoubra AI, a helpful assistant for mechanical engineering students at Shoubra Faculty of Engineering. `;
+    if (typeof CONFIG !== 'undefined') {
+      const subjects = Object.keys(CONFIG.database || {});
+      systemContext += `Available subjects: ${subjects.join(', ')}. `;
+      if (CONFIG.recentUpdates && CONFIG.recentUpdates.length) {
+        systemContext += `Recent notifications: ${CONFIG.recentUpdates.slice(0,3).map(u=>`${u.doctor} (${u.subject}): ${u.message}`).join(' | ')}. `;
+      }
+    }
+    if (saiLang === 'ar') systemContext += 'Please respond in Arabic.';
+
+    // Build messages for API
+    const history = chat.messages.slice(-10).map(m => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.text
+    }));
+
+    // Build content parts
+    let userContent = [];
+    for (const att of saiAttachments) {
+      if (att.type.includes('image')) {
+        userContent.push({ type: 'image', source: { type: 'base64', media_type: att.type, data: att.data } });
+      } else if (att.type === 'application/pdf') {
+        userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: att.data } });
+      }
+    }
+    if (text) userContent.push({ type: 'text', text });
+
+    // Replace last message content with rich content
+    const msgs = history.slice(0, -1);
+    msgs.push({ role: 'user', content: userContent.length === 1 && userContent[0].type === 'text' ? text : userContent });
+    saiAttachments = [];
+    document.getElementById('sai-files-preview').innerHTML = '';
+    document.getElementById('sai-files-preview').classList.remove('show');
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemContext,
+          messages: msgs
+        })
+      });
+      const data = await res.json();
+      const reply = data.content?.map(b => b.text || '').join('') || 'Sorry, something went wrong.';
+      typingEl.remove();
+      chat.messages.push({ role: 'assistant', text: reply });
+      saiSaveChats();
+      saiRenderChat();
+    } catch (err) {
+      typingEl.remove();
+      chat.messages.push({ role: 'assistant', text: 'Connection error. Please try again.' });
+      saiSaveChats();
+      saiRenderChat();
+    }
+    saiIsTyping = false;
+  };
+
+  // Enter to send
+  document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('sai-inp');
+    if (inp) {
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.saiSend(); } });
+      inp.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 100) + 'px'; });
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#sai-attach-btn') && !e.target.closest('#sai-attach-popup')) {
+        const popup = document.getElementById('sai-attach-popup');
+        if (popup) popup.classList.remove('open');
+      }
+    });
+  });
+})();
+</script>
+<!-- ══ SHOUBRA AI MODAL ══ -->
+<div id="shoubra-ai-modal">
+  <div class="sai-overlay" onclick="window.closeShoubraAI()"></div>
+  <div class="sai-panel">
+    <!-- Key Screen -->
+    <div class="sai-key-screen" id="sai-key-screen" style="display:none">
+      <div class="sai-key-header">
+        <div style="width:30px"></div>
+        <div style="font-size:13px;color:#8a9ab5;font-weight:800;letter-spacing:0.5px">Shoubra AI</div>
+        <button class="sai-key-close" onclick="window.closeShoubraAI()">✕</button>
+      </div>
+      <div class="sai-key-body">
+        <div class="sai-key-gem-wrap">
+          <div class="sai-key-glow"></div>
+          <div class="sai-key-gem">✦</div>
+        </div>
+        <div class="sai-key-title">Get Started with AI</div>
+        <div class="sai-key-sub">Follow these steps to get your free Gemini API Key</div>
+        <div class="sai-steps">
+          <div class="sai-step">
+            <div class="sai-step-num" style="background:rgba(79,142,247,0.15);color:#4f8ef7">1</div>
+            <div class="sai-step-content">
+              <div class="sai-step-title">Open Google AI Studio</div>
+              <div class="sai-step-desc">Tap the button below to open the site in your browser</div>
+              <a class="sai-step-link" href="https://aistudio.google.com/apikey" target="_blank">🔗 Open Google AI Studio</a>
+            </div>
+          </div>
+          <div class="sai-step">
+            <div class="sai-step-num" style="background:rgba(155,110,247,0.15);color:#9b6ef7">2</div>
+            <div class="sai-step-content">
+              <div class="sai-step-title">Sign in with Google</div>
+              <div class="sai-step-desc">Use your Google account — this determines your Gemini plan (Free or Pro)</div>
+            </div>
+          </div>
+          <div class="sai-step">
+            <div class="sai-step-num" style="background:rgba(247,110,178,0.15);color:#f76eb2">3</div>
+            <div class="sai-step-content">
+              <div class="sai-step-title">Click "Create API Key"</div>
+              <div class="sai-step-desc">Find the blue button on the page, then select "Create API key in new project"</div>
+            </div>
+          </div>
+          <div class="sai-step">
+            <div class="sai-step-num" style="background:rgba(52,211,153,0.15);color:#34d399">4</div>
+            <div class="sai-step-content">
+              <div class="sai-step-title">Copy & Paste your Key</div>
+              <div class="sai-step-desc">Click the copy icon next to the key, then paste it below</div>
+            </div>
+          </div>
+        </div>
+        <div class="sai-key-input-wrap">
+          <input class="sai-key-input" id="sai-api-key-input" type="password" placeholder="Paste your API Key here...">
+          <span class="sai-key-eye" onclick="this.previousElementSibling.type=this.previousElementSibling.type==='password'?'text':'password'">👁</span>
+        </div>
+        <div class="sai-error-msg" id="sai-key-error">Invalid API Key. Please try again.</div>
+        <button class="sai-key-btn" onclick="window.saiSaveKey()">✦ &nbsp;Start Chatting</button>
+      </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div class="sai-chat-screen" id="sai-chat-screen" style="display:none;flex-direction:column;height:100%;">
+      <div class="sai-drawer-overlay" id="sai-drawer-overlay" onclick="saiCloseDrawer()"></div>
+      <div class="sai-drawer" id="sai-drawer">
+        <div class="sai-drawer-header">
+          <div class="sai-drawer-logo">
+            <div class="sai-drawer-gem">✦</div>
+            <div class="sai-drawer-title">Shoubra AI</div>
+          </div>
+          <button class="sai-drawer-close" onclick="saiCloseDrawer()">✕</button>
+        </div>
+        <button class="sai-new-btn" onclick="window.saiNewChat()">✏️ &nbsp;New Chat</button>
+        <div class="sai-drawer-section">Today</div>
+        <div class="sai-drawer-list" id="sai-drawer-list"></div>
+        <div class="sai-drawer-footer">
+          <div class="sai-lang-toggle">
+            <span style="font-size:11px;color:#8a9ab5">🌐 Language</span>
+            <div class="sai-lang-pills">
+              <div class="sai-lang-pill active" onclick="window.saiSetLang('en',this)">EN</div>
+              <div class="sai-lang-pill" onclick="window.saiSetLang('ar',this)">AR</div>
+            </div>
+          </div>
+          <div class="sai-footer-item" onclick="window.saiChangeKey()">🔑 &nbsp;Change API Key</div>
+          <div class="sai-footer-item danger" onclick="window.saiClearChats()">🗑️ &nbsp;Clear all chats</div>
+        </div>
+      </div>
+
+      <div class="sai-header">
+        <button class="sai-back" onclick="saiOpenDrawer()">☰</button>
+        <div class="sai-gem">✦</div>
+        <div class="sai-info">
+          <div class="sai-title">Shoubra AI <span class="sai-badge">Gemini 2.0</span></div>
+          <div class="sai-sub" id="sai-context-label">General Assistant</div>
+        </div>
+        <button class="sai-menu-btn" onclick="window.saiClearCurrentChat()">🗑️</button>
+      </div>
+
+      <div class="sai-body" id="sai-body"></div>
+
+      <div class="sai-suggestions" id="sai-suggestions"></div>
+
+      <div class="sai-input-zone">
+        <div class="sai-attach-popup" id="sai-attach-popup">
+          <div class="sai-attach-opt" onclick="window.saiAttach('image')">
+            <div class="sai-attach-icon" style="background:rgba(251,191,36,0.1)">🖼️</div> Upload Image
+          </div>
+          <div class="sai-attach-opt" onclick="window.saiAttach('pdf')">
+            <div class="sai-attach-icon" style="background:rgba(239,68,68,0.1)">📄</div> Upload PDF
+          </div>
+        </div>
+        <div class="sai-files-preview" id="sai-files-preview"></div>
+        <div class="sai-input-box">
+          <textarea class="sai-inp" id="sai-inp" placeholder="Ask anything..." rows="1"></textarea>
+          <div class="sai-inp-btns">
+            <button class="sai-inp-btn" id="sai-attach-btn" onclick="window.saiToggleAttach()">📎</button>
+            <button class="sai-send" onclick="window.saiSend()">➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
