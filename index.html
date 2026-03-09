@@ -1466,7 +1466,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             </div>
             <div id="tab-data" class="tab-content">
                 <div class="data-path" id="admin-data-path" style="font-size:13px; color:#94a3b8; margin-bottom:15px; display:flex; align-items:center; gap:5px;">Home</div>
-                <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div class="form-group" style="margin-bottom:0;" id="file-link-input-group" style="display:block;"><input type="text" id="new-item-link" class="form-input" placeholder="Link (Google Drive)..."></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">Add</button></div></div>
+                <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div class="form-group" style="margin-bottom:10px;" id="file-link-input-group"><input type="file" id="new-item-file" style="color:#aaa; font-size:12px; background:rgba(0,0,0,0.2); padding:8px; width:100%; border-radius:8px; border:1px solid rgba(59,130,246,0.3);"><div id="upload-progress" style="display:none; margin-top:8px; font-size:12px; color:#60a5fa; text-align:center;">Uploading...</div></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">📤 Upload & Add</button></div></div>
             </div>
             <div id="tab-quicklinks" class="tab-content">
     <div class="admin-section-title" style="color:#3b82f6;">🔗 Quick Links</div>
@@ -1918,46 +1918,94 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         window.adminNavTo = function(index) { if (index === -1) adminNavStack = []; else adminNavStack = adminNavStack.slice(0, index + 1); renderAdminDataView(); }
         window.setAddType = function(type, el) { adminAddType = type; document.querySelectorAll('.radio-label').forEach(l => l.classList.remove('active')); el.classList.add('active'); document.getElementById('file-link-input-group').style.display = type === 'file' ? 'block' : 'none'; }
         
-        window.addAdminDataItem = function() { 
-            const nameInput = document.getElementById('new-item-name'); 
-            const linkInput = document.getElementById('new-item-link'); 
-            const name = nameInput.value.trim(); 
-            if (!name) return showToast("Please enter a name", "error"); 
-            
-            const newItem = { 
-                id: Date.now().toString(36), 
-                name: name, 
-                ts: Date.now(), 
-                type: adminAddType 
-            };
+        window.addAdminDataItem = async function() {
+            const nameInput = document.getElementById('new-item-name');
+            const fileInput = document.getElementById('new-item-file');
+            const progressEl = document.getElementById('upload-progress');
+            const name = nameInput.value.trim();
 
-            if (adminAddType === 'file') newItem.link = linkInput.value.trim() || "#";
+            // Subject or Doctor level — no file needed
+            if (adminNavStack.length === 0) {
+                if (!name) return showToast("Please enter a name", "error");
+                if (database[name]) return showToast("Subject exists", "error");
+                database[name] = { doctors: [] };
+                saveConfigToBin(CONFIG);
+                renderAdminDataView();
+                nameInput.value = '';
+                return;
+            }
+            if (adminNavStack.length === 1) {
+                if (!name) return showToast("Please enter a name", "error");
+                const sub = adminNavStack[0];
+                if (!database[sub]) database[sub] = { doctors: [] };
+                if (database[sub].doctors.includes(name)) return showToast("Doctor exists", "error");
+                database[sub].doctors.push(name);
+                database[sub][name] = { root: [] };
+                saveConfigToBin(CONFIG);
+                renderAdminDataView();
+                nameInput.value = '';
+                return;
+            }
 
-            if (adminNavStack.length === 0) { 
-                if (database[name]) return showToast("Subject exists", "error"); 
-                database[name] = { doctors: [] }; 
-            } else if (adminNavStack.length === 1) { 
-                const sub = adminNavStack[0]; 
-                if (!database[sub]) database[sub] = { doctors: [] }; 
-                if (database[sub].doctors.includes(name)) return showToast("Doctor exists", "error"); 
-                database[sub].doctors.push(name); 
-                database[sub][name] = { root: [] }; 
-            } else { 
-                const currentList = getAdminCurrentContent(); 
-                if (adminAddType === 'folder') { 
-                    if (currentList.find(i => i.name === name)) return showToast("Folder exists", "error"); 
-                    newItem.children = [];
-                    currentList.push(newItem); 
-                } else { 
-                    currentList.push(newItem); 
-                } 
-            } 
-            renderAdminDataView(); 
-            nameInput.value = ''; 
-            linkInput.value = ''; 
-            initSearchEngine();
-            checkNewFilesAndNotify(); 
-            sendFCMToAllUsers('🆕 ملف جديد', newItem.name);
+            // File/Folder level
+            if (adminAddType === 'folder') {
+                if (!name) return showToast("Please enter a name", "error");
+                const currentList = getAdminCurrentContent();
+                if (currentList.find(i => i.name === name)) return showToast("Folder exists", "error");
+                const newFolder = { id: Date.now().toString(36), name: name, ts: Date.now(), type: 'folder', children: [] };
+                currentList.push(newFolder);
+                saveConfigToBin(CONFIG);
+                renderAdminDataView();
+                nameInput.value = '';
+                initSearchEngine();
+                return;
+            }
+
+            // File upload
+            const file = fileInput.files[0];
+            if (!file) return showToast("Please select a file", "error");
+            const fileName = name || file.name;
+
+            try {
+                progressEl.style.display = 'block';
+                progressEl.innerText = 'Uploading to Google Drive...';
+
+                const RAILWAY_URL = 'https://genuine-vision-production.up.railway.app';
+                const subject = adminNavStack[0] || '';
+                const doctor  = adminNavStack[1] || '';
+
+                const formData = new FormData();
+                formData.append('file', file, fileName);
+                formData.append('subject', subject);
+                formData.append('doctor', doctor);
+                formData.append('notify', 'true');
+
+                const resp = await fetch(`${RAILWAY_URL}/upload-file`, { method: 'POST', body: formData });
+                const result = await resp.json();
+
+                if (!result.success) throw new Error(result.error || 'Upload failed');
+
+                const newItem = {
+                    id: Date.now().toString(36),
+                    name: fileName,
+                    ts: Date.now(),
+                    type: 'file',
+                    link: result.link
+                };
+
+                const currentList = getAdminCurrentContent();
+                currentList.push(newItem);
+                saveConfigToBin(CONFIG);
+                renderAdminDataView();
+                nameInput.value = '';
+                fileInput.value = '';
+                progressEl.style.display = 'none';
+                initSearchEngine();
+                showToast('✅ File uploaded successfully', 'success');
+            } catch (err) {
+                progressEl.style.display = 'none';
+                showToast('❌ Upload failed: ' + err.message, 'error');
+            }
         }
         
         function deleteAdminDataItem(index) { showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => { if(!confirmed) return; if (adminNavStack.length === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } else if (adminNavStack.length === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; } else { const currentList = getAdminCurrentContent(); currentList.splice(index, 1); } saveConfigToBin(CONFIG); renderAdminDataView(); initSearchEngine(); }); }
