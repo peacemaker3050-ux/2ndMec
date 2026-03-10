@@ -1978,6 +1978,8 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 formData.append('file', file, fileName);
                 formData.append('subject', subject);
                 formData.append('doctor', doctor);
+                const folderPath = adminNavStack.slice(2).join('/');
+                formData.append('folder_path', folderPath);
                 formData.append('notify', 'true');
 
                 const resp = await fetch(`${RAILWAY_URL}/upload-file`, { method: 'POST', body: formData });
