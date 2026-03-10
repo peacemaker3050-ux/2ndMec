@@ -1817,11 +1817,15 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             try {
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') { console.log("[FCM] Notification permission denied."); return; }
-                const swReg = await navigator.serviceWorker.getRegistration('./sw.js');
-                const currentToken = await messaging.getToken({ 
-                vapidKey: VAPID_KEY,
-                serviceWorkerRegistration: swReg
-        });
+                let swReg = await navigator.serviceWorker.getRegistration('./sw.js');
+if (!swReg) {
+    swReg = await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+}
+const currentToken = await messaging.getToken({ 
+    vapidKey: VAPID_KEY,
+    serviceWorkerRegistration: swReg
+});
                 if (currentToken) {
                     console.log("[FCM] Token received:", currentToken);
                     saveUserToken(user.email, currentToken);
@@ -2146,7 +2150,7 @@ function initFirebaseAuth() {
     auth.onAuthStateChanged((user) => {
         isAuthInitialized = true;
         window.updateAuthUI();
-        if (user) { setupFCMToken(user); }
+        setupFCMToken(user);
     });
 }        window.updateAuthUI = function() {
     const loginText = document.getElementById('auth-text');
