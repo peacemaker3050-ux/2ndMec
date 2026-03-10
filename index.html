@@ -1780,32 +1780,49 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         
         async function saveUserToken(userEmail, token) {
     try {
-        const user = auth.currentUser;
-        if (!user) return;
-        
-        const idToken = await user.getIdToken();
+        if (!token || token.length < 10) return;
         const safeEmail = userEmail.replace(/\./g, '_');
-        
-        const response = await fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}.json?auth=${idToken}`);
-        let userData = await response.json();
-        let tokens = [];
-        if (userData && typeof userData === 'object' && userData.tokens) {
-            tokens = userData.tokens;
-        } else if (Array.isArray(userData)) {
-            tokens = userData;
-        }
-
-        const prefix = token.split(':')[0];
-        tokens = tokens.filter(t => t.split(':')[0] !== prefix);
-        tokens.push(token);
-
         const newFilesEnabled = localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true';
 
-        await fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}.json?auth=${idToken}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tokens: tokens, newFilesEnabled: newFilesEnabled })
-        });
+        let tokens = [];
+        try {
+            const readResp = await fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}.json`);
+            const userData = await readResp.json();
+            if (userData && typeof userData === 'object' && userData.tokens) {
+                tokens = userData.tokens;
+            } else if (Array.isArray(userData)) {
+                tokens = userData;
+            }
+        } catch(e) {}
+
+        const prefix = token.split(':')[0];
+        tokens = tokens.filter(t => t && t.split(':')[0] !== prefix);
+        tokens.push(token);
+
+        const payload = JSON.stringify({ tokens: tokens, newFilesEnabled: newFilesEnabled });
+        let saved = false;
+
+        const user = auth ? auth.currentUser : null;
+        if (user) {
+            try {
+                const idToken = await user.getIdToken(true);
+                const res = await fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}.json?auth=${idToken}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload
+                });
+                if (res.ok) saved = true;
+            } catch(e) {}
+        }
+
+        if (!saved) {
+            await fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload
+            });
+        }
+
         console.log("[FCM] Token saved for:", userEmail);
     } catch (error) { 
         console.error("[FCM] Error saving token:", error); 
