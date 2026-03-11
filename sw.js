@@ -358,30 +358,7 @@ async function checkNotifications() {
       }
     }
 
-    // 2. ملفات جديدة
-    const toggleState = await dbGet('newFilesToggle');
-    if (toggleState !== true && toggleState !== 'true') return;
-
-    const newestFile = findNewestFile(data?.database);
-    if (!newestFile) return;
-
-    const fileTs   = newestFile.ts || 0;
-    const oneDayMs = 24 * 60 * 60 * 1000;
-
-    if (fileTs > lastFileTime && (Date.now() - fileTs) < oneDayMs) {
-      await dbSet('lastFileTime', fileTs);
-      console.log('[SW] New file detected:', newestFile.name);
-
-      self.registration.showNotification('New File Added', {
-        body: newestFile.name,
-        icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-        badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-        vibrate: [200, 100, 200],
-        requireInteraction: false,
-        tag: 'new-file-notif',
-        data: { click_action: self.location.origin }
-      });
-    }
+    // 2. ملفات جديدة — handled by FCM via Railway API
 
   } catch(err) {
     console.error('[SW] Polling error:', err);
