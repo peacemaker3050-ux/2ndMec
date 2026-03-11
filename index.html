@@ -1845,6 +1845,20 @@ const currentToken = await messaging.getToken({
 });
                 if (currentToken) {
                     console.log("[FCM] Token received:", currentToken);
+                    messaging.onMessage((payload) => {
+                        const title = payload.notification?.title || 'New Notification';
+                        const body  = payload.notification?.body  || '';
+                        if (Notification.permission === 'granted') {
+                            navigator.serviceWorker.getRegistration('./sw.js').then(reg => {
+                                if (reg) reg.showNotification(title, {
+                                    body,
+                                    icon: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+                                    vibrate: [200, 100, 200],
+                                    tag: 'fcm-fg'
+                                });
+                            });
+                        }
+                    });
                     const emailKey = user ? user.email : ('device_' + Math.random().toString(36).substr(2,9));
                     if (!user) localStorage.setItem('fcm_anon_key', emailKey.replace(/\./g, '_'));
                     saveUserToken(emailKey, currentToken);
