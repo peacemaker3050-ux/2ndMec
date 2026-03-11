@@ -1830,7 +1830,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
 }
 
         async function setupFCMToken(user) {
-            if (!messaging || !user) return;
+            if (!messaging) return;
             try {
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') { console.log("[FCM] Notification permission denied."); return; }
@@ -1845,7 +1845,9 @@ const currentToken = await messaging.getToken({
 });
                 if (currentToken) {
                     console.log("[FCM] Token received:", currentToken);
-                    saveUserToken(user.email, currentToken);
+                    const emailKey = user ? user.email : ('device_' + Math.random().toString(36).substr(2,9));
+                    if (!user) localStorage.setItem('fcm_anon_key', emailKey.replace(/\./g, '_'));
+                    saveUserToken(emailKey, currentToken);
                 } else { console.log("[FCM] No registration token available."); }
             } catch (err) { console.log("[FCM] Error getting token:", err); }
         }
@@ -2168,6 +2170,13 @@ function initFirebaseAuth() {
         isAuthInitialized = true;
         window.updateAuthUI();
         setupFCMToken(user);
+        if (user) {
+            const anonKey = localStorage.getItem('fcm_anon_key');
+            if (anonKey) {
+                fetch(`${FIREBASE_DB_URL}/userTokens/${anonKey}.json`, { method: 'DELETE' });
+                localStorage.removeItem('fcm_anon_key');
+            }
+        }
     });
 }        window.updateAuthUI = function() {
     const loginText = document.getElementById('auth-text');
