@@ -4,7 +4,6 @@
 // ============================================================
 
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
 
 // ── Config ──
 const firebaseConfig = {
@@ -33,9 +32,8 @@ const STATIC_FILES = [
   'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js'
 ];
 
-// ── Firebase + FCM ──
+// ── Firebase (DB only, FCM handled by firebase-messaging-sw.js) ──
 firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
 
 // ── IndexedDB ──
 let idb = null;
@@ -182,27 +180,6 @@ self.addEventListener('fetch', event => {
         });
     })
   );
-});
-
-// ============================================================
-// FCM BACKGROUND MESSAGE
-// ============================================================
-messaging.onBackgroundMessage(payload => {
-  console.log('[SW] FCM Background Message:', payload);
-  const title = payload.notification?.title || 'New Message';
-  const body  = payload.notification?.body  || 'New update available';
-  const icon  = payload.notification?.icon  || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png';
-  const link  = payload.fcmOptions?.link || payload.data?.link || '/';
-
-  return self.registration.showNotification(title, {
-    body,
-    icon,
-    badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-    vibrate: [200, 100, 200],
-    requireInteraction: true,
-    tag: 'fcm-notif',
-    data: { click_action: link }
-  });
 });
 
 // ============================================================
