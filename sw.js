@@ -4,6 +4,7 @@
 // ============================================================
 
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
 
 // ── Config ──
 const firebaseConfig = {
@@ -32,8 +33,9 @@ const STATIC_FILES = [
   'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js'
 ];
 
-// ── Firebase (DB only, FCM handled by firebase-messaging-sw.js) ──
+// ── Firebase + FCM ──
 firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
 // ── IndexedDB ──
 let idb = null;
@@ -181,6 +183,7 @@ self.addEventListener('fetch', event => {
     })
   );
 });
+
 
 // ============================================================
 // NOTIFICATION CLICK
