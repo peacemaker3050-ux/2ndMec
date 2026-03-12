@@ -20,15 +20,15 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(payload => {
   const title = payload.notification?.title || '📢 New Message';
   const body  = payload.notification?.body  || 'New update available';
-  const icon  = payload.notification?.icon  || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png';
+  const icon  = 'https://peacemaker3050-ux.github.io/2ndMec/icon-512.png';
   const link  = payload.fcmOptions?.link || payload.data?.link || '/';
 
   return self.registration.showNotification(title, {
     body,
     icon,
-    badge: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+    badge: 'https://peacemaker3050-ux.github.io/2ndMec/icon-512.png',
     vibrate: [200, 100, 200],
-    requireInteraction: true,
+    requireInteraction: false,
     tag: 'fcm-bg',
     data: { click_action: link }
   });
