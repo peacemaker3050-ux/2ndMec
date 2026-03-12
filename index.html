@@ -2748,7 +2748,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             if (total !== 750) return showToast('❌ Total must equal 750 (currently ' + total + ')', 'error');
             CONFIG.gradeConfig = gradeConfig;
             fetch(`${FIREBASE_DB_URL}/.json`, {
-                method: 'PUT', headers: {'Content-Type':'application/json'},
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ data: JSON.stringify(CONFIG) })
             }).then(res => {
                 if (!res.ok) throw new Error('Save failed');
@@ -2802,7 +2802,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             };
             CONFIG.activePoll = activePoll;
             fetch(`${FIREBASE_DB_URL}/.json`, {
-                method: 'PUT', headers: {'Content-Type':'application/json'},
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ data: JSON.stringify(CONFIG) })
             }).then(res => {
                 if (!res.ok) throw new Error('failed');
@@ -2817,7 +2817,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             activePoll.ended = true;
             CONFIG.activePoll = activePoll;
             fetch(`${FIREBASE_DB_URL}/.json`, {
-                method: 'PUT', headers: {'Content-Type':'application/json'},
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ data: JSON.stringify(CONFIG) })
             }).then(() => {
                 clearInterval(pollTimerInterval);
@@ -2939,7 +2939,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             activePoll.options[index].votes++;
             CONFIG.activePoll = activePoll;
             fetch(`${FIREBASE_DB_URL}/.json`, {
-                method: 'PUT', headers: {'Content-Type':'application/json'},
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ data: JSON.stringify(CONFIG) })
             }).catch(() => {});
             renderPollModal();
@@ -3044,7 +3044,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             document.getElementById('ql-desc').value  = '';
             document.getElementById('ql-url').value   = '';
             fetch(`${FIREBASE_DB_URL}/.json`, {
-                method: 'PUT', headers: {'Content-Type':'application/json'},
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ data: JSON.stringify(CONFIG) })
             }).then(res => {
                 if (!res.ok) throw new Error('failed');
@@ -3057,7 +3057,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             if (!CONFIG.quickLinks) return;
             CONFIG.quickLinks = CONFIG.quickLinks.filter(l => l.id !== id);
             fetch(`${FIREBASE_DB_URL}/.json`, {
-                method: 'PUT', headers: {'Content-Type':'application/json'},
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ data: JSON.stringify(CONFIG) })
             }).then(() => {
                 showToast('🗑️ Link removed', 'success');
