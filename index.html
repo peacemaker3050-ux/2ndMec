@@ -3896,6 +3896,14 @@ async function sch_startAnalysis() {
 async function sch_callAI(base64) {
   const KEY=localStorage.getItem('sch_api_key')||'';
   if(!KEY) throw new Error('محتاج تحط الـ API Key الأول');
+  const PROMPT=`أنت محلل جداول دراسية جامعية.
+## قاعدة التصنيف:
+- الخلايا ذات الخلفية الزرقاء الممتدة على عرض الجدول = "lecture"
+- أي خلية في عمود سكشن معين = "section" حتى لو مكتوب فيها معمل
+- رقم السكشن من رقم العمود: الأول="1"، الثاني="2"، الثالث="3"
+أرجع JSON فقط بدون أي نص:
+{"days":{"الأحد":[{"type":"lecture","subject":"","doctor":"","hall":"","from":"9:00 ص","to":"10:30 ص","period":1}]}}
+قواعد: أوقات 12 ساعة مع ص/م — تجاهل الخلايا الفارغة — لا تضيف isLab`;
   const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KEY}`,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -3905,15 +3913,6 @@ async function sch_callAI(base64) {
   const data=await resp.json();
   const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
   return JSON.parse(raw.replace(/```json|```/g,'').trim());
-  const PROMPT=`أنت محلل جداول دراسية جامعية.
-## قاعدة التصنيف:
-- الخلايا ذات الخلفية الزرقاء الممتدة على عرض الجدول = "lecture"
-- أي خلية في عمود سكشن معين = "section" حتى لو مكتوب فيها معمل
-- رقم السكشن من رقم العمود: الأول="1"، الثاني="2"، الثالث="3"
-أرجع JSON فقط بدون أي نص:
-{"days":{"الأحد":[{"type":"lecture","subject":"","doctor":"","hall":"","from":"9:00 ص","to":"10:30 ص","period":1}]}}
-قواعد: أوقات 12 ساعة مع ص/م — تجاهل الخلايا الفارغة — لا تضيف isLab`;
-
 }
 
 function sch_showSuc() {
