@@ -3896,6 +3896,15 @@ async function sch_startAnalysis() {
 async function sch_callAI(base64) {
   const KEY=localStorage.getItem('sch_api_key')||'';
   if(!KEY) throw new Error('محتاج تحط الـ API Key الأول');
+  const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KEY}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:base64}},{text:PROMPT}]}],generationConfig:{maxOutputTokens:4000}})
+  });
+  if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
+  const data=await resp.json();
+  const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
   const PROMPT=`أنت محلل جداول دراسية جامعية.
 ## قاعدة التصنيف:
 - الخلايا ذات الخلفية الزرقاء الممتدة على عرض الجدول = "lecture"
@@ -3904,15 +3913,7 @@ async function sch_callAI(base64) {
 أرجع JSON فقط بدون أي نص:
 {"days":{"الأحد":[{"type":"lecture","subject":"","doctor":"","hall":"","from":"9:00 ص","to":"10:30 ص","period":1}]}}
 قواعد: أوقات 12 ساعة مع ص/م — تجاهل الخلايا الفارغة — لا تضيف isLab`;
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},{type:'text',text:PROMPT}]}]})
-  });
-  if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
-  const data=await resp.json();
-  const raw=data.content.map(c=>c.text||'').join('');
-  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+
 }
 
 function sch_showSuc() {
@@ -3992,9 +3993,9 @@ function sch_finishUp() {
     </div>
     <div class="sch-upload-body">
       <div class="sch-apikey-wrap">
-        <div class="sch-slbl">🔑 Anthropic API Key</div>
+        <div class="sch-slbl">🔑 Gemini API Key</div>
         <div class="sch-apikey-row">
-          <input class="sch-inp" id="sch-api-key" type="password" placeholder="sk-ant-..." oninput="sch_saveKey(this.value)" style="margin-bottom:0;flex:1">
+          <input class="sch-inp" id="sch-api-key" type="password" placeholder="AIza..." oninput="sch_saveKey(this.value)" style="margin-bottom:0;flex:1">
           <button class="sch-apikey-eye" id="sch-eye-btn" onclick="sch_toggleEye()">👁</button>
         </div>
         <div class="sch-apikey-hint">بيتحفظ على جهازك بس — مش بيتبعت لحد</div>
