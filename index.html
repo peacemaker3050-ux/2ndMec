@@ -3904,7 +3904,7 @@ async function sch_callAI(base64) {
 أرجع JSON فقط بدون أي نص:
 {"days":{"الأحد":[{"type":"lecture","subject":"","doctor":"","hall":"","from":"9:00 ص","to":"10:30 ص","period":1}]}}
 قواعد: أوقات 12 ساعة مع ص/م — تجاهل الخلايا الفارغة — لا تضيف isLab`;
-  const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${KEY}`,{
+  const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${KEY}`,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:base64}},{text:PROMPT}]}],generationConfig:{maxOutputTokens:4000}})
