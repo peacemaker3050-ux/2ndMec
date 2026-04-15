@@ -97,6 +97,52 @@
         /* ==================================== */
 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        /* ===== VOICE NOTES SCREEN ===== */
+.vnotes-screen { position: fixed; inset: 0; z-index: 50; background: var(--bg-dark); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1); max-width: 500px; margin: 0 auto; }
+.vnotes-screen.open { transform: translateX(0); }
+.vnotes-header { padding: 0 16px; min-height: 70px; display: flex; align-items: center; gap: 12px; background: rgba(15,23,42,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-color); }
+.vnotes-back { font-size: 26px; cursor: pointer; color: var(--text-secondary); padding: 5px; }
+.vnotes-back:hover { color: #fff; }
+.vnotes-title { font-size: 18px; font-weight: 700; color: #fff; flex: 1; }
+.vnotes-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.vn-record-btn { width: 100%; padding: 16px; border-radius: 16px; background: var(--accent-gradient); border: none; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: inherit; box-shadow: 0 4px 20px rgba(59,130,246,0.4); transition: opacity 0.2s; }
+.vn-record-btn:active { opacity: 0.8; }
+.vn-record-btn.recording { background: linear-gradient(135deg,#ef4444,#dc2626); box-shadow: 0 4px 20px rgba(239,68,68,0.4); animation: pulse-rec 1.5s infinite; }
+@keyframes pulse-rec { 0%,100% { box-shadow: 0 4px 20px rgba(239,68,68,0.4); } 50% { box-shadow: 0 4px 30px rgba(239,68,68,0.7); } }
+.vn-name-input { width: 100%; padding: 14px 16px; border-radius: 12px; background: rgba(255,255,255,0.07); border: 1px solid var(--border-color); color: #fff; font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.2s; }
+.vn-name-input:focus { border-color: var(--accent-primary); }
+.vn-name-input::placeholder { color: rgba(255,255,255,0.35); }
+.vn-save-btn { width: 100%; padding: 14px; border-radius: 12px; background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); color: #4ade80; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+.vn-save-btn:hover { background: rgba(74,222,128,0.25); }
+.vn-timer { text-align: center; font-size: 28px; font-weight: 700; color: #ef4444; letter-spacing: 2px; display: none; }
+.vn-timer.show { display: block; }
+.vn-list { display: flex; flex-direction: column; gap: 10px; }
+.vn-item { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; }
+.vn-item-header { padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.vn-item-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.vn-item-info { flex: 1; min-width: 0; }
+.vn-item-name { font-size: 15px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vn-item-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.vn-item-arrow { font-size: 20px; color: var(--text-secondary); transition: transform 0.3s; flex-shrink: 0; }
+.vn-item-arrow.open { transform: rotate(180deg); }
+.vn-item-actions { overflow: hidden; max-height: 0; transition: max-height 0.35s ease; }
+.vn-item-actions.open { max-height: 600px; }
+.vn-actions-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.vn-audio-player { width: 100%; height: 40px; border-radius: 8px; }
+.vn-action-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+.vn-action-btn:hover { background: rgba(255,255,255,0.1); }
+.vn-action-btn.active { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.5); color: #60a5fa; }
+.vn-result-box { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 14px; font-size: 14px; color: #e2e8f0; line-height: 1.7; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.07); display: none; direction: rtl; text-align: right; }
+.vn-result-box.show { display: block; }
+.vn-result-title { font-size: 13px; font-weight: 700; color: var(--accent-primary); margin-bottom: 8px; }
+.vn-delete-btn { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.05); }
+.vn-delete-btn:hover { background: rgba(248,113,113,0.15); }
+.vn-loading { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 14px; padding: 8px 0; }
+.vn-loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary); animation: dotBounce 1.2s infinite; }
+.vn-loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.vn-loading-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotBounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+/* ============================= */
         #chat-area { flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; direction: ltr; background-size: 100% auto; background-position: top center; background-repeat: no-repeat; background-attachment: scroll; position: relative; z-index: 5; }
         .message { width: fit-content; max-width: 85%; padding: 10px 16px; border-radius: var(--radius-lg); position: relative; font-size: 15px; line-height: 1.5; word-wrap: break-word; box-shadow: var(--shadow-soft); animation: messagePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; align-items: flex-start; }
         .msg-bot { align-self: flex-start; background: var(--msg-bot-bg); color: var(--text-primary); border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
@@ -3944,6 +3990,218 @@ function sch_finishUp() {
   sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
 }
 // ========== END SCHEDULE SCREEN ==========
+// ==================== VOICE NOTES ====================
+let vnMediaRecorder = null;
+let vnAudioChunks = [];
+let vnRecording = false;
+let vnTimerInterval = null;
+let vnSeconds = 0;
+let vnCurrentBlob = null;
+let vnRecordings = JSON.parse(localStorage.getItem('vn_recordings') || '[]');
+
+function openVoiceNotes() {
+  document.getElementById('vnotes-screen').classList.add('open');
+  vnRenderList();
+}
+function closeVoiceNotes() {
+  document.getElementById('vnotes-screen').classList.remove('open');
+}
+
+function vnToggleRecord() {
+  if (!vnRecording) {
+    vnStartRecord();
+  } else {
+    vnStopRecord();
+  }
+}
+
+async function vnStartRecord() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    vnMediaRecorder = new MediaRecorder(stream);
+    vnAudioChunks = [];
+    vnCurrentBlob = null;
+    vnMediaRecorder.ondataavailable = e => vnAudioChunks.push(e.data);
+    vnMediaRecorder.onstop = () => {
+      vnCurrentBlob = new Blob(vnAudioChunks, { type: 'audio/webm' });
+      document.getElementById('vn-save-btn').style.display = 'block';
+    };
+    vnMediaRecorder.start();
+    vnRecording = true;
+    document.getElementById('vn-record-btn').classList.add('recording');
+    document.getElementById('vn-record-icon').textContent = '⏹️';
+    document.getElementById('vn-record-label').textContent = 'إيقاف التسجيل';
+    document.getElementById('vn-timer').classList.add('show');
+    vnSeconds = 0;
+    vnTimerInterval = setInterval(() => {
+      vnSeconds++;
+      const m = String(Math.floor(vnSeconds/60)).padStart(2,'0');
+      const s = String(vnSeconds%60).padStart(2,'0');
+      document.getElementById('vn-timer').textContent = `${m}:${s}`;
+    }, 1000);
+  } catch(e) {
+    alert('❌ مش قادر يوصل للميكروفون. تأكد إنك وافقت على الإذن.');
+  }
+}
+
+function vnStopRecord() {
+  if (vnMediaRecorder) {
+    vnMediaRecorder.stop();
+    vnMediaRecorder.stream.getTracks().forEach(t => t.stop());
+  }
+  vnRecording = false;
+  clearInterval(vnTimerInterval);
+  document.getElementById('vn-record-btn').classList.remove('recording');
+  document.getElementById('vn-record-icon').textContent = '🎙️';
+  document.getElementById('vn-record-label').textContent = 'تسجيل جديد';
+}
+
+function vnSaveRecording() {
+  if (!vnCurrentBlob) return;
+  const name = document.getElementById('vn-name-input').value.trim() || `تسجيل ${new Date().toLocaleDateString('ar-EG')}`;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const rec = {
+      id: Date.now(),
+      name,
+      date: new Date().toLocaleDateString('ar-EG'),
+      duration: vnSeconds,
+      audioData: reader.result
+    };
+    vnRecordings.unshift(rec);
+    localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+    vnCurrentBlob = null;
+    document.getElementById('vn-save-btn').style.display = 'none';
+    document.getElementById('vn-name-input').value = '';
+    document.getElementById('vn-timer').classList.remove('show');
+    document.getElementById('vn-timer').textContent = '00:00';
+    vnRenderList();
+  };
+  reader.readAsDataURL(vnCurrentBlob);
+}
+
+function vnRenderList() {
+  const list = document.getElementById('vn-list');
+  if (!vnRecordings.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text-secondary);font-size:14px;padding:30px;">لا يوجد تسجيلات بعد</div>';
+    return;
+  }
+  list.innerHTML = vnRecordings.map((rec, idx) => `
+    <div class="vn-item" id="vn-item-${rec.id}">
+      <div class="vn-item-header" onclick="vnToggleItem(${rec.id})">
+        <div class="vn-item-icon">🎙️</div>
+        <div class="vn-item-info">
+          <div class="vn-item-name">${rec.name}</div>
+          <div class="vn-item-meta">${rec.date} · ${Math.floor(rec.duration/60)}:${String(rec.duration%60).padStart(2,'0')} دقيقة</div>
+        </div>
+        <div class="vn-item-arrow" id="vn-arrow-${rec.id}">⌄</div>
+      </div>
+      <div class="vn-item-actions" id="vn-actions-${rec.id}">
+        <div class="vn-actions-inner">
+          <audio class="vn-audio-player" controls src="${rec.audioData}"></audio>
+          <button class="vn-action-btn" onclick="vnTranscribe(${rec.id})">📝 تفريغ الكلام لنص</button>
+          <div class="vn-result-box" id="vn-transcribe-${rec.id}"></div>
+          <button class="vn-action-btn" onclick="vnSummarize(${rec.id})">✨ تلخيص بالـ AI</button>
+          <div class="vn-result-box" id="vn-summary-${rec.id}"></div>
+          <button class="vn-action-btn vn-delete-btn" onclick="vnDelete(${rec.id})">🗑️ حذف التسجيل</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function vnToggleItem(id) {
+  const actions = document.getElementById(`vn-actions-${id}`);
+  const arrow = document.getElementById(`vn-arrow-${id}`);
+  actions.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+function vnDelete(id) {
+  if (!confirm('هتمسح التسجيل ده؟')) return;
+  vnRecordings = vnRecordings.filter(r => r.id !== id);
+  localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+  vnRenderList();
+}
+
+async function vnTranscribe(id) {
+  const rec = vnRecordings.find(r => r.id === id);
+  if (!rec) return;
+  const box = document.getElementById(`vn-transcribe-${id}`);
+  box.className = 'vn-result-box show';
+  box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التفريغ...</span></div>';
+
+  try {
+    const res = await fetch(rec.audioData);
+    const blob = await res.blob();
+    const formData = new FormData();
+    formData.append('file', blob, 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'ar');
+
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${vnGetOpenAIKey()}` },
+      body: formData
+    });
+    const data = await response.json();
+    if (data.text) {
+      rec.transcript = data.text;
+      localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+      box.innerHTML = `<div class="vn-result-title">📝 النص المفرّغ</div>${data.text}`;
+    } else {
+      box.innerHTML = '❌ ' + (data.error?.message || 'حدث خطأ');
+    }
+  } catch(e) {
+    box.innerHTML = '❌ تأكد من إعدادات الـ API Key';
+  }
+}
+
+async function vnSummarize(id) {
+  const rec = vnRecordings.find(r => r.id === id);
+  if (!rec) return;
+  const box = document.getElementById(`vn-summary-${id}`);
+  box.className = 'vn-result-box show';
+
+  if (!rec.transcript) {
+    box.innerHTML = '⚠️ لازم تعمل تفريغ الأول قبل التلخيص';
+    return;
+  }
+
+  box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التلخيص...</span></div>';
+
+  try {
+    const geminiKey = localStorage.getItem('sch_gemini_key') || '';
+    if (!geminiKey) { box.innerHTML = '⚠️ أدخل Gemini API Key من إعدادات الجدول أولاً'; return; }
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: `أنت مساعد أكاديمي. لخّص هذه المحاضرة الجامعية بشكل منظم، مع إبراز أهم النقاط والمفاهيم الرئيسية. اكتب الملخص باللغة العربية.\n\nنص المحاضرة:\n${rec.transcript}` }] }] })
+    });
+    const data = await response.json();
+    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (summary) {
+      rec.summary = summary;
+      localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+      box.innerHTML = `<div class="vn-result-title">✨ الملخص</div>${summary}`;
+    } else {
+      box.innerHTML = '❌ حدث خطأ في التلخيص';
+    }
+  } catch(e) {
+    box.innerHTML = '❌ ' + e.message;
+  }
+}
+
+function vnGetOpenAIKey() {
+  let key = localStorage.getItem('vn_openai_key');
+  if (!key) {
+    key = prompt('أدخل OpenAI API Key للتفريغ (هيتحفظ على جهازك بس):');
+    if (key) localStorage.setItem('vn_openai_key', key);
+  }
+  return key || '';
+}
+// ==================== END VOICE NOTES ====================
 </script>
 <!-- ========== SCHEDULE SCREEN ========== -->
 <div class="sch-screen" id="sch-screen">
@@ -4047,5 +4305,33 @@ function sch_finishUp() {
 
 </div>
 <!-- ========== END SCHEDULE SCREEN ========== -->
+ <!-- ========== VOICE NOTES SCREEN ========== -->
+<div class="vnotes-screen" id="vnotes-screen">
+  <div class="vnotes-header">
+    <span class="vnotes-back" onclick="closeVoiceNotes()">‹</span>
+    <span class="vnotes-title">🎙️ تسجيلات المحاضرات</span>
+  </div>
+  <div class="vnotes-body">
+    <!-- Recording Section -->
+    <div style="background:rgba(255,255,255,0.04);border-radius:16px;padding:16px;border:1px solid var(--border-color);">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;font-weight:600;">تسجيل جديد</div>
+      <input class="vn-name-input" id="vn-name-input" placeholder="اسم التسجيل (مثلاً: محاضرة ديناميكا أول أكتوبر)" />
+      <div style="height:10px;"></div>
+      <div class="vn-timer" id="vn-timer">00:00</div>
+      <button class="vn-record-btn" id="vn-record-btn" onclick="vnToggleRecord()">
+        <span id="vn-record-icon">🎙️</span>
+        <span id="vn-record-label">ابدأ التسجيل</span>
+      </button>
+      <div style="height:8px;"></div>
+      <button class="vn-save-btn" id="vn-save-btn" onclick="vnSaveRecording()" style="display:none;">💾 احفظ التسجيل</button>
+    </div>
+    <!-- Recordings List -->
+    <div style="font-size:14px;font-weight:700;color:#fff;padding:4px 0 2px;">التسجيلات المحفوظة</div>
+    <div class="vn-list" id="vn-list">
+      <div style="text-align:center;color:var(--text-secondary);font-size:14px;padding:30px;">لا يوجد تسجيلات بعد</div>
+    </div>
+  </div>
+</div>
+<!-- ========== END VOICE NOTES SCREEN ========== -->
 </body>
 </html>
