@@ -4137,12 +4137,9 @@ async function vnTranscribe(id) {
     const blob = await res.blob();
     const formData = new FormData();
     formData.append('file', blob, 'audio.webm');
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'ar');
 
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    const response = await fetch('http://192.168.100.7:5000/transcribe', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${vnGetOpenAIKey()}` },
       body: formData
     });
     const data = await response.json();
@@ -4154,7 +4151,7 @@ async function vnTranscribe(id) {
       box.innerHTML = '❌ ' + (data.error?.message || 'حدث خطأ');
     }
   } catch(e) {
-    box.innerHTML = '❌ تأكد من إعدادات الـ API Key';
+    box.innerHTML = '❌ تعذر الاتصال بسيرفر التفريغ';
   }
 }
 
@@ -4194,14 +4191,6 @@ async function vnSummarize(id) {
   }
 }
 
-function vnGetOpenAIKey() {
-  let key = localStorage.getItem('vn_openai_key');
-  if (!key) {
-    key = prompt('أدخل OpenAI API Key للتفريغ (هيتحفظ على جهازك بس):');
-    if (key) localStorage.setItem('vn_openai_key', key);
-  }
-  return key || '';
-}
 // ==================== END VOICE NOTES ====================
 </script>
 <!-- ========== SCHEDULE SCREEN ========== -->
