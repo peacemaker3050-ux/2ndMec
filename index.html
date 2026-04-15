@@ -4135,12 +4135,14 @@ async function vnTranscribe(id) {
   try {
     const res = await fetch(rec.audioData);
     const blob = await res.blob();
+    const audioFile = new File([blob], 'audio.webm', { type: 'audio/webm' });
     const formData = new FormData();
-    formData.append('file', blob, 'audio.webm');
+    formData.append('file', audioFile);
 
-    const response = await fetch('http://192.168.100.7:5000/transcribe', {
+    const response = await fetch('https://quarterly-blighted-jugular.ngrok-free.dev/transcribe', {
       method: 'POST',
-      body: formData
+      body: formData,
+      credentials: 'omit'
     });
     const data = await response.json();
     if (data.text) {
