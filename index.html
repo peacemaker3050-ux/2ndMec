@@ -4060,7 +4060,9 @@ function vnStopRecord() {
 
 function vnSaveRecording() {
   if (!vnCurrentBlob) return;
-  const name = document.getElementById('vn-name-input').value.trim() || `تسجيل ${new Date().toLocaleDateString('ar-EG')}`;
+  const nameVal = document.getElementById('vn-name-input').value.trim();
+  if (!nameVal) { alert('من فضلك أدخل اسم للتسجيل أولاً'); return; }
+  const name = nameVal;
   const reader = new FileReader();
   reader.onload = () => {
     const rec = {
