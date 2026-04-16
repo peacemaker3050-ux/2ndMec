@@ -4003,6 +4003,7 @@ let vnRecordings = JSON.parse(localStorage.getItem('vn_recordings') || '[]');
 function openVoiceNotes() {
   document.getElementById('vnotes-screen').classList.add('open');
   vnRenderList();
+  setTimeout(() => { const inp = document.getElementById('vn-server-url'); if (inp) inp.value = localStorage.getItem('vn_server_url') || ''; }, 100);
 }
 function closeVoiceNotes() {
   document.getElementById('vnotes-screen').classList.remove('open');
@@ -4124,12 +4125,20 @@ function vnDelete(id) {
   localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
   vnRenderList();
 }
-
+function vnSaveServerUrl(val, showToast) {
+  localStorage.setItem('vn_server_url', val.trim().replace(/\/$/, ''));
+  if (showToast) {
+    const btn = document.getElementById('vn-save-url-btn');
+    if (btn) { btn.textContent = '✅ تم!'; setTimeout(() => btn.textContent = 'حفظ ✓', 1500); }
+  }
+}
 async function vnTranscribe(id) {
   const rec = vnRecordings.find(r => r.id === id);
   if (!rec) return;
   const box = document.getElementById(`vn-transcribe-${id}`);
   box.className = 'vn-result-box show';
+  const serverUrl = localStorage.getItem('vn_server_url') || '';
+  if (!serverUrl) { box.innerHTML = '⚠️ أدخل رابط السيرفر في الإعدادات أولاً'; return; }
   box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التفريغ...</span></div>';
 
   try {
@@ -4138,8 +4147,7 @@ async function vnTranscribe(id) {
     const audioFile = new File([blob], 'audio.webm', { type: 'audio/webm' });
     const formData = new FormData();
     formData.append('file', audioFile);
-
-    const response = await fetch('https://quarterly-blighted-jugular.ngrok-free.dev/transcribe', {
+    const response = await fetch(`${serverUrl}/transcribe`, {
       method: 'POST',
       body: formData,
       credentials: 'omit'
@@ -4304,6 +4312,15 @@ async function vnSummarize(id) {
     <span class="vnotes-title">🎙️ تسجيلات المحاضرات</span>
   </div>
   <div class="vnotes-body">
+    <!-- Server URL Section -->
+    <div style="background:rgba(245,158,11,0.05);border-radius:16px;padding:14px 16px;border:1px solid rgba(245,158,11,0.2);">
+      <div style="font-size:13px;color:#fbbf24;margin-bottom:8px;font-weight:700;">⚙️ رابط السيرفر</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="vn-server-url" type="text" placeholder="https://xxxx.ngrok-free.app" style="flex:1;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+        <button id="vn-save-url-btn" onclick="vnSaveServerUrl(document.getElementById('vn-server-url').value,true)" style="padding:10px 14px;border-radius:10px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">حفظ ✓</button>
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-top:6px;">غيّره كل ما تشغّل ngrok جديد</div>
+    </div>
     <!-- Recording Section -->
     <div style="background:rgba(255,255,255,0.04);border-radius:16px;padding:16px;border:1px solid var(--border-color);">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;font-weight:600;">تسجيل جديد</div>
