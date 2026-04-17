@@ -3900,21 +3900,29 @@ async function sch_startAnalysis() {
   document.getElementById('sch-anlz-ov').classList.add('active');
   const steps=['sch-st1','sch-st2','sch-st3','sch-st4','sch-st5'];
   let si=0;
+  let apiDone=false;
   function adv() {
     if(si>0){ const pr=document.getElementById(steps[si-1]); pr.classList.remove('active'); pr.classList.add('done'); pr.querySelector('.sch-a-ico').textContent='✅'; }
     if(si<steps.length){ document.getElementById(steps[si]).classList.add('active'); si++; }
   }
   adv();
-  const timer=setInterval(()=>{ if(si<steps.length) adv(); else clearInterval(timer); }, 2000);
+  const timer=setInterval(()=>{
+    if(si<steps.length-1) { adv(); }
+    else if(si===steps.length-1 && !apiDone) { /* انتظر الـ API قبل الخطوة الأخيرة */ }
+    else { clearInterval(timer); }
+  }, 2000);
   try {
     const result=await sch_callAI(SCH_imageBase64);
-    clearInterval(timer); while(si<=steps.length) adv();
+    apiDone=true;
+    clearInterval(timer);
+    while(si<steps.length) adv();
     if(result&&result.days) {
       SCH_DATA=result.days;
       Object.values(SCH_DATA).forEach(arr=>arr.forEach(it=>{ it.id=it.id||('ai-'+Math.random().toString(36).slice(2,8)); }));
     }
     setTimeout(sch_showSuc, 400);
   } catch(err) {
+    apiDone=true;
     clearInterval(timer);
     document.getElementById('sch-anlz-ov').classList.remove('active');
     steps.forEach((s,i)=>{ const el=document.getElementById(s); el.classList.remove('done','active'); if(i===0)el.classList.add('active'); el.querySelector('.sch-a-ico').textContent=['🔍','🔵','👥','🕐','☁️'][i]; });
