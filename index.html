@@ -3690,6 +3690,8 @@ const SCH_COLORS = {
 const SCH_DAYS = ["الأحد","الاثنين","الثلاثاء"];
 let SCH_activeDay = "الأحد", SCH_activeSec = "1", SCH_adminMode = false, SCH_editTarget = null;
 let SCH_upType = "normal", SCH_hasImg = false, SCH_imageBase64 = null;
+// Load saved schedule from localStorage if exists
+(function(){ try { const saved=localStorage.getItem('sch_data_saved'); if(saved){ const parsed=JSON.parse(saved); if(parsed&&typeof parsed==='object') SCH_DATA=parsed; } } catch(e){} })();
 
 function sch_getItems(day) {
   return (SCH_DATA[day]||[]).filter(it =>
@@ -3919,6 +3921,9 @@ async function sch_startAnalysis() {
     if(result&&result.days) {
       SCH_DATA=result.days;
       Object.values(SCH_DATA).forEach(arr=>arr.forEach(it=>{ it.id=it.id||('ai-'+Math.random().toString(36).slice(2,8)); }));
+      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch(e){}
+      const newDays=Object.keys(SCH_DATA);
+      if(newDays.length>0){ SCH_activeDay=newDays[0]; }
     }
     setTimeout(sch_showSuc, 400);
   } catch(err) {
