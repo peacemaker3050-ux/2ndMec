@@ -4180,20 +4180,18 @@ async function vnSummarize(id) {
   box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التلخيص...</span></div>';
 
   try {
-    const geminiKey = localStorage.getItem('sch_gemini_key') || '';
-    if (!geminiKey) { box.innerHTML = '⚠️ أدخل Gemini API Key من إعدادات الجدول أولاً'; return; }
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+    const serverUrl = 'https://web-production-4948.up.railway.app';
+    const response = await fetch(`${serverUrl}/summarize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: `أنت مساعد أكاديمي. لخّص هذه المحاضرة الجامعية بشكل منظم، مع إبراز أهم النقاط والمفاهيم الرئيسية. اكتب الملخص باللغة العربية.\n\nنص المحاضرة:\n${rec.transcript}` }] }] })
+      body: JSON.stringify({ text: rec.transcript }),
+      credentials: 'omit'
     });
     const data = await response.json();
-    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (summary) {
-      rec.summary = summary;
+    if (data.summary) {
+      rec.summary = data.summary;
       localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
-      box.innerHTML = `<div class="vn-result-title">✨ الملخص</div>${summary}`;
+      box.innerHTML = `<div class="vn-result-title">✨ الملخص</div>${data.summary}`;
     } else {
       box.innerHTML = '❌ حدث خطأ في التلخيص';
     }
