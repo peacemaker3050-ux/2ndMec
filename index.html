@@ -3923,25 +3923,16 @@ async function sch_startAnalysis() {
 }
 
 async function sch_callAI(base64) {
-  const KEY=localStorage.getItem('sch_api_key')||'';
-  if(!KEY) throw new Error('محتاج تحط الـ API Key الأول');
-  const PROMPT=`أنت محلل جداول دراسية جامعية.
-## قاعدة التصنيف:
-- الخلايا ذات الخلفية الزرقاء الممتدة على عرض الجدول = "lecture"
-- أي خلية في عمود سكشن معين = "section" حتى لو مكتوب فيها معمل
-- رقم السكشن من رقم العمود: الأول="1"، الثاني="2"، الثالث="3"
-أرجع JSON فقط بدون أي نص:
-{"days":{"الأحد":[{"type":"lecture","subject":"","doctor":"","hall":"","from":"9:00 ص","to":"10:30 ص","period":1}]}}
-قواعد: أوقات 12 ساعة مع ص/م — تجاهل الخلايا الفارغة — لا تضيف isLab`;
-  const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro:generateContent?key=${KEY}`,{
+  const SERVER='https://web-production-4948.up.railway.app';
+  const resp=await fetch(`${SERVER}/analyze_schedule`,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:base64}},{text:PROMPT}]}],generationConfig:{maxOutputTokens:4000}})
+    credentials:'omit',
+    body:JSON.stringify({image:base64})
   });
   if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
   const data=await resp.json();
-  const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
-  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+  return data;
 }
 
 function sch_showSuc() {
