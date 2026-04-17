@@ -3174,7 +3174,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
     <script>
 // ══ SHOUBRA AI ══
 (function() {
-  const STORAGE_KEY = 'shoubraAI_key';
+  const STORAGE_KEY = 'shoubraAI_serverUrl';
   const CHATS_KEY   = 'shoubraAI_chats';
   let saiLang = 'en';
   let saiChats = [];
@@ -3186,8 +3186,8 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
   window.openShoubraAI = function() {
     document.getElementById('shoubra-ai-modal').classList.add('active');
     document.getElementById('menu-dropdown').classList.remove('active');
-    const key = localStorage.getItem(STORAGE_KEY);
-    if (key) { saiShowChat(); } else { saiShowKeyScreen(); }
+    const url = localStorage.getItem(STORAGE_KEY);
+    if (url) { saiShowChat(); } else { saiShowKeyScreen(); }
     saiLoadChats();
   };
 
@@ -3210,14 +3210,14 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
   // ── API Key ──
   window.saiSaveKey = function() {
     const input = document.getElementById('sai-api-key-input');
-    const key = input.value.trim();
+    const url = input.value.trim();
     const errEl = document.getElementById('sai-key-error');
-    if (!key.startsWith('AIza') || key.length < 30) {
+    if (!url.startsWith('http') || url.length < 10) {
       errEl.style.display = 'block';
       return;
     }
     errEl.style.display = 'none';
-    localStorage.setItem(STORAGE_KEY, key);
+    localStorage.setItem(STORAGE_KEY, url.replace(/\/$/, ''));
     saiShowChat();
   };
 
@@ -3421,8 +3421,8 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
     if (!text && !saiAttachments.length) return;
     if (saiIsTyping) return;
 
-    const key = localStorage.getItem(STORAGE_KEY);
-    if (!key) { saiShowKeyScreen(); return; }
+    const serverUrl = localStorage.getItem(STORAGE_KEY);
+    if (!serverUrl) { saiShowKeyScreen(); return; }
 
     inp.value = '';
     inp.style.height = 'auto';
@@ -3482,18 +3482,16 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
     document.getElementById('sai-files-preview').classList.remove('show');
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch(serverUrl + '/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
           system: systemContext,
           messages: msgs
         })
       });
       const data = await res.json();
-      const reply = data.content?.map(b => b.text || '').join('') || 'Sorry, something went wrong.';
+      const reply = data.reply || 'Sorry, something went wrong.';
       typingEl.remove();
       chat.messages.push({ role: 'assistant', text: reply });
       saiSaveChats();
@@ -3528,7 +3526,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
   <div class="sai-overlay" onclick="window.closeShoubraAI()"></div>
   <div class="sai-panel">
     <!-- Key Screen -->
-    <div class="sai-key-screen" id="sai-key-screen" style="display:none">
+<div class="sai-key-screen" id="sai-key-screen" style="display:none">
       <div class="sai-key-header">
         <div style="width:30px"></div>
         <div style="font-size:13px;color:#8a9ab5;font-weight:800;letter-spacing:0.5px">Shoubra AI</div>
@@ -3539,45 +3537,29 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
           <div class="sai-key-glow"></div>
           <div class="sai-key-gem">✦</div>
         </div>
-        <div class="sai-key-title">Get Started with AI</div>
-        <div class="sai-key-sub">Follow these steps to get your free Gemini API Key</div>
+        <div class="sai-key-title">ربط Shoubra AI</div>
+        <div class="sai-key-sub">أدخل رابط السيرفر الخاص بالتطبيق للاتصال بالذكاء الاصطناعي</div>
         <div class="sai-steps">
           <div class="sai-step">
             <div class="sai-step-num" style="background:rgba(79,142,247,0.15);color:#4f8ef7">1</div>
             <div class="sai-step-content">
-              <div class="sai-step-title">Open Google AI Studio</div>
-              <div class="sai-step-desc">Tap the button below to open the site in your browser</div>
-              <a class="sai-step-link" href="https://aistudio.google.com/apikey" target="_blank">🔗 Open Google AI Studio</a>
+              <div class="sai-step-title">افتح Railway</div>
+              <div class="sai-step-desc">ادخل على مشروعك على Railway وانسخ رابط الـ deployment</div>
             </div>
           </div>
           <div class="sai-step">
-            <div class="sai-step-num" style="background:rgba(155,110,247,0.15);color:#9b6ef7">2</div>
+            <div class="sai-step-num" style="background:rgba(52,211,153,0.15);color:#34d399">2</div>
             <div class="sai-step-content">
-              <div class="sai-step-title">Sign in with Google</div>
-              <div class="sai-step-desc">Use your Google account — this determines your Gemini plan (Free or Pro)</div>
-            </div>
-          </div>
-          <div class="sai-step">
-            <div class="sai-step-num" style="background:rgba(247,110,178,0.15);color:#f76eb2">3</div>
-            <div class="sai-step-content">
-              <div class="sai-step-title">Click "Create API Key"</div>
-              <div class="sai-step-desc">Find the blue button on the page, then select "Create API key in new project"</div>
-            </div>
-          </div>
-          <div class="sai-step">
-            <div class="sai-step-num" style="background:rgba(52,211,153,0.15);color:#34d399">4</div>
-            <div class="sai-step-content">
-              <div class="sai-step-title">Copy & Paste your Key</div>
-              <div class="sai-step-desc">Click the copy icon next to the key, then paste it below</div>
+              <div class="sai-step-title">الصق الرابط هنا</div>
+              <div class="sai-step-desc">مثال: https://your-app.up.railway.app</div>
             </div>
           </div>
         </div>
         <div class="sai-key-input-wrap">
-          <input class="sai-key-input" id="sai-api-key-input" type="password" placeholder="Paste your API Key here...">
-          <span class="sai-key-eye" onclick="this.previousElementSibling.type=this.previousElementSibling.type==='password'?'text':'password'">👁</span>
+          <input class="sai-key-input" id="sai-api-key-input" type="text" placeholder="https://your-app.up.railway.app">
         </div>
-        <div class="sai-error-msg" id="sai-key-error">Invalid API Key. Please try again.</div>
-        <button class="sai-key-btn" onclick="window.saiSaveKey()">✦ &nbsp;Start Chatting</button>
+        <div class="sai-error-msg" id="sai-key-error">رابط غير صحيح، تأكد أنه يبدأ بـ https://</div>
+        <button class="sai-key-btn" onclick="window.saiSaveKey()">✦ &nbsp;ابدأ المحادثة</button>
       </div>
     </div>
 
@@ -3597,7 +3579,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
         <div class="sai-drawer-list" id="sai-drawer-list"></div>
         <div class="sai-drawer-footer">
            
-          <div class="sai-footer-item" onclick="window.saiChangeKey()">🔑 &nbsp;Change API Key</div>
+          <div class="sai-footer-item" onclick="window.saiChangeKey()">🔗 &nbsp;تغيير رابط السيرفر</div>
           <div class="sai-footer-item danger" onclick="window.saiClearChats()">💫 &nbsp;Clear all chats</div>
         </div>
       </div>
@@ -3606,7 +3588,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
         <button class="sai-back" onclick="saiOpenDrawer()">☰</button>
         <div class="sai-gem">✦</div>
         <div class="sai-info">
-          <div class="sai-title">Shoubra AI <span class="sai-badge">Gemini 2.0</span></div>
+          <div class="sai-title">Shoubra AI <span class="sai-badge">Llama 3.3</span></div>
           <div class="sai-sub" id="sai-context-label">General Assistant</div>
         </div>
         <button class="sai-menu-btn" onclick="window.closeShoubraAI()">✕</button>
