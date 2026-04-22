@@ -1513,7 +1513,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             </div>
             <div id="tab-data" class="tab-content">
                 <div class="data-path" id="admin-data-path" style="font-size:13px; color:#94a3b8; margin-bottom:15px; display:flex; align-items:center; gap:5px;">Home</div>
-                <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div id="file-link-input-group" style="margin-bottom:10px;"><input type="file" id="new-item-file" style="color:#aaa; font-size:12px; background:rgba(0,0,0,0.2); padding:8px; width:100%; border-radius:8px; border:1px solid rgba(59,130,246,0.3);"><div style="display:flex; align-items:center; gap:10px; margin-top:10px;"><span style="font-size:13px; color:#94a3b8;">Same name</span><div id="same-name-toggle" onclick="window.toggleSameName()" style="width:44px; height:24px; border-radius:12px; background:#334155; cursor:pointer; position:relative; transition:background 0.2s;"><div id="same-name-knob" style="width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:left 0.2s;"></div></div></div><div id="rename-input-group" style="display:none; margin-top:10px;"><input type="text" id="new-item-rename" class="form-input" placeholder="Enter custom file name..."></div><div id="upload-progress" style="display:none; margin-top:8px; font-size:12px; color:#60a5fa; text-align:center;">Uploading...</div></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">📤 Upload & Add</button></div></div>
+                <div id="admin-data-view-container"><div class="data-list" id="admin-list-items"></div><div class="form-group" style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);"><div style="font-weight:bold; margin-bottom:10px; color:#60a5fa;">Add New</div><div class="radio-group" id="add-type-selector" style="display:none;"><label class="radio-label active" onclick="window.setAddType('file', this)"><input type="radio" name="addType" value="file" checked> 📄 File</label><label class="radio-label" onclick="window.setAddType('folder', this)"><input type="radio" name="addType" value="folder"> 📁 Folder</label></div><div class="form-group" style="margin-bottom:10px;"><input type="text" id="new-item-name" class="form-input" placeholder="Name..."></div><div id="file-link-input-group" style="margin-bottom:10px;"><input type="file" id="new-item-file" accept="*/*" style="color:#aaa; font-size:12px; background:rgba(0,0,0,0.2); padding:8px; width:100%; border-radius:8px; border:1px solid rgba(59,130,246,0.3);"><div style="display:flex; align-items:center; gap:10px; margin-top:10px;"><span style="font-size:13px; color:#94a3b8;">Same name</span><div id="same-name-toggle" onclick="window.toggleSameName()" style="width:44px; height:24px; border-radius:12px; background:#334155; cursor:pointer; position:relative; transition:background 0.2s;"><div id="same-name-knob" style="width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:left 0.2s;"></div></div></div><div id="rename-input-group" style="display:none; margin-top:10px;"><input type="text" id="new-item-rename" class="form-input" placeholder="Enter custom file name..."></div><div id="upload-progress" style="display:none; margin-top:8px; font-size:12px; color:#60a5fa; text-align:center;">Uploading...</div></div><button class="btn-save" style="margin-top:10px; padding:10px;" onclick="window.addAdminDataItem()">📤 Upload & Add</button></div></div>
             </div>
             <div id="tab-quicklinks" class="tab-content">
     <div class="admin-section-title" style="color:#3b82f6;">🔗 Quick Links</div>
@@ -4093,6 +4093,7 @@ function vnRenderList() {
           <div class="vn-result-box" id="vn-transcribe-${rec.id}"></div>
           <button class="vn-action-btn" onclick="vnSummarize(${rec.id})">✨ تلخيص بالـ AI</button>
           <div class="vn-result-box" id="vn-summary-${rec.id}"></div>
+          ${hasAdminAccess() ? `<button class="vn-action-btn" style="background:rgba(74,222,128,0.1);border-color:rgba(74,222,128,0.3);color:#4ade80;" onclick="vnShareToAdmin(${rec.id})">📤 مشاركة مع الطلاب</button>` : ''}
           <button class="vn-action-btn vn-delete-btn" onclick="vnDelete(${rec.id})">🗑️ حذف التسجيل</button>
         </div>
       </div>
@@ -4106,7 +4107,30 @@ function vnToggleItem(id) {
   actions.classList.toggle('open');
   arrow.classList.toggle('open');
 }
-
+function vnShareToAdmin(id) {
+  const rec = vnRecordings.find(r => r.id === id);
+  if (!rec) return;
+  // حوّل الـ audioData (base64) لـ File object
+  fetch(rec.audioData)
+    .then(r => r.blob())
+    .then(blob => {
+      const file = new File([blob], `${rec.name}.webm`, { type: 'audio/webm' });
+      // افتح لوحة التحكم على تاب الداتا
+      window.openAdminPanel();
+      setTimeout(() => {
+        window.switchAdminTab(2); // تاب الداتا
+        // حط الـ file في الـ input تلقائياً
+        const fileInput = document.getElementById('new-item-file');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        // حط اسم الريكورد تلقائياً
+        const nameInput = document.getElementById('new-item-name');
+        if (nameInput) nameInput.value = rec.name;
+        showToast('✅ الريكورد جاهز — اختار المكان واضغط Upload', 'success');
+      }, 600);
+    });
+}
 function vnDelete(id) {
   if (!confirm('هتمسح التسجيل ده؟')) return;
   vnRecordings = vnRecordings.filter(r => r.id !== id);
