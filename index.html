@@ -3613,13 +3613,21 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
       const data = await res.json();
       let reply = data.reply || 'Sorry, something went wrong.';
       typingEl.remove();
-      // Check if reply contains a schedule command
+      // Check if reply contains one or more schedule commands
       try {
-        const jsonMatch = reply.match(/\{[\s\S]*"schedule_command"[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.schedule_command) {
-            reply = schApplyAICommand(parsed.schedule_command);
+        const jsonMatches = [...reply.matchAll(/\{[\s\S]*?"schedule_command"[\s\S]*?\}(?=\s*\{|$)/g)];
+        if (jsonMatches.length > 0) {
+          const msgs = [];
+          for (const match of jsonMatches) {
+            try {
+              const parsed = JSON.parse(match[0]);
+              if (parsed.schedule_command) {
+                msgs.push(schApplyAICommand(parsed.schedule_command));
+              }
+            } catch(e2) {}
+          }
+          if (msgs.length > 0) {
+            reply = msgs.join('\n');
           }
         }
       } catch(e) {}
