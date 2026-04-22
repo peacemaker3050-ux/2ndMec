@@ -3647,6 +3647,7 @@ function schGetCurrentMins() {
   return egyptMins;
 }
 function sch_toMins(t) {
+  if (!t || typeof t !== 'string' || !t.includes(':')) return 0;
   const [tp,per] = t.split(' ');
   let [h,m] = tp.split(':').map(Number);
   if(per==='م'&&h!==12) h+=12;
@@ -3657,7 +3658,7 @@ function sch_toMins(t) {
 window.openSchedule = function() {
   document.getElementById('menu-dropdown').classList.remove('active');
   document.getElementById('sch-screen').classList.add('active');
-  sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+  sch_refreshAll();
 };
 window.closeSchedule = function() {
   document.getElementById('sch-screen').classList.remove('active');
@@ -3702,44 +3703,130 @@ const SCH_COLORS = {
   "ميكانيكا الموائع (2)":"#10b981", "قضايا مجتمعية":"#f59e0b",
   "الآلات الكهربية":"#06b6d4", "أنشطة طلابية":"#64748b",
 };
-const SCH_DAYS = ["الأحد","الاثنين","الثلاثاء"];
+let SCH_META = {
+  days: ["الأحد","الاثنين","الثلاثاء"],
+  sections: ["1","2","3"],
+  title: "جدول الهندسة الميكانيكية",
+  subtitle: "الفرقة الثانية — الفصل الثاني 2025/2026"
+};
 let SCH_activeDay = "الأحد", SCH_activeSec = "1", SCH_adminMode = false, SCH_editTarget = null;
-// Load schedule from Firebase
-async function sch_loadFromFirebase() {
+let SCH_lastSerialized = '';
+let SCH_syncTimer = null;
+
+function sch_isOwner() {
+  return auth && auth.currentUser && auth.currentUser.email === OWNER_EMAIL;
+}
+function sch_canManage() {
+  return typeof hasAdminAccess === 'function' && hasAdminAccess();
+}
+function sch_allDays() {
+  return ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+}
+function sch_allSections() {
+  return ["1","2","3","4","5","6","7","8","9","10"];
+}
+function sch_sanitizeMeta(meta) {
+  const safe = meta && typeof meta === 'object' ? meta : {};
+  const validDays = Array.isArray(safe.days) ? safe.days.filter(d => typeof d === 'string' && d.trim()) : [];
+  const validSections = Array.isArray(safe.sections) ? safe.sections.map(s => String(s).trim()).filter(Boolean) : [];
+  const days = validDays.length ? validDays : Object.keys(SCH_DATA);
+  return {
+    days: [...new Set(days)],
+    sections: [...new Set(validSections.length ? validSections : ["1","2","3"])],
+    title: (safe.title || "جدول الهندسة الميكانيكية").trim(),
+    subtitle: (safe.subtitle || "الفرقة الثانية — الفصل الثاني 2025/2026").trim(),
+  };
+}
+function sch_getPayload() {
+  return { meta: SCH_META, data: SCH_DATA };
+}
+function sch_applyPayload(payload) {
+  if (!payload || typeof payload !== 'object') return;
+  if (payload.data && typeof payload.data === 'object') SCH_DATA = payload.data;
+  SCH_META = sch_sanitizeMeta(payload.meta || SCH_META);
+  SCH_META.days.forEach(day => { if (!SCH_DATA[day]) SCH_DATA[day] = []; });
+  SCH_META.days = SCH_META.days.filter(day => Array.isArray(SCH_DATA[day]));
+  if (!SCH_META.days.length) {
+    SCH_META.days = [sch_allDays()[0]];
+    SCH_DATA[SCH_META.days[0]] = [];
+  }
+  if (!SCH_META.sections.length) SCH_META.sections = ["1","2","3"];
+  if (!SCH_META.days.includes(SCH_activeDay)) SCH_activeDay = SCH_META.days[0];
+  if (!SCH_META.sections.includes(SCH_activeSec)) SCH_activeSec = SCH_META.sections[0];
+}
+function sch_refreshAll() {
+  const titleEl = document.getElementById('sch-title');
+  const subEl = document.getElementById('sch-subtitle');
+  if (titleEl) titleEl.textContent = SCH_META.title;
+  if (subEl) subEl.textContent = SCH_META.subtitle;
+  sch_renderSecs();
+  sch_renderDays();
+  sch_renderTimeline();
+  sch_updateNow();
+  sch_renderAdminTools();
+}
+function sch_serializePayload() {
+  try { return JSON.stringify(sch_getPayload()); } catch(e) { return ''; }
+}
+function sch_loadLegacyMetaFromData() {
+  SCH_META.days = Object.keys(SCH_DATA);
+  SCH_META.sections = ["1","2","3"];
+}
+async function sch_loadFromFirebase(forceRender) {
   try {
-    const res = await fetch(FIREBASE_DB_URL + '/sch_data.json');
-    const data = await res.json();
-    if (data && typeof data === 'object') {
-      SCH_DATA = data;
-      sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+    const bundleRes = await fetch(FIREBASE_DB_URL + '/sch_bundle.json');
+    const bundle = await bundleRes.json();
+    if (bundle && typeof bundle === 'object' && bundle.data) {
+      sch_applyPayload(bundle);
+    } else {
+      const legacyRes = await fetch(FIREBASE_DB_URL + '/sch_data.json');
+      const legacyData = await legacyRes.json();
+      if (legacyData && typeof legacyData === 'object') {
+        SCH_DATA = legacyData;
+        sch_loadLegacyMetaFromData();
+        sch_applyPayload({ meta: SCH_META, data: SCH_DATA });
+      }
     }
+    const serialized = sch_serializePayload();
+    const changed = serialized !== SCH_lastSerialized;
+    SCH_lastSerialized = serialized;
+    if (forceRender || changed) sch_refreshAll();
   } catch(e) {}
 }
 async function sch_saveToFirebase() {
   try {
-    await fetch(FIREBASE_DB_URL + '/sch_data.json', {
+    if (!sch_canManage()) {
+      sch_toast('❌ غير مصرح بالتعديل');
+      return;
+    }
+    const payload = sch_getPayload();
+    await fetch(FIREBASE_DB_URL + '/sch_bundle.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(SCH_DATA)
+      body: JSON.stringify(payload)
     });
+    SCH_lastSerialized = sch_serializePayload();
   } catch(e) { sch_toast('❌ فشل الحفظ على السيرفر'); }
 }
-sch_loadFromFirebase();
+sch_loadFromFirebase(true);
+if (!SCH_syncTimer) {
+  SCH_syncTimer = setInterval(() => sch_loadFromFirebase(false), 4000);
+}
 
 function sch_getItems(day) {
   return (SCH_DATA[day]||[]).filter(it =>
-    it.type==='lecture' || (it.type==='section' && it.sec===SCH_activeSec)
+    it.type==='lecture' || (it.type==='section' && String(it.sec)===String(SCH_activeSec))
   );
 }
 
 function sch_renderSecs() {
   const wrap = document.getElementById('sch-sec-row'); if(!wrap) return;
   wrap.innerHTML = '';
-  ["1","2","3"].forEach(s => {
+  SCH_META.sections.forEach(s => {
     const b = document.createElement('div');
     b.className = 'sch-sec-btn' + (s===SCH_activeSec?' active':'');
     b.textContent = 'سكشن ' + s;
-    b.onclick = () => { SCH_activeSec=s; sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow(); };
+    b.onclick = () => { SCH_activeSec=s; sch_refreshAll(); };
     wrap.appendChild(b);
   });
 }
@@ -3747,7 +3834,7 @@ function sch_renderSecs() {
 function sch_renderDays() {
   const wrap = document.getElementById('sch-days'); if(!wrap) return;
   wrap.innerHTML = '';
-  SCH_DAYS.forEach(day => {
+  SCH_META.days.forEach(day => {
     const items = sch_getItems(day);
     const tab = document.createElement('div');
     tab.className = 'sch-day-tab' + (day===SCH_activeDay?' active':'');
@@ -3760,7 +3847,7 @@ function sch_renderDays() {
 function sch_updateNow() {
   const nowMins = schGetCurrentMins();
   const todayDay = schGetCurrentDay();
-  const items = sch_getItems(todayDay);
+  const items = SCH_META.days.includes(todayDay) ? sch_getItems(todayDay) : [];
   let nowIt=null, nextIt=null;
   for(const it of items) {
     const f=sch_toMins(it.from), t=sch_toMins(it.to);
@@ -3771,6 +3858,8 @@ function sch_updateNow() {
     if(nowMins<f){ if(!nextIt||f<sch_toMins(nextIt.from)) nextIt=it; }
   }
   const nw = document.getElementById('sch-now-wrap');
+  const nx = document.getElementById('sch-next-wrap');
+  if (!nw || !nx) return;
   if(nowIt) {
     const f=sch_toMins(nowIt.from), t=sch_toMins(nowIt.to);
     const prog=Math.round(((nowMins-f)/(t-f))*100);
@@ -3785,7 +3874,6 @@ function sch_updateNow() {
   } else {
     nw.innerHTML=`<div style="padding:10px 14px 4px"><div class="sch-no-now"><div class="sch-no-now-ico">☕</div><div><div class="sch-no-now-t1">مفيش محاضرة دلوقتي</div><div class="sch-no-now-t2">استغل الوقت في المذاكرة 📚</div></div></div></div>`;
   }
-  const nx = document.getElementById('sch-next-wrap');
   if(nextIt) {
     const mins = sch_toMins(nextIt.from) - schGetCurrentMins();
     nx.innerHTML=`<div class="sch-next-card">
@@ -3845,8 +3933,10 @@ function sch_renderTimeline() {
             <div class="sch-t2">${it.to}</div>
           </div>
           <button class="sch-edit-btn" data-id="${it.id}">✏️ تعديل</button>
+          <button class="sch-edit-btn" data-del-id="${it.id}" style="color:#ef4444;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.1);">🗑️ حذف</button>
         </div>`;
       card.querySelector('.sch-edit-btn').addEventListener('click', e => { e.stopPropagation(); sch_openEdit(it.id); });
+      card.querySelector('[data-del-id]').addEventListener('click', e => { e.stopPropagation(); sch_deleteItemById(it.id); });
       pc.appendChild(card); ci++;
     });
     pg.appendChild(pc); wrap.appendChild(pg);
@@ -3854,6 +3944,7 @@ function sch_renderTimeline() {
 }
 
 function sch_toggleAdmin() {
+  if (!sch_canManage()) { sch_toast('❌ التعديل متاح للأدمن/المالك فقط'); return; }
   SCH_adminMode=!SCH_adminMode;
   document.getElementById('sch-screen').classList.toggle('sch-admin-on', SCH_adminMode);
   const btn=document.getElementById('sch-adm-btn');
@@ -3871,16 +3962,48 @@ function sch_openEdit(id) {
   const it=sch_findItem(id); if(!it) return;
   SCH_editTarget=it;
   document.getElementById('sch-edit-desc').textContent=it.subject+' · '+it.from+' – '+it.to;
+  document.getElementById('sch-inp-subject').value=it.subject||'';
   document.getElementById('sch-inp-doctor').value=it.doctor||'';
   document.getElementById('sch-inp-hall').value=it.hall||'';
+  document.getElementById('sch-inp-from').value=it.from||'';
+  document.getElementById('sch-inp-to').value=it.to||'';
+  document.getElementById('sch-inp-period').value=it.period||1;
+  document.getElementById('sch-inp-type').value=it.type||'lecture';
+  document.getElementById('sch-inp-day').value=sch_getItemDay(it.id);
+  const secWrap = document.getElementById('sch-edit-sec-wrap');
+  const secSel = document.getElementById('sch-inp-sec');
+  secSel.value = it.sec || SCH_META.sections[0];
+  secWrap.style.display = (it.type === 'section') ? 'block' : 'none';
   document.getElementById('sch-edit-overlay').classList.add('active');
 }
 function sch_closeEdit() { document.getElementById('sch-edit-overlay').classList.remove('active'); SCH_editTarget=null; }
 function sch_saveEdit() {
   if(!SCH_editTarget) return;
+  const oldDay = sch_getItemDay(SCH_editTarget.id);
+  const newDay = document.getElementById('sch-inp-day').value;
+  SCH_editTarget.subject=document.getElementById('sch-inp-subject').value.trim();
   SCH_editTarget.doctor=document.getElementById('sch-inp-doctor').value;
   SCH_editTarget.hall=document.getElementById('sch-inp-hall').value;
-  sch_closeEdit(); sch_renderTimeline(); sch_updateNow();
+  SCH_editTarget.from=document.getElementById('sch-inp-from').value.trim();
+  SCH_editTarget.to=document.getElementById('sch-inp-to').value.trim();
+  SCH_editTarget.period=parseInt(document.getElementById('sch-inp-period').value) || 1;
+  SCH_editTarget.type=document.getElementById('sch-inp-type').value;
+  if (SCH_editTarget.type === 'section') {
+    SCH_editTarget.sec=document.getElementById('sch-inp-sec').value;
+  } else {
+    delete SCH_editTarget.sec;
+  }
+  if(!SCH_editTarget.subject || !SCH_editTarget.from || !SCH_editTarget.to) { sch_toast('⚠️ البيانات الأساسية مطلوبة'); return; }
+  if (oldDay && newDay && oldDay !== newDay) {
+    SCH_DATA[oldDay] = (SCH_DATA[oldDay] || []).filter(it => it.id !== SCH_editTarget.id);
+    if (!SCH_DATA[newDay]) SCH_DATA[newDay] = [];
+    SCH_DATA[newDay].push(SCH_editTarget);
+    SCH_activeDay = newDay;
+  }
+  Object.keys(SCH_DATA).forEach(day => {
+    SCH_DATA[day].sort((a,b)=>sch_toMins(a.from)-sch_toMins(b.from));
+  });
+  sch_closeEdit(); sch_refreshAll();
   sch_saveToFirebase();
   sch_toast('✅ تم حفظ التعديل');
 }
@@ -3892,6 +4015,7 @@ function sch_toast(msg) {
 
 function sch_openAdd() {
   if(!SCH_adminMode){ sch_toast('🔒 فعّل Admin Mode الأول'); return; }
+  sch_renderAdminTools();
   document.getElementById('sch-upload-scr').classList.add('active');
   const typeEl = document.getElementById('add-type');
   if(typeEl) typeEl.onchange = () => {
@@ -3912,17 +4036,18 @@ function sch_saveNewItem() {
   const sec     = document.getElementById('add-sec').value;
   const period  = parseInt(document.getElementById('add-period').value) || 1;
   if(!subject||!from||!to){ sch_toast('⚠️ المادة والوقت مطلوبين'); return; }
-  const newItem = { id:'m-'+Math.random().toString(36).slice(2,8), type, subject, doctor, hall, from, to, period };
+  const newItem = { id:'m-'+Date.now()+'-'+Math.random().toString(36).slice(2,6), type, subject, doctor, hall, from, to, period };
   if(type==='section') newItem.sec = sec;
   if(!SCH_DATA[day]) SCH_DATA[day]=[];
   SCH_DATA[day].push(newItem);
   SCH_DATA[day].sort((a,b)=>sch_toMins(a.from)-sch_toMins(b.from));
   sch_saveToFirebase();
   sch_closeUpload();
-  sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+  sch_refreshAll();
   sch_toast('✅ تمت الإضافة بنجاح');
 }
 function sch_deleteSelected() {
+  if(!sch_canManage()) { sch_toast('❌ غير مصرح'); return; }
   const id = document.getElementById('delete-id').value.trim();
   if(!id){ sch_toast('⚠️ ادخل الـ ID'); return; }
   let found=false;
@@ -3933,10 +4058,97 @@ function sch_deleteSelected() {
   });
   if(found){
     sch_saveToFirebase();
-    sch_closeUpload();
-    sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+    sch_renderAdminTools();
+    sch_refreshAll();
     sch_toast('✅ تم الحذف');
   } else { sch_toast('⚠️ ID مش موجود'); }
+}
+function sch_deleteItemById(id) {
+  if (!id) return;
+  document.getElementById('delete-id').value = id;
+  sch_deleteSelected();
+}
+function sch_getItemDay(id) {
+  for (const day of Object.keys(SCH_DATA)) {
+    if ((SCH_DATA[day] || []).some(it => it.id === id)) return day;
+  }
+  return '';
+}
+function sch_renderAdminTools() {
+  const addDaySelect = document.getElementById('add-day');
+  const addSecSelect = document.getElementById('add-sec');
+  const editDaySelect = document.getElementById('sch-inp-day');
+  const editSecSelect = document.getElementById('sch-inp-sec');
+  const removeDaySelect = document.getElementById('remove-day-select');
+  const removeSecSelect = document.getElementById('remove-sec-select');
+  const delSelect = document.getElementById('delete-item-select');
+
+  const dayOptions = SCH_META.days.map(day => `<option value="${day}">${day}</option>`).join('');
+  const secOptions = SCH_META.sections.map(sec => `<option value="${sec}">سكشن ${sec}</option>`).join('');
+
+  if (addDaySelect) addDaySelect.innerHTML = dayOptions;
+  if (editDaySelect) editDaySelect.innerHTML = dayOptions;
+  if (removeDaySelect) removeDaySelect.innerHTML = dayOptions;
+  if (addSecSelect) addSecSelect.innerHTML = secOptions;
+  if (editSecSelect) editSecSelect.innerHTML = secOptions;
+  if (removeSecSelect) removeSecSelect.innerHTML = secOptions;
+
+  if (delSelect) {
+    const items = (SCH_DATA[SCH_activeDay] || []);
+    delSelect.innerHTML = '<option value="">اختر محاضرة/سكشن للحذف</option>' + items.map(it => {
+      const itemType = it.type === 'lecture' ? 'محاضرة' : 'سكشن ' + (it.sec || '-');
+      return `<option value="${it.id}">${itemType} · ${it.subject} · ${it.from}-${it.to}</option>`;
+    }).join('');
+  }
+}
+function sch_addDay() {
+  if(!sch_canManage()) return sch_toast('❌ غير مصرح');
+  const newDay = document.getElementById('new-day-select').value;
+  if (!newDay) return sch_toast('⚠️ اختر اليوم');
+  if (SCH_META.days.includes(newDay)) return sch_toast('⚠️ اليوم موجود بالفعل');
+  SCH_META.days.push(newDay);
+  SCH_DATA[newDay] = SCH_DATA[newDay] || [];
+  SCH_activeDay = newDay;
+  sch_saveToFirebase();
+  sch_refreshAll();
+  sch_toast('✅ تم إضافة اليوم');
+}
+function sch_removeDay() {
+  if(!sch_canManage()) return sch_toast('❌ غير مصرح');
+  const day = document.getElementById('remove-day-select').value;
+  if (!day) return sch_toast('⚠️ اختر اليوم');
+  if (SCH_META.days.length <= 1) return sch_toast('⚠️ لازم يفضل يوم واحد على الأقل');
+  SCH_META.days = SCH_META.days.filter(d => d !== day);
+  delete SCH_DATA[day];
+  if (!SCH_META.days.includes(SCH_activeDay)) SCH_activeDay = SCH_META.days[0];
+  sch_saveToFirebase();
+  sch_refreshAll();
+  sch_toast('✅ تم حذف اليوم');
+}
+function sch_addSection() {
+  if(!sch_canManage()) return sch_toast('❌ غير مصرح');
+  const sec = document.getElementById('new-sec-input').value.trim();
+  if (!sec) return sch_toast('⚠️ اكتب رقم السكشن');
+  if (SCH_META.sections.includes(sec)) return sch_toast('⚠️ السكشن موجود');
+  SCH_META.sections.push(sec);
+  SCH_activeSec = sec;
+  sch_saveToFirebase();
+  sch_refreshAll();
+  sch_toast('✅ تم إضافة السكشن');
+}
+function sch_removeSection() {
+  if(!sch_canManage()) return sch_toast('❌ غير مصرح');
+  const sec = document.getElementById('remove-sec-select').value;
+  if (!sec) return sch_toast('⚠️ اختر السكشن');
+  if (SCH_META.sections.length <= 1) return sch_toast('⚠️ لازم يفضل سكشن واحد على الأقل');
+  SCH_META.sections = SCH_META.sections.filter(s => s !== sec);
+  Object.keys(SCH_DATA).forEach(day => {
+    SCH_DATA[day] = (SCH_DATA[day] || []).filter(it => !(it.type === 'section' && String(it.sec) === String(sec)));
+  });
+  if (!SCH_META.sections.includes(SCH_activeSec)) SCH_activeSec = SCH_META.sections[0];
+  sch_saveToFirebase();
+  sch_refreshAll();
+  sch_toast('✅ تم حذف السكشن');
 }
 // ========== END SCHEDULE SCREEN ==========
 // ==================== VOICE NOTES ====================
@@ -4181,8 +4393,8 @@ async function vnSummarize(id) {
     <div class="sch-hdr-row">
       <button class="sch-back-btn" onclick="window.closeSchedule()">‹</button>
       <div class="sch-hdr-center">
-        <div class="sch-hdr-title">جدول الهندسة الميكانيكية</div>
-        <div class="sch-hdr-sub">الفرقة الثانية — الفصل الثاني 2025/2026</div>
+        <div class="sch-hdr-title" id="sch-title">جدول الهندسة الميكانيكية</div>
+        <div class="sch-hdr-sub" id="sch-subtitle">الفرقة الثانية — الفصل الثاني 2025/2026</div>
       </div>
     </div>
   </div>
@@ -4201,10 +4413,29 @@ async function vnSummarize(id) {
       <div class="sch-edit-handle"></div>
       <div class="sch-edit-title">✏️ تعديل بيانات المحاضرة</div>
       <div class="sch-edit-desc" id="sch-edit-desc"></div>
+      <div class="sch-field-lbl">📚 المادة</div>
+      <input class="sch-inp" id="sch-inp-subject" placeholder="اسم المادة...">
       <div class="sch-field-lbl">👨‍🏫 اسم الدكتور / المعيد</div>
       <input class="sch-inp" id="sch-inp-doctor" placeholder="اسم الدكتور أو المعيد...">
       <div class="sch-field-lbl">🚪 القاعة / المعمل</div>
       <input class="sch-inp" id="sch-inp-hall" placeholder="رقم القاعة أو المعمل...">
+      <div class="sch-field-lbl">📅 اليوم</div>
+      <select class="sch-inp" id="sch-inp-day"></select>
+      <div class="sch-field-lbl">🕐 من</div>
+      <input class="sch-inp" id="sch-inp-from" placeholder="مثال: 9:00 ص">
+      <div class="sch-field-lbl">🕐 إلى</div>
+      <input class="sch-inp" id="sch-inp-to" placeholder="مثال: 10:30 م">
+      <div class="sch-field-lbl">🔢 الفترة</div>
+      <input class="sch-inp" id="sch-inp-period" type="number" min="1">
+      <div class="sch-field-lbl">🗂️ النوع</div>
+      <select class="sch-inp" id="sch-inp-type" onchange="document.getElementById('sch-edit-sec-wrap').style.display=this.value==='section'?'block':'none'">
+        <option value="lecture">محاضرة</option>
+        <option value="section">سكشن</option>
+      </select>
+      <div id="sch-edit-sec-wrap" style="display:none">
+        <div class="sch-field-lbl">👥 السكشن</div>
+        <select class="sch-inp" id="sch-inp-sec"></select>
+      </div>
       <div class="sch-edit-btns">
         <button class="sch-btn-cancel" onclick="sch_closeEdit()">إلغاء</button>
         <button class="sch-btn-save" onclick="sch_saveEdit()">💾 حفظ</button>
@@ -4220,6 +4451,40 @@ async function vnSummarize(id) {
       </div>
     </div>
     <div class="sch-upload-body">
+      <div class="sch-slbl">🧭 إدارة الجدول</div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px;margin-bottom:12px;">
+        <div style="font-size:11px;color:#7a8ba8;margin-bottom:8px;">الأيام</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <select class="sch-inp" id="new-day-select" style="margin:0;">
+            <option value="">اختر يوم للإضافة</option>
+            <option value="الأحد">الأحد</option>
+            <option value="الاثنين">الاثنين</option>
+            <option value="الثلاثاء">الثلاثاء</option>
+            <option value="الأربعاء">الأربعاء</option>
+            <option value="الخميس">الخميس</option>
+            <option value="الجمعة">الجمعة</option>
+            <option value="السبت">السبت</option>
+          </select>
+          <button class="sch-btn-save" style="flex:0 0 94px;padding:10px;" onclick="sch_addDay()">إضافة</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <select class="sch-inp" id="remove-day-select" style="margin:0;"></select>
+          <button class="sch-btn-cancel" style="flex:0 0 94px;padding:10px;" onclick="sch_removeDay()">حذف</button>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px;margin-bottom:12px;">
+        <div style="font-size:11px;color:#7a8ba8;margin-bottom:8px;">السكاشن</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input class="sch-inp" id="new-sec-input" placeholder="رقم السكشن (مثال: 4)" style="margin:0;">
+          <button class="sch-btn-save" style="flex:0 0 94px;padding:10px;" onclick="sch_addSection()">إضافة</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <select class="sch-inp" id="remove-sec-select" style="margin:0;"></select>
+          <button class="sch-btn-cancel" style="flex:0 0 94px;padding:10px;" onclick="sch_removeSection()">حذف</button>
+        </div>
+      </div>
+
       <div class="sch-slbl">📚 المادة</div>
       <input class="sch-inp" id="add-subject" placeholder="مثال: انتقال الحرارة">
       <div class="sch-slbl">👨‍🏫 الدكتور / المعيد</div>
@@ -4253,6 +4518,9 @@ async function vnSummarize(id) {
       <input class="sch-inp" id="add-period" type="number" placeholder="مثال: 1" min="1" max="6">
       <button class="sch-anlz-btn" onclick="sch_saveNewItem()">💾 إضافة وحفظ</button>
       <div style="height:20px"></div>
+      <select class="sch-inp" id="delete-item-select" onchange="document.getElementById('delete-id').value=this.value">
+        <option value="">اختر محاضرة/سكشن للحذف</option>
+      </select>
       <button onclick="sch_deleteSelected()" style="width:100%;padding:12px;border-radius:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;">🗑️ حذف محاضرة (ادخل الـ ID)</button>
       <input class="sch-inp" id="delete-id" placeholder="ID المحاضرة مثال: ah-p1-lec" style="margin-top:8px">
     </div>
