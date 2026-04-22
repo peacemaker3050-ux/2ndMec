@@ -25,6 +25,8 @@
     
     <!-- Fuse.js for Fuzzy Search -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+    <!-- SheetJS for Excel Import -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
         :root { --bg-dark: #0f172a; --bg-glass: rgba(15, 23, 42, 0.85); --bg-glass-heavy: rgba(15, 23, 42, 0.98); --accent-primary: #3b82f6; --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); --msg-bot-bg: rgba(255, 255, 255, 0.1); --msg-user-bg: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); --text-primary: #f8fafc; --text-secondary: #94a3b8; --border-color: rgba(255, 255, 255, 0.1); --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); --glass-blur: blur(16px); --radius-md: 12px; --radius-lg: 20px; --radius-full: 999px; --font-en: 'Inter', sans-serif; --font-ar: 'Cairo', sans-serif; }
@@ -1382,6 +1384,18 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         </div>
     </div>
     <div class="grade-body">
+        <div id="gt-login-panel" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:14px;padding:14px;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:800;color:#a5b4fc;margin-bottom:8px;">🔐 Student Verification</div>
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">ادخل كود الطالب والباسورد لعرض درجاتك الرسمية.</div>
+            <input id="gt-login-code" class="form-input" placeholder="Student Code" style="margin-bottom:8px;">
+            <input id="gt-login-pass" class="form-input" placeholder="Password" type="password" style="margin-bottom:8px;">
+            <div style="display:flex; gap:8px;">
+                <button class="gt-save-btn" style="margin:0;flex:1;" onclick="window.gtStudentLogin()">Login</button>
+                <button class="gt-adj-btn" style="width:auto;padding:10px 12px;" onclick="window.gtStudentLogout()">Logout</button>
+            </div>
+            <div id="gt-login-status" style="font-size:11px;color:#64748b;margin-top:8px;">Not logged in</div>
+        </div>
+        <div id="gt-content-wrap" style="display:none;">
         <div class="gt-summary">
             <div class="gt-sum-top">
                 <div>
@@ -1407,6 +1421,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         <div class="gt-shared-sec" id="gt-shared-sec" style="display:none;">
             <div class="gt-shared-title">📊 Shared Student Grades</div>
             <div id="gt-shared-list"></div>
+        </div>
         </div>
     </div>
     <div class="gt-score-modal" id="gt-score-modal">
@@ -1605,6 +1620,46 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         <span id="gt-admin-total" style="font-weight:900; font-family:monospace; font-size:18px; color:#6366f1;">0 / 750</span>
     </div>
     <button class="btn-save" style="background:linear-gradient(135deg,#22c55e,#16a34a);" onclick="window.saveGradeConfig()">Save Grade Config</button>
+    <div class="admin-section-title" style="color:#f59e0b;">🔐 Import Student Accounts</div>
+    <p style="font-size:12px;color:#94a3b8;">Upload one-time accounts file columns: <b>code,password</b> (CSV or Excel).</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn-sm btn-edit" style="margin:0;padding:8px 12px;border-radius:8px;" onclick="window.gtDownloadAuthTemplate()">⬇️ Accounts Template</button>
+    </div>
+    <div class="form-group">
+        <label class="form-label">Accounts File (CSV / XLSX / XLS)</label>
+        <input type="file" id="gt-auth-file" accept=".csv,text/csv,.xlsx,.xls" style="color:#aaa; font-size:12px; background: rgba(0,0,0,0.2); padding: 8px; width:100%;">
+    </div>
+    <button class="btn-save" style="background:linear-gradient(135deg,#f59e0b,#d97706);" onclick="window.gtImportAuth()">Upload Accounts</button>
+    <div id="gt-auth-result" style="font-size:12px;color:#94a3b8;margin-top:10px;margin-bottom:14px;"></div>
+    <div class="admin-section-title" style="color:#60a5fa;">📥 Import Subject Grades (CSV / Excel)</div>
+    <p style="font-size:12px;color:#94a3b8;">Choose subject then upload file columns: <b>code,score</b> (header optional). New import is added to old scores for the same subject.</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn-sm btn-edit" style="margin:0;padding:8px 12px;border-radius:8px;" onclick="window.gtDownloadGradesTemplate()">⬇️ Grades Template</button>
+    </div>
+    <div class="form-group">
+        <label class="form-label">Subject</label>
+        <select id="gt-import-subject" class="form-select" onchange="window.gtOnImportSubjectChange()"></select>
+    </div>
+    <div class="form-group">
+        <label class="form-label">File (CSV / XLSX / XLS / PDF)</label>
+        <input type="file" id="gt-import-file" accept=".csv,text/csv,.xlsx,.xls,.pdf,application/pdf" style="color:#aaa; font-size:12px; background: rgba(0,0,0,0.2); padding: 8px; width:100%;" disabled>
+    </div>
+    <button class="btn-save" id="gt-import-btn" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);" onclick="window.gtImportCsv()" disabled>Upload & Accumulate</button>
+    <div id="gt-import-result" style="font-size:12px;color:#94a3b8;margin-top:10px;"></div>
+    <button class="btn-save" style="margin-top:12px;background:linear-gradient(135deg,#14b8a6,#0f766e);" onclick="window.gtExportSubjectGrades()">📤 Export Coursework (Selected Subject)</button>
+    <div class="admin-section-title" style="color:#8b5cf6;">🚦 Release Control</div>
+    <p style="font-size:12px;color:#94a3b8;">Control if selected subject appears to students.</p>
+    <div style="display:flex;gap:8px;">
+        <button class="btn-save" style="margin:0;flex:1;background:linear-gradient(135deg,#22c55e,#16a34a);" onclick="window.gtSetSubjectRelease(true)">Publish Subject</button>
+        <button class="btn-save" style="margin:0;flex:1;background:linear-gradient(135deg,#ef4444,#dc2626);" onclick="window.gtSetSubjectRelease(false)">Hide Subject</button>
+    </div>
+    <div id="gt-release-status" style="font-size:12px;color:#94a3b8;margin-top:8px;"></div>
+    <div class="admin-section-title" style="color:#f97316;">🧯 Rollback</div>
+    <p style="font-size:12px;color:#94a3b8;">Restore latest snapshot for selected subject.</p>
+    <button class="btn-save" style="margin:0;background:linear-gradient(135deg,#f97316,#ea580c);" onclick="window.gtRollbackLatestSubject()">Rollback Last Import</button>
+    <div id="gt-rollback-status" style="font-size:12px;color:#94a3b8;margin-top:8px;"></div>
+    <div class="admin-section-title" style="color:#38bdf8;">🧾 Recent Audit Log</div>
+    <div id="gt-audit-list" style="max-height:180px;overflow:auto;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px;"></div>
 </div>
             <div id="tab-manifest" class="tab-content"><div class="admin-section-title" style="color: #a855f7;">App Installation Settings</div><p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how app looks when installed.</p><div class="manifest-preview" id="manifest-icon-preview"><span>📲</span></div><div class="form-group"><label class="form-label">App Name (Short)</label><input type="text" id="manifest-app-name" class="form-input" placeholder="UniBot"></div><div class="form-group"><label class="form-label">App Icon (Upload Image)</label><input type="file" id="manifest-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;"><button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button></div><button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button></div>
         </div>
@@ -2182,8 +2237,8 @@ else if (DEFAULT_BG_URL) {
         window.testNotification = function() { document.getElementById('menu-dropdown').classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; } Notification.requestPermission().then(permission => { if (permission === 'granted') { if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }); showToast("Test notification sent...", "success"); } else { new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: CONFIG.appIcon }); showToast("Test notification sent...", "success"); } } else { showToast("Permission denied.", "error"); } }); };
         function hexToRgb(hex) { var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
         function darkenColor(hex, percent) { const rgb = hexToRgb(hex); if (!rgb) return hex; const amt = Math.round(2.55 * percent); const R = (rgb.r - amt) < 0 ? 0 : rgb.r - amt; const G = (rgb.g - amt) < 0 ? 0 : rgb.g - amt; const B = (rgb.b - amt) < 0 ? 0 : rgb.b - amt; return "#" + (0x1000000 + (R << 16) + (G << 8) + B).toString(16).slice(1); }
-        window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = isOwner ? 'flex' : 'none';
-if (isOwner) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
+        window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); const canManageGrades = hasAdminAccess(); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = canManageGrades ? 'flex' : 'none';
+if (hasAdminAccess()) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
         window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 7) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
         window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
@@ -2562,12 +2617,13 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
 // ==========================================
         // === GRADE TRACKER LOGIC ===
         // ==========================================
-        const GT_KEY        = 'gt_scores';
-        const GT_SECRET_KEY = 'gt_secret';
-        let gtCurId     = null;
+        const GT_SERVER_CACHE_KEY = 'gt_server_scores';
+        const GT_STUDENT_SESSION_KEY = 'gt_student_session';
+        let gtCurId = null;
         let gtTempScore = 0;
         let gtHoldT = null, gtHoldI = null;
-        let gtSecretMode = localStorage.getItem(GT_SECRET_KEY) !== 'false';
+        let gtStudentSession = null;
+        let gtScoresCache = {};
 
         function gtGrade(score, max) {
             if (!max) return { label:'—', cc:'gt-cc-empty', pill:'gt-pill-rasib', color:'#64748b' };
@@ -2582,21 +2638,94 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
         function gtGetCourses() {
             const gradeConfig = CONFIG.gradeConfig || {};
             return Object.keys(database || {}).map((name, i) => ({
-                id: i + 1, name: name, max: gradeConfig[name] || 0
+                id: gtKey(name), name: name, max: gradeConfig[name] || 0
             }));
         }
-
+        function gtKey(v) { return String(v || '').trim().replace(/[.#$/\[\]]/g, '_'); }
         function gtLoadScores() {
-            try { return JSON.parse(localStorage.getItem(GT_KEY) || '{}'); } catch(e) { return {}; }
+            try {
+                const fromStore = JSON.parse(localStorage.getItem(GT_SERVER_CACHE_KEY) || '{}');
+                gtScoresCache = fromStore || {};
+                return gtScoresCache;
+            } catch(e) { return {}; }
         }
-        function gtSaveScores(scores) { localStorage.setItem(GT_KEY, JSON.stringify(scores)); }
+        function gtSaveScores(scores) {
+            gtScoresCache = scores || {};
+            localStorage.setItem(GT_SERVER_CACHE_KEY, JSON.stringify(gtScoresCache));
+        }
+        async function gtHashText(text) {
+            const enc = new TextEncoder().encode(String(text || ''));
+            const digest = await crypto.subtle.digest('SHA-256', enc);
+            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function gtSetStatus(msg, color) {
+            const el = document.getElementById('gt-login-status');
+            if (!el) return;
+            el.textContent = msg;
+            el.style.color = color || '#64748b';
+        }
+        function gtSetContentVisible(show) {
+            const content = document.getElementById('gt-content-wrap');
+            if (content) content.style.display = show ? 'block' : 'none';
+        }
+        function gtCurrentStudentLabel() {
+            if (!gtStudentSession) return 'Not logged in';
+            return `Logged as ${gtStudentSession.studentCode}`;
+        }
+        function gtLoadSession() {
+            try {
+                const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY) || 'null');
+                gtStudentSession = sess && sess.studentCode ? sess : null;
+            } catch(e) { gtStudentSession = null; }
+        }
+        function gtSaveSession(sess) {
+            gtStudentSession = sess;
+            localStorage.setItem(GT_STUDENT_SESSION_KEY, JSON.stringify(sess));
+        }
+        function gtClearSession() {
+            gtStudentSession = null;
+            localStorage.removeItem(GT_STUDENT_SESSION_KEY);
+            localStorage.removeItem(GT_SERVER_CACHE_KEY);
+            gtScoresCache = {};
+        }
+        async function gtFetchStudentScores(studentCode) {
+            const codeKey = gtKey(studentCode);
+            const [scoresResp, releaseResp] = await Promise.all([
+                fetch(`${FIREBASE_DB_URL}/gradeRecords/${encodeURIComponent(codeKey)}.json`),
+                fetch(`${FIREBASE_DB_URL}/gradeRelease.json`)
+            ]);
+            const data = await scoresResp.json();
+            const releaseMap = (await releaseResp.json()) || {};
+            if (!data || typeof data !== 'object') return {};
+            const filtered = {};
+            Object.keys(data).forEach(subjectKey => {
+                const isReleased = releaseMap[subjectKey];
+                if (isReleased !== false) filtered[subjectKey] = data[subjectKey];
+            });
+            return filtered;
+        }
+        async function gtEnsureStudentAuthLoaded() {
+            gtLoadSession();
+            gtSetStatus(gtCurrentStudentLabel(), gtStudentSession ? '#22c55e' : '#64748b');
+            if (!gtStudentSession) {
+                gtSetContentVisible(false);
+                return false;
+            }
+            try {
+                const scores = await gtFetchStudentScores(gtStudentSession.studentCode);
+                gtSaveScores(scores);
+                gtSetContentVisible(true);
+                return true;
+            } catch(e) {
+                gtSetStatus('Failed to load grades', '#ef4444');
+                gtSetContentVisible(false);
+                return false;
+            }
+        }
 
         function gtGetWelcome() {
-            const user = auth ? auth.currentUser : null;
-            if (!user) return '';
-            const displayName = user.displayName || user.email.split('@')[0];
-            const isArabic = /[\u0600-\u06FF]/.test(displayName);
-            return isArabic ? `مرحباً ${displayName} 👋` : `Hello ${displayName} 👋`;
+            if (gtStudentSession && gtStudentSession.studentCode) return `Student ${gtStudentSession.studentCode}`;
+            return 'Secure Grade Portal';
         }
 
         function gtRender() {
@@ -2637,19 +2766,82 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             }).join('');
         }
 
-        window.openGradeTracker = function() {
+        window.openGradeTracker = async function() {
             document.getElementById('menu-dropdown').classList.remove('active');
             document.getElementById('grade-modal').classList.add('active');
             document.getElementById('gt-welcome').textContent = gtGetWelcome();
-            gtRender();
-            gtLoadShared();
-            gtSyncSecretUI();
+            const shareWrap = document.querySelector('#grade-modal .gt-share-wrap');
+            if (shareWrap) shareWrap.style.display = 'none';
+            const loaded = await gtEnsureStudentAuthLoaded();
+            if (loaded) gtRender();
         };
         window.closeGradeTracker = function() {
             document.getElementById('grade-modal').classList.remove('active');
         };
+        const GT_LOGIN_MAX_ATTEMPTS = 5;
+        const GT_LOGIN_LOCK_MS = 5 * 60 * 1000;
+        window.gtStudentLogin = async function() {
+            const codeInput = document.getElementById('gt-login-code');
+            const passInput = document.getElementById('gt-login-pass');
+            const studentCode = (codeInput ? codeInput.value : '').trim();
+            const password = (passInput ? passInput.value : '').trim();
+            if (!studentCode || !password) return gtSetStatus('Enter code and password', '#f59e0b');
+            gtSetStatus('Checking...', '#94a3b8');
+            try {
+                const codeKey = gtKey(studentCode);
+                const authResp = await fetch(`${FIREBASE_DB_URL}/gradeAuth/${encodeURIComponent(codeKey)}.json`);
+                const authData = await authResp.json();
+                if (!authData || !authData.passHash) return gtSetStatus('Account not found', '#ef4444');
+                const nowTs = Date.now();
+                if (authData.lockUntil && Number(authData.lockUntil) > nowTs) {
+                    const leftSec = Math.ceil((Number(authData.lockUntil) - nowTs) / 1000);
+                    return gtSetStatus(`Locked: try again in ${leftSec}s`, '#ef4444');
+                }
+                const passHash = await gtHashText(password);
+                if (authData.passHash !== passHash) {
+                    const failedAttempts = (Number(authData.failedAttempts) || 0) + 1;
+                    const isLocked = failedAttempts >= GT_LOGIN_MAX_ATTEMPTS;
+                    const lockUntil = isLocked ? (nowTs + GT_LOGIN_LOCK_MS) : 0;
+                    await fetch(`${FIREBASE_DB_URL}/gradeAuth/${encodeURIComponent(codeKey)}.json`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ failedAttempts, lockUntil, updatedAt: nowTs })
+                    });
+                    if (isLocked) return gtSetStatus('Too many attempts. Locked for 5 minutes.', '#ef4444');
+                    return gtSetStatus(`Wrong password (${failedAttempts}/${GT_LOGIN_MAX_ATTEMPTS})`, '#ef4444');
+                }
+                if ((Number(authData.failedAttempts) || 0) > 0 || Number(authData.lockUntil) > 0) {
+                    await fetch(`${FIREBASE_DB_URL}/gradeAuth/${encodeURIComponent(codeKey)}.json`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ failedAttempts: 0, lockUntil: 0, updatedAt: nowTs })
+                    });
+                }
+                const scores = await gtFetchStudentScores(studentCode);
+                if (!scores || !Object.keys(scores).length) return gtSetStatus('No grades yet', '#f59e0b');
+                gtSaveSession({ studentCode, ts: Date.now() });
+                gtSaveScores(scores);
+                gtSetStatus(gtCurrentStudentLabel(), '#22c55e');
+                gtSetContentVisible(true);
+                document.getElementById('gt-welcome').textContent = gtGetWelcome();
+                gtRender();
+                showToast('✅ Logged in', 'success');
+            } catch(e) {
+                gtSetStatus('Login failed', '#ef4444');
+            }
+        };
+        window.gtStudentLogout = function() {
+            gtClearSession();
+            gtSetStatus('Not logged in', '#64748b');
+            gtSetContentVisible(false);
+            document.getElementById('gt-welcome').textContent = gtGetWelcome();
+        };
 
         window.gtOpenModal = function(id) {
+            if (!hasAdminAccess || !hasAdminAccess()) {
+                showToast('ℹ️ Student view is read-only', 'info');
+                return;
+            }
             const courses = gtGetCourses();
             const scores  = gtLoadScores();
             const c = courses.find(x => x.id === id);
@@ -2710,63 +2902,11 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             showToast('✅ Score saved!', 'success');
         };
 
-        window.gtToggleDD = function() { document.getElementById('gt-share-dd').classList.toggle('open'); };
-        window.gtToggleSecret = function() {
-            gtSecretMode = !gtSecretMode;
-            localStorage.setItem(GT_SECRET_KEY, gtSecretMode);
-            gtSyncSecretUI();
-        };
-        function gtSyncSecretUI() {
-            const sw = document.getElementById('gt-secret-sw');
-            if (sw) sw.classList.toggle('off', !gtSecretMode);
-        }
-
-        window.gtSendGrades = async function() {
-            const user  = auth ? auth.currentUser : null;
-            const name  = user ? (user.displayName || user.email.split('@')[0]) : 'Student';
-            const courses = gtGetCourses();
-            const scores  = gtLoadScores();
-            const total = courses.reduce((s, c) => s + (scores[c.id] || 0), 0);
-            const pct   = ((total / 750) * 100).toFixed(1);
-            const g     = gtGrade(total, 750);
-            const btn   = document.getElementById('gt-send-btn');
-            btn.textContent = '⏳ Sending...'; btn.disabled = true;
-            const entry = {
-                secret: gtSecretMode,
-                name:   gtSecretMode ? '🔒 Anonymous' : name,
-                email:  gtSecretMode ? '' : (user ? user.email : ''),
-                total, pct, gradeLabel: g.label, color: g.color,
-                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-                ts: Date.now()
-            };
-            try {
-                const resp = await fetch(`${FIREBASE_DB_URL}/sharedGrades.json`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(entry)
-                });
-                if (!resp.ok) throw new Error('Failed');
-                showToast(gtSecretMode ? '🔒 Shared anonymously' : '✅ Grades shared!', 'success');
-                document.getElementById('gt-share-dd').classList.remove('open');
-                gtLoadShared();
-            } catch(e) { showToast('❌ Share failed', 'error'); }
-            btn.textContent = 'Share My Grades'; btn.disabled = false;
-        };
-
-        async function gtLoadShared() {
-            const user = auth ? auth.currentUser : null;
-            if (!user || user.email !== OWNER_EMAIL) return;
-            document.getElementById('gt-shared-sec').style.display = 'block';
-            try {
-                const resp = await fetch(`${FIREBASE_DB_URL}/sharedGrades.json`);
-                const data = await resp.json();
-                if (!data) { document.getElementById('gt-shared-list').innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:12px;">No shared grades yet</div>'; return; }
-                const list = Object.values(data).sort((a, b) => b.ts - a.ts).slice(0, 50);
-                document.getElementById('gt-shared-list').innerHTML = list.map(e => `
-                    <div class="gt-shared-item">
-                        <div><div class="gt-shared-name">${e.name}</div><div class="gt-shared-time">${e.time}</div></div>
-                        <div><div class="gt-shared-score" style="color:${e.color}">${e.total}</div><div class="gt-shared-grade">${e.pct}% · ${e.gradeLabel}</div></div>
-                    </div>`).join('');
-            } catch(e) {}
-        }
+        window.gtToggleDD = function() {};
+        window.gtToggleSecret = function() {};
+        function gtSyncSecretUI() {}
+        window.gtSendGrades = function() { showToast('ℹ️ Disabled in secure mode', 'info'); };
+        async function gtLoadShared() {}
 
         function gtRenderAdminConfig() {
             const gradeConfig = CONFIG.gradeConfig || {};
@@ -2783,6 +2923,13 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                         oninput="window.gtUpdateAdminTotal()">
                 </div>`).join('');
             window.gtUpdateAdminTotal();
+            const impSel = document.getElementById('gt-import-subject');
+            if (impSel) {
+                impSel.innerHTML = `<option value="">-- Select Subject First --</option>` + subjects.map(name => `<option value="${name}">${name}</option>`).join('');
+            }
+            if (typeof window.gtOnImportSubjectChange === 'function') window.gtOnImportSubjectChange();
+            if (typeof window.gtLoadAuditLog === 'function') window.gtLoadAuditLog();
+            if (typeof window.gtRefreshRollbackStatus === 'function') window.gtRefreshRollbackStatus();
         }
 
         window.gtUpdateAdminTotal = function() {
@@ -2814,6 +2961,428 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
                 if (!res.ok) throw new Error('Save failed');
                 showToast('✅ Grade config saved!', 'success');
             }).catch(err => showToast('❌ Error: ' + err.message, 'error'));
+        };
+        function gtCsvSplit(line) {
+            const out = [];
+            let cur = '', inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; continue; }
+                if (ch === '"') { inQuotes = !inQuotes; continue; }
+                if (ch === ',' && !inQuotes) { out.push(cur.trim()); cur = ''; continue; }
+                cur += ch;
+            }
+            out.push(cur.trim());
+            return out.map(v => v.replace(/^"|"$/g, '').trim());
+        }
+        function gtRowsFromCsvText(text) {
+            const lines = String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+            if (!lines.length) return [];
+            let start = 0;
+            let head = gtCsvSplit(lines[0]).map(h => h.toLowerCase());
+            let idxCode = head.indexOf('code');
+            let idxScore = head.indexOf('score');
+            if (idxCode < 0) idxCode = head.indexOf('student_code');
+            if (idxScore < 0) idxScore = head.indexOf('grade');
+            if (idxCode >= 0 && idxScore >= 0) start = 1;
+            else { idxCode = 0; idxScore = 1; }
+            const rows = [];
+            for (let i = start; i < lines.length; i++) {
+                const cols = gtCsvSplit(lines[i]);
+                rows.push({ code: (cols[idxCode] || '').trim(), score: Number((cols[idxScore] || '').trim()) });
+            }
+            return rows;
+        }
+        function gtRowsFromXlsxArrayBuffer(buffer) {
+            if (typeof XLSX === 'undefined') return [];
+            const wb = XLSX.read(buffer, { type: 'array' });
+            const firstSheet = wb.SheetNames[0];
+            if (!firstSheet) return [];
+            const rowsRaw = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1, defval: '' });
+            if (!rowsRaw.length) return [];
+            const header = rowsRaw[0].map(h => String(h).trim().toLowerCase());
+            let idxCode = header.indexOf('code');
+            let idxScore = header.indexOf('score');
+            if (idxCode < 0) idxCode = header.indexOf('student_code');
+            if (idxScore < 0) idxScore = header.indexOf('grade');
+            let start = 0;
+            if (idxCode >= 0 && idxScore >= 0) start = 1;
+            else { idxCode = 0; idxScore = 1; }
+            const out = [];
+            for (let i = start; i < rowsRaw.length; i++) {
+                const r = rowsRaw[i] || [];
+                out.push({ code: String(r[idxCode] || '').trim(), score: Number(r[idxScore]) });
+            }
+            return out;
+        }
+        function gtRowsFromCsvTextAuth(text) {
+            const lines = String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+            if (!lines.length) return [];
+            let start = 0;
+            let head = gtCsvSplit(lines[0]).map(h => h.toLowerCase());
+            let idxCode = head.indexOf('code');
+            let idxPass = head.indexOf('password');
+            if (idxCode < 0) idxCode = head.indexOf('student_code');
+            if (idxPass < 0) idxPass = head.indexOf('pass');
+            if (idxCode >= 0 && idxPass >= 0) start = 1;
+            else { idxCode = 0; idxPass = 1; }
+            const rows = [];
+            for (let i = start; i < lines.length; i++) {
+                const cols = gtCsvSplit(lines[i]);
+                rows.push({ code: (cols[idxCode] || '').trim(), password: String(cols[idxPass] || '').trim() });
+            }
+            return rows;
+        }
+        function gtRowsFromXlsxArrayBufferAuth(buffer) {
+            if (typeof XLSX === 'undefined') return [];
+            const wb = XLSX.read(buffer, { type: 'array' });
+            const firstSheet = wb.SheetNames[0];
+            if (!firstSheet) return [];
+            const rowsRaw = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1, defval: '' });
+            if (!rowsRaw.length) return [];
+            const header = rowsRaw[0].map(h => String(h).trim().toLowerCase());
+            let idxCode = header.indexOf('code');
+            let idxPass = header.indexOf('password');
+            if (idxCode < 0) idxCode = header.indexOf('student_code');
+            if (idxPass < 0) idxPass = header.indexOf('pass');
+            let start = 0;
+            if (idxCode >= 0 && idxPass >= 0) start = 1;
+            else { idxCode = 0; idxPass = 1; }
+            const out = [];
+            for (let i = start; i < rowsRaw.length; i++) {
+                const r = rowsRaw[i] || [];
+                out.push({ code: String(r[idxCode] || '').trim(), password: String(r[idxPass] || '').trim() });
+            }
+            return out;
+        }
+        function gtDownloadCsvFile(filename, textContent) {
+            const blob = new Blob([textContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        window.gtDownloadAuthTemplate = function() {
+            const csv = [
+                'code,password',
+                '2201001,pass123',
+                '2201002,pass456'
+            ].join('\n');
+            gtDownloadCsvFile('accounts_template.csv', csv);
+            showToast('✅ Accounts template downloaded', 'success');
+        };
+        window.gtDownloadGradesTemplate = function() {
+            const csv = [
+                'code,score',
+                '2201001,10',
+                '2201002,8'
+            ].join('\n');
+            gtDownloadCsvFile('grades_template.csv', csv);
+            showToast('✅ Grades template downloaded', 'success');
+        };
+        window.gtOnImportSubjectChange = function() {
+            const subjectSel = document.getElementById('gt-import-subject');
+            const fileInput = document.getElementById('gt-import-file');
+            const importBtn = document.getElementById('gt-import-btn');
+            const hasSubject = !!(subjectSel && subjectSel.value && subjectSel.value.trim());
+            if (fileInput) {
+                fileInput.disabled = !hasSubject;
+                if (!hasSubject) fileInput.value = '';
+            }
+            if (importBtn) importBtn.disabled = !hasSubject;
+            if (typeof window.gtRefreshReleaseStatus === 'function') window.gtRefreshReleaseStatus();
+            if (typeof window.gtRefreshRollbackStatus === 'function') window.gtRefreshRollbackStatus();
+        };
+        function gtNowStr() {
+            return new Date().toLocaleString('en-GB', { hour12: false });
+        }
+        async function gtWriteAudit(action, details) {
+            try {
+                const user = (auth && auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'admin';
+                await fetch(`${FIREBASE_DB_URL}/gradeAudit.json`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action,
+                        details: details || '',
+                        by: user,
+                        ts: Date.now(),
+                        time: gtNowStr()
+                    })
+                });
+            } catch(e) {}
+        }
+        window.gtLoadAuditLog = async function() {
+            const box = document.getElementById('gt-audit-list');
+            if (!box) return;
+            box.innerHTML = '<div style="font-size:11px;color:#64748b;">Loading...</div>';
+            try {
+                const resp = await fetch(`${FIREBASE_DB_URL}/gradeAudit.json`);
+                const data = (await resp.json()) || {};
+                const list = Object.values(data).sort((a,b)=> (b.ts||0) - (a.ts||0)).slice(0, 12);
+                if (!list.length) {
+                    box.innerHTML = '<div style="font-size:11px;color:#64748b;">No actions yet.</div>';
+                    return;
+                }
+                box.innerHTML = list.map(e => `<div style="padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.06);font-size:11px;color:#cbd5e1;"><b>${e.action || 'Action'}</b> · ${e.details || ''}<br><span style="color:#64748b;">${e.by || 'admin'} · ${e.time || ''}</span></div>`).join('');
+            } catch(e) {
+                box.innerHTML = '<div style="font-size:11px;color:#ef4444;">Failed to load audit.</div>';
+            }
+        };
+        async function gtCreateSubjectSnapshot(subjectKey, allRecords) {
+            const snapshot = {};
+            Object.keys(allRecords || {}).forEach(codeKey => {
+                const subjectScore = Number((allRecords[codeKey] && allRecords[codeKey][subjectKey]) || 0);
+                if (Number.isFinite(subjectScore) && subjectScore !== 0) snapshot[codeKey] = subjectScore;
+            });
+            await fetch(`${FIREBASE_DB_URL}/gradeSnapshots/${encodeURIComponent(subjectKey)}.json`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ts: Date.now(),
+                    time: gtNowStr(),
+                    data: snapshot
+                })
+            });
+        }
+        window.gtRefreshRollbackStatus = async function() {
+            const el = document.getElementById('gt-rollback-status');
+            const subjectSel = document.getElementById('gt-import-subject');
+            const subjectName = (subjectSel ? subjectSel.value : '').trim();
+            if (!el) return;
+            if (!subjectName) { el.textContent = 'Select subject first.'; return; }
+            const subjectKey = gtKey(subjectName);
+            try {
+                const resp = await fetch(`${FIREBASE_DB_URL}/gradeSnapshots/${encodeURIComponent(subjectKey)}.json`);
+                const data = (await resp.json()) || {};
+                const entries = Object.entries(data).sort((a,b)=> (b[1]?.ts||0) - (a[1]?.ts||0));
+                if (!entries.length) { el.textContent = 'No snapshots yet.'; return; }
+                el.textContent = `Latest snapshot: ${entries[0][1].time || 'unknown'}`;
+            } catch(e) {
+                el.textContent = 'Cannot read snapshots.';
+            }
+        };
+        window.gtRollbackLatestSubject = async function() {
+            if (!hasAdminAccess || !hasAdminAccess()) return showToast('❌ Unauthorized Access.', 'error');
+            const subjectSel = document.getElementById('gt-import-subject');
+            const subjectName = (subjectSel ? subjectSel.value : '').trim();
+            if (!subjectName) return showToast('Select subject first', 'error');
+            const subjectKey = gtKey(subjectName);
+            try {
+                const snapResp = await fetch(`${FIREBASE_DB_URL}/gradeSnapshots/${encodeURIComponent(subjectKey)}.json`);
+                const snaps = (await snapResp.json()) || {};
+                const entries = Object.entries(snaps).sort((a,b)=> (b[1]?.ts||0) - (a[1]?.ts||0));
+                if (!entries.length) return showToast('No snapshot available', 'error');
+                const latest = entries[0][1] || {};
+                const snapshotData = latest.data || {};
+                const recordsResp = await fetch(`${FIREBASE_DB_URL}/gradeRecords.json`);
+                const allRecords = (await recordsResp.json()) || {};
+                const updates = {};
+                Object.keys(allRecords).forEach(codeKey => {
+                    updates[`gradeRecords/${codeKey}/${subjectKey}`] = null;
+                });
+                Object.keys(snapshotData).forEach(codeKey => {
+                    updates[`gradeRecords/${codeKey}/${subjectKey}`] = Number(snapshotData[codeKey]) || 0;
+                });
+                const patchResp = await fetch(`${FIREBASE_DB_URL}/.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+                if (!patchResp.ok) throw new Error('rollback failed');
+                await gtWriteAudit('ROLLBACK_SUBJECT', `${subjectName} restored to snapshot`);
+                await window.gtLoadAuditLog();
+                await window.gtRefreshRollbackStatus();
+                await window.gtRefreshReleaseStatus();
+                showToast('✅ Rollback completed', 'success');
+            } catch(e) {
+                showToast('❌ Rollback failed', 'error');
+            }
+        };
+        window.gtSetSubjectRelease = async function(releaseState) {
+            if (!hasAdminAccess || !hasAdminAccess()) return showToast('❌ Unauthorized Access.', 'error');
+            const subjectSel = document.getElementById('gt-import-subject');
+            const subjectName = (subjectSel ? subjectSel.value : '').trim();
+            if (!subjectName) return showToast('Select subject first', 'error');
+            const subjectKey = gtKey(subjectName);
+            try {
+                const resp = await fetch(`${FIREBASE_DB_URL}/gradeRelease/${encodeURIComponent(subjectKey)}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(!!releaseState)
+                });
+                if (!resp.ok) throw new Error('failed');
+                await gtWriteAudit(releaseState ? 'RELEASE_SUBJECT' : 'HIDE_SUBJECT', `${subjectName}`);
+                await window.gtLoadAuditLog();
+                await window.gtRefreshReleaseStatus();
+                showToast(releaseState ? '✅ Subject published' : '✅ Subject hidden', 'success');
+            } catch(e) {
+                showToast('❌ Failed to update release state', 'error');
+            }
+        };
+        window.gtRefreshReleaseStatus = async function() {
+            const el = document.getElementById('gt-release-status');
+            const subjectSel = document.getElementById('gt-import-subject');
+            const subjectName = (subjectSel ? subjectSel.value : '').trim();
+            if (!el) return;
+            if (!subjectName) { el.textContent = 'Select subject first.'; return; }
+            const subjectKey = gtKey(subjectName);
+            try {
+                const resp = await fetch(`${FIREBASE_DB_URL}/gradeRelease/${encodeURIComponent(subjectKey)}.json`);
+                const state = await resp.json();
+                el.textContent = `Current status: ${state === false ? 'HIDDEN from students' : 'PUBLISHED to students'}`;
+                el.style.color = state === false ? '#ef4444' : '#22c55e';
+            } catch(e) {
+                el.textContent = 'Cannot read release state.';
+                el.style.color = '#f59e0b';
+            }
+        };
+        window.gtExportSubjectGrades = async function() {
+            if (!hasAdminAccess || !hasAdminAccess()) return showToast('❌ Unauthorized Access.', 'error');
+            const subjSelect = document.getElementById('gt-import-subject');
+            const subjectName = (subjSelect ? subjSelect.value : '').trim();
+            if (!subjectName) return showToast('Select subject first', 'error');
+            const subjectKey = gtKey(subjectName);
+            try {
+                const resp = await fetch(`${FIREBASE_DB_URL}/gradeRecords.json`);
+                const allRecords = (await resp.json()) || {};
+                const rows = [['code','score']];
+                Object.keys(allRecords).forEach(codeKey => {
+                    const score = Number((allRecords[codeKey] && allRecords[codeKey][subjectKey]) || 0);
+                    if (Number.isFinite(score) && score > 0) rows.push([codeKey, score]);
+                });
+                if (rows.length === 1) return showToast('No grades found for selected subject', 'error');
+                const csv = rows.map(r => `${r[0]},${r[1]}`).join('\n');
+                gtDownloadCsvFile(`coursework_${subjectKey}.csv`, csv);
+                showToast(`✅ Exported ${rows.length - 1} students`, 'success');
+            } catch(e) {
+                showToast('❌ Export failed', 'error');
+            }
+        };
+        window.gtImportAuth = async function() {
+            if (!hasAdminAccess || !hasAdminAccess()) return showToast('❌ Unauthorized Access.', 'error');
+            const fileInput = document.getElementById('gt-auth-file');
+            const resultEl = document.getElementById('gt-auth-result');
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            if (!file) return showToast('Choose accounts file first', 'error');
+            const fileName = (file.name || '').toLowerCase();
+            const isCsv = fileName.endsWith('.csv');
+            const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+            if (!isCsv && !isExcel) return showToast('Use CSV or Excel file', 'error');
+            resultEl.textContent = 'Reading accounts...';
+            let rows = [];
+            if (isCsv) rows = gtRowsFromCsvTextAuth(await file.text());
+            else rows = gtRowsFromXlsxArrayBufferAuth(await file.arrayBuffer());
+            if (!rows.length) return showToast('Accounts file is empty or invalid', 'error');
+            const normalized = new Map();
+            rows.forEach(r => {
+                const code = (r.code || '').trim();
+                const password = String(r.password || '').trim();
+                if (code && password) normalized.set(code, { code, password });
+            });
+            rows = Array.from(normalized.values());
+            const updates = {};
+            let ok = 0, bad = 0;
+            for (const row of rows) {
+                if (!row.code || !row.password) { bad++; continue; }
+                const codeKey = gtKey(row.code);
+                updates[`gradeAuth/${codeKey}`] = {
+                    studentCode: row.code,
+                    passHash: await gtHashText(row.password),
+                    failedAttempts: 0,
+                    lockUntil: 0,
+                    updatedAt: Date.now(),
+                    updatedBy: (auth && auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'admin'
+                };
+                ok++;
+            }
+            if (!ok) return showToast('No valid account rows found', 'error');
+            resultEl.textContent = 'Uploading accounts...';
+            const resp = await fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(updates)
+            });
+            if (!resp.ok) {
+                resultEl.textContent = 'Upload failed';
+                return showToast('❌ Accounts upload failed', 'error');
+            }
+            await gtWriteAudit('IMPORT_ACCOUNTS', `${ok} rows`);
+            await window.gtLoadAuditLog();
+            resultEl.textContent = `Done: ${ok} accounts uploaded, ${bad} skipped`;
+            showToast(`✅ Uploaded ${ok} accounts`, 'success');
+        };
+        window.gtImportCsv = async function() {
+            if (!hasAdminAccess || !hasAdminAccess()) return showToast('❌ Unauthorized Access.', 'error');
+            const fileInput = document.getElementById('gt-import-file');
+            const subjSelect = document.getElementById('gt-import-subject');
+            const resultEl = document.getElementById('gt-import-result');
+            const subjectName = (subjSelect ? subjSelect.value : '').trim();
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            if (!subjectName) return showToast('Select subject first', 'error');
+            if (!file) return showToast('Choose file first', 'error');
+            const fileName = (file.name || '').toLowerCase();
+            const isCsv = fileName.endsWith('.csv');
+            const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+            const isPdf = fileName.endsWith('.pdf');
+            if (isPdf) {
+                resultEl.textContent = 'PDF import is not supported now. Please use CSV or Excel.';
+                return showToast('⚠️ PDF not supported now', 'error');
+            }
+            if (!isCsv && !isExcel) return showToast('Use CSV or Excel file', 'error');
+            resultEl.textContent = 'Reading file...';
+            let parsedRows = [];
+            if (isCsv) {
+                const text = await file.text();
+                parsedRows = gtRowsFromCsvText(text);
+            } else if (isExcel) {
+                const buffer = await file.arrayBuffer();
+                parsedRows = gtRowsFromXlsxArrayBuffer(buffer);
+            }
+            if (!parsedRows.length) return showToast('File is empty or invalid', 'error');
+            const mergedRows = new Map();
+            parsedRows.forEach(r => {
+                const code = (r.code || '').trim();
+                const score = Number(r.score);
+                if (!code || !Number.isFinite(score)) return;
+                mergedRows.set(code, (mergedRows.get(code) || 0) + score);
+            });
+            parsedRows = Array.from(mergedRows.entries()).map(([code, score]) => ({ code, score }));
+            const subjectKey = gtKey(subjectName);
+            const existingResp = await fetch(`${FIREBASE_DB_URL}/gradeRecords.json`);
+            const allRecords = (await existingResp.json()) || {};
+            await gtCreateSubjectSnapshot(subjectKey, allRecords);
+            const updates = {};
+            let ok = 0, bad = 0;
+            for (const row of parsedRows) {
+                const studentCode = row.code;
+                const score = Number(row.score);
+                if (!studentCode || !Number.isFinite(score)) { bad++; continue; }
+                const codeKey = gtKey(studentCode);
+                const current = Number((allRecords[codeKey] && allRecords[codeKey][subjectKey]) || 0);
+                updates[`gradeRecords/${codeKey}/${subjectKey}`] = current + score;
+                ok++;
+            }
+            if (!ok) return showToast('No valid rows found', 'error');
+            resultEl.textContent = 'Uploading to Firebase...';
+            const resp = await fetch(`${FIREBASE_DB_URL}/.json`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(updates)
+            });
+            if (!resp.ok) {
+                resultEl.textContent = 'Upload failed';
+                return showToast('❌ Upload failed', 'error');
+            }
+            await gtWriteAudit('IMPORT_GRADES', `${subjectName}: +${ok} rows, ${bad} skipped`);
+            await window.gtLoadAuditLog();
+            await window.gtRefreshRollbackStatus();
+            resultEl.textContent = `Done: ${ok} rows imported, ${bad} skipped`;
+            showToast(`✅ Imported ${ok} students`, 'success');
         };
         // ==========================================
         // === POLL LOGIC ===
