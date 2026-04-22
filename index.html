@@ -3428,108 +3428,6 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
   };
 
   // ── Send ──
-  // ======= SCHEDULE MANAGER via Shoubra AI =======
-  const SCH_TEMP_CANCELS_KEY = 'sch_temp_cancels';
-
-  function schGetTempCancels() {
-    try { return JSON.parse(localStorage.getItem(SCH_TEMP_CANCELS_KEY)) || []; } catch { return []; }
-  }
-  function schSaveTempCancels(list) {
-    try { localStorage.setItem(SCH_TEMP_CANCELS_KEY, JSON.stringify(list)); } catch {}
-  }
-  // Auto-restore cancelled items after midnight
-  function schCleanExpiredCancels() {
-    const today = new Date().toDateString();
-    const list = schGetTempCancels().filter(c => c.date === today);
-    schSaveTempCancels(list);
-  }
-  schCleanExpiredCancels();
-
-  function schGetScheduleContext() {
-    const lines = [];
-    Object.keys(SCH_DATA).forEach(day => {
-      (SCH_DATA[day] || []).forEach(it => {
-        lines.push(`${day} | ${it.type==='lecture'?'محاضرة':'سكشن '+it.sec} | ${it.subject} | ${it.from}-${it.to} | ${it.doctor} | ${it.hall} | id:${it.id}`);
-      });
-    });
-    return lines.join('\n');
-  }
-
-  function schApplyAICommand(cmd) {
-    const today = new Date().toDateString();
-    let changed = false;
-    let msg = '';
-
-    if (cmd.action === 'cancel_today') {
-      const cancels = schGetTempCancels();
-      const item = Object.values(SCH_DATA).flat().find(it => it.id === cmd.id);
-      if (item && !cancels.find(c => c.id === cmd.id && c.date === today)) {
-        cancels.push({ id: cmd.id, date: today });
-        schSaveTempCancels(cancels);
-        changed = true;
-        msg = `✅ تم إلغاء **${item.subject}** لليوم ده بس — هترجع تاني بكرة تلقائياً`;
-      } else { msg = '⚠️ المحاضرة دي مش موجودة أو اتلغت بالفعل النهارده'; }
-    }
-
-    else if (cmd.action === 'restore') {
-      const item = Object.values(SCH_DATA).flat().find(it => it.id === cmd.id);
-      let cancels = schGetTempCancels().filter(c => c.id !== cmd.id);
-      schSaveTempCancels(cancels);
-      changed = true;
-      msg = `✅ تم استعادة **${item ? item.subject : 'المحاضرة'}** في الجدول`;
-    }
-
-    else if (cmd.action === 'change_time') {
-      let found = false;
-      Object.values(SCH_DATA).forEach(arr => arr.forEach(it => {
-        if (it.id === cmd.id) { it.from = cmd.from; it.to = cmd.to; found = true; changed = true; }
-      }));
-      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
-      msg = found ? `✅ تم تغيير وقت المحاضرة إلى ${cmd.from} - ${cmd.to}` : '⚠️ المحاضرة مش موجودة';
-    }
-
-    else if (cmd.action === 'change_hall') {
-      let found = false;
-      Object.values(SCH_DATA).forEach(arr => arr.forEach(it => {
-        if (it.id === cmd.id) { it.hall = cmd.hall; found = true; changed = true; }
-      }));
-      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
-      msg = found ? `✅ تم تغيير القاعة إلى ${cmd.hall}` : '⚠️ المحاضرة مش موجودة';
-    }
-
-    else if (cmd.action === 'add_item') {
-      const newItem = { id: 'ai-' + Math.random().toString(36).slice(2,8), type: cmd.type, subject: cmd.subject, doctor: cmd.doctor||'', hall: cmd.hall||'', from: cmd.from, to: cmd.to, period: cmd.period||0 };
-      if (cmd.type === 'section') newItem.sec = cmd.sec || '1';
-      if (!SCH_DATA[cmd.day]) SCH_DATA[cmd.day] = [];
-      SCH_DATA[cmd.day].push(newItem);
-      SCH_DATA[cmd.day].sort((a,b) => sch_toMins(a.from) - sch_toMins(b.from));
-      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
-      changed = true;
-      msg = `✅ تمت إضافة **${cmd.subject}** يوم ${cmd.day} الساعة ${cmd.from}`;
-    }
-
-    else if (cmd.action === 'delete_item') {
-      let found = false;
-      Object.keys(SCH_DATA).forEach(day => {
-        const before = SCH_DATA[day].length;
-        SCH_DATA[day] = SCH_DATA[day].filter(it => it.id !== cmd.id);
-        if (SCH_DATA[day].length < before) { found = true; changed = true; }
-      });
-      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
-      msg = found ? `✅ تم حذف المحاضرة نهائياً من الجدول` : '⚠️ المحاضرة مش موجودة';
-    }
-
-    if (changed) {
-      localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA));
-      if (typeof sch_renderTimeline === 'function') { sch_renderTimeline(); sch_updateNow(); }
-    }
-    return msg;
-  }
-
-  function schIsScheduleCommand(text) {
-    const kw = ['جدول','محاضرة','سكشن','اتلغت','الغي','الغ','بدل','غير','وقت','قاعة','اضف','حذف','ارجع','استعد','بكرا','النهارده','ليوم'];
-    return kw.some(k => text.includes(k));
-  }
   // ======= END SCHEDULE MANAGER =======
   window.saiSend = async function() {
     const inp = document.getElementById('sai-inp');
@@ -3563,14 +3461,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
     saiIsTyping = true;
 
     // Build context from CONFIG
-    const isSchCmd = schIsScheduleCommand(text);
     let systemContext = `You are Shoubra AI, a helpful assistant for mechanical engineering students at Shoubra Faculty of Engineering. `;
-    if (isSchCmd) {
-      const cancels = schGetTempCancels();
-      const today = new Date().toDateString();
-      const cancelledIds = cancels.filter(c=>c.date===today).map(c=>c.id);
-      systemContext += `\n\nأنت مسؤول عن إدارة جدول المحاضرات. الجدول الحالي:\n${schGetScheduleContext()}\nالمحاضرات الملغية مؤقتاً اليوم: ${cancelledIds.join(', ')||'لا يوجد'}\n\nلو الطالب طلب تعديل في الجدول، رد بـ JSON فقط بالشكل:\n{"schedule_command": {"action": "cancel_today|restore|change_time|change_hall|add_item|delete_item", "id": "item-id", "from":"9:00 ص","to":"10:30 ص","hall":"SB4-11","day":"الأحد","type":"lecture","subject":"...","doctor":"...","sec":"1","period":1}}\nلو مش تعديل جدول، رد طبيعي بالعربي.`;
-    }
     if (typeof CONFIG !== 'undefined') {
       const subjects = Object.keys(CONFIG.database || {});
       systemContext += `Available subjects: ${subjects.join(', ')}. `;
@@ -3616,23 +3507,7 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
       const data = await res.json();
       let reply = data.reply || 'Sorry, something went wrong.';
       typingEl.remove();
-      // فحص رد الـ AI بحثاً عن أوامر الجدول
-      const jsonPattern = /\{[\s\S]*?"schedule_command"[\s\S]*?\}/g;
-      const jsonMatches = reply.match(jsonPattern);
-      if (jsonMatches) {
-        let feedback = [];
-        jsonMatches.forEach(str => {
-          try {
-            const obj = JSON.parse(str.trim());
-            if (obj.schedule_command) {
-              feedback.push(schApplyAICommand(obj.schedule_command));
-            }
-          } catch(e) { console.error("JSON Parse Error", e); }
-        });
-        if (feedback.length > 0) {
-          reply = feedback.join('\n');
-        }
-      }
+     
       chat.messages.push({ role: 'assistant', text: reply });
       saiSaveChats();
       saiRenderChat();
@@ -3829,9 +3704,27 @@ const SCH_COLORS = {
 };
 const SCH_DAYS = ["الأحد","الاثنين","الثلاثاء"];
 let SCH_activeDay = "الأحد", SCH_activeSec = "1", SCH_adminMode = false, SCH_editTarget = null;
-let SCH_upType = "normal", SCH_hasImg = false, SCH_imageBase64 = null;
-// Load saved schedule from localStorage if exists
-(function(){ try { const saved=localStorage.getItem('sch_data_saved'); if(saved){ const parsed=JSON.parse(saved); if(parsed&&typeof parsed==='object') SCH_DATA=parsed; } } catch(e){} })();
+// Load schedule from Firebase
+async function sch_loadFromFirebase() {
+  try {
+    const res = await fetch(FIREBASE_DB_URL + '/sch_data.json');
+    const data = await res.json();
+    if (data && typeof data === 'object') {
+      SCH_DATA = data;
+      sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+    }
+  } catch(e) {}
+}
+async function sch_saveToFirebase() {
+  try {
+    await fetch(FIREBASE_DB_URL + '/sch_data.json', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(SCH_DATA)
+    });
+  } catch(e) { sch_toast('❌ فشل الحفظ على السيرفر'); }
+}
+sch_loadFromFirebase();
 
 function sch_getItems(day) {
   return (SCH_DATA[day]||[]).filter(it =>
@@ -3988,6 +3881,7 @@ function sch_saveEdit() {
   SCH_editTarget.doctor=document.getElementById('sch-inp-doctor').value;
   SCH_editTarget.hall=document.getElementById('sch-inp-hall').value;
   sch_closeEdit(); sch_renderTimeline(); sch_updateNow();
+  sch_saveToFirebase();
   sch_toast('✅ تم حفظ التعديل');
 }
 function sch_toast(msg) {
@@ -3996,125 +3890,53 @@ function sch_toast(msg) {
   setTimeout(()=>t.remove(), 2000);
 }
 
-function sch_saveKey(v) { localStorage.setItem('sch_api_key', v.trim()); }
-function sch_toggleEye() {
-  const inp=document.getElementById('sch-api-key');
-  inp.type=inp.type==='password'?'text':'password';
-  document.getElementById('sch-eye-btn').textContent=inp.type==='password'?'👁':'🙈';
-}
-function sch_openUpload() {
-  document.getElementById('sch-api-key').value=localStorage.getItem('sch_api_key')||'';
+function sch_openAdd() {
+  if(!SCH_adminMode){ sch_toast('🔒 فعّل Admin Mode الأول'); return; }
   document.getElementById('sch-upload-scr').classList.add('active');
+  const typeEl = document.getElementById('add-type');
+  if(typeEl) typeEl.onchange = () => {
+    document.getElementById('add-sec-wrap').style.display = typeEl.value==='section'?'block':'none';
+  };
 }
 function sch_closeUpload() {
   document.getElementById('sch-upload-scr').classList.remove('active');
-  document.getElementById('sch-anlz-ov').classList.remove('active');
-  document.getElementById('sch-suc-ov').classList.remove('active');
 }
-function sch_triggerUp() { document.getElementById('sch-fi').click(); }
-function sch_handleFile(e) {
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    SCH_imageBase64=ev.target.result.split(',')[1];
-    document.getElementById('sch-uimg').src=ev.target.result;
-    document.getElementById('sch-uimg').style.display='block';
-    document.getElementById('sch-uph').style.display='none';
-    document.getElementById('sch-uchg').style.display='block';
-    document.getElementById('sch-uz').classList.add('has-img');
-    SCH_hasImg=true; sch_checkRdy();
-  };
-  r.readAsDataURL(f);
-}
-function sch_selType(t) {
-  SCH_upType=t;
-  document.getElementById('sch-tp-n').classList.toggle('active',t==='normal');
-  document.getElementById('sch-tp-r').classList.toggle('active',t==='ramadan');
-  document.getElementById('sch-date-w').style.display=t==='ramadan'?'block':'none';
-  sch_checkRdy();
-}
-function sch_checkRdy() {
-  const ok=SCH_hasImg&&(SCH_upType==='normal'||document.getElementById('sch-end-d').value);
-  document.getElementById('sch-ab').disabled=!ok;
-}
-
-async function sch_startAnalysis() {
-  document.getElementById('sch-anlz-ov').classList.add('active');
-  const steps=['sch-st1','sch-st2','sch-st3','sch-st4','sch-st5'];
-  let si=0;
-  let apiDone=false;
-  function adv() {
-    if(si>0){ const pr=document.getElementById(steps[si-1]); pr.classList.remove('active'); pr.classList.add('done'); pr.querySelector('.sch-a-ico').textContent='✅'; }
-    if(si<steps.length){ document.getElementById(steps[si]).classList.add('active'); si++; }
-  }
-  adv();
-  const timer=setInterval(()=>{
-    if(si<steps.length-1) { adv(); }
-    else if(si===steps.length-1 && !apiDone) { /* انتظر الـ API قبل الخطوة الأخيرة */ }
-    else { clearInterval(timer); }
-  }, 2000);
-  try {
-    const result=await sch_callAI(SCH_imageBase64);
-    apiDone=true;
-    clearInterval(timer);
-    while(si<steps.length) adv();
-    if(result&&result.days) {
-      SCH_DATA=result.days;
-      Object.values(SCH_DATA).forEach(arr=>arr.forEach(it=>{ it.id=it.id||('ai-'+Math.random().toString(36).slice(2,8)); }));
-      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch(e){}
-      const newDays=Object.keys(SCH_DATA);
-      if(newDays.length>0){ SCH_activeDay=newDays[0]; }
-    }
-    setTimeout(sch_showSuc, 400);
-  } catch(err) {
-    apiDone=true;
-    clearInterval(timer);
-    document.getElementById('sch-anlz-ov').classList.remove('active');
-    steps.forEach((s,i)=>{ const el=document.getElementById(s); el.classList.remove('done','active'); if(i===0)el.classList.add('active'); el.querySelector('.sch-a-ico').textContent=['🔍','🔵','👥','🕐','☁️'][i]; });
-    sch_toast('❌ ' + err.message);
-  }
-}
-
-async function sch_callAI(base64) {
-  const SERVER='https://web-production-4948.up.railway.app';
-  const resp=await fetch(`${SERVER}/analyze_schedule`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    credentials:'omit',
-    body:JSON.stringify({image:base64})
-  });
-  if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
-  const data=await resp.json();
-  return data;
-}
-
-function sch_showSuc() {
-  document.getElementById('sch-anlz-ov').classList.remove('active');
-  document.getElementById('sch-suc-ov').classList.add('active');
-  const prev=document.getElementById('sch-suc-prev'); prev.innerHTML='';
-  Object.keys(SCH_DATA).forEach(d=>{
-    const items=SCH_DATA[d]||[];
-    const row=document.createElement('div'); row.className='sch-sp-row';
-    const dots=items.slice(0,4).map(it=>`<div class="sch-sp-dot" style="background:${SCH_COLORS[it.subject]||'#4f8ef7'}"></div>`).join('');
-    row.innerHTML=`<div class="sch-sp-day">${d}</div><div class="sch-sp-txt">${items.filter(i=>i.type==='lecture').length} محاضرة · ${items.filter(i=>i.type==='section').length} سكشن</div><div style="display:flex;gap:3px">${dots}</div>`;
-    prev.appendChild(row);
-  });
-}
-
-function sch_finishUp() {
+function sch_saveNewItem() {
+  const subject = document.getElementById('add-subject').value.trim();
+  const doctor  = document.getElementById('add-doctor').value.trim();
+  const hall    = document.getElementById('add-hall').value.trim();
+  const day     = document.getElementById('add-day').value;
+  const from    = document.getElementById('add-from').value.trim();
+  const to      = document.getElementById('add-to').value.trim();
+  const type    = document.getElementById('add-type').value;
+  const sec     = document.getElementById('add-sec').value;
+  const period  = parseInt(document.getElementById('add-period').value) || 1;
+  if(!subject||!from||!to){ sch_toast('⚠️ المادة والوقت مطلوبين'); return; }
+  const newItem = { id:'m-'+Math.random().toString(36).slice(2,8), type, subject, doctor, hall, from, to, period };
+  if(type==='section') newItem.sec = sec;
+  if(!SCH_DATA[day]) SCH_DATA[day]=[];
+  SCH_DATA[day].push(newItem);
+  SCH_DATA[day].sort((a,b)=>sch_toMins(a.from)-sch_toMins(b.from));
+  sch_saveToFirebase();
   sch_closeUpload();
-  ['sch-st1','sch-st2','sch-st3','sch-st4','sch-st5'].forEach((s,i)=>{
-    const el=document.getElementById(s); el.classList.remove('done','active');
-    if(i===0) el.classList.add('active');
-    el.querySelector('.sch-a-ico').textContent=['🔍','🔵','👥','🕐','☁️'][i];
-  });
-  SCH_hasImg=false; SCH_imageBase64=null;
-  document.getElementById('sch-uimg').style.display='none';
-  document.getElementById('sch-uph').style.display='block';
-  document.getElementById('sch-uchg').style.display='none';
-  document.getElementById('sch-uz').classList.remove('has-img');
-  document.getElementById('sch-ab').disabled=true;
   sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+  sch_toast('✅ تمت الإضافة بنجاح');
+}
+function sch_deleteSelected() {
+  const id = document.getElementById('delete-id').value.trim();
+  if(!id){ sch_toast('⚠️ ادخل الـ ID'); return; }
+  let found=false;
+  Object.keys(SCH_DATA).forEach(day=>{
+    const before=SCH_DATA[day].length;
+    SCH_DATA[day]=SCH_DATA[day].filter(it=>it.id!==id);
+    if(SCH_DATA[day].length<before) found=true;
+  });
+  if(found){
+    sch_saveToFirebase();
+    sch_closeUpload();
+    sch_renderSecs(); sch_renderDays(); sch_renderTimeline(); sch_updateNow();
+    sch_toast('✅ تم الحذف');
+  } else { sch_toast('⚠️ ID مش موجود'); }
 }
 // ========== END SCHEDULE SCREEN ==========
 // ==================== VOICE NOTES ====================
@@ -4371,7 +4193,7 @@ async function vnSummarize(id) {
   <div class="sch-days-wrap"><div class="sch-days" id="sch-days"></div></div>
   <div class="sch-timeline" id="sch-timeline"></div>
 
-  <button class="sch-fab" onclick="sch_openUpload()">📷</button>
+  <button class="sch-fab" onclick="sch_openAdd()" id="sch-add-fab">➕</button>
   <button class="sch-admin-toggle" id="sch-adm-btn" onclick="sch_toggleAdmin()">🔑 Admin</button>
 
   <div class="sch-edit-overlay" id="sch-edit-overlay" onclick="if(event.target===this)sch_closeEdit()">
@@ -4394,61 +4216,45 @@ async function vnSummarize(id) {
     <div class="sch-hdr">
       <div class="sch-hdr-row">
         <button class="sch-back-btn" onclick="sch_closeUpload()">‹</button>
-        <div class="sch-hdr-center"><div class="sch-hdr-title">تحديث الجدول بالـ AI ✦</div></div>
+        <div class="sch-hdr-center"><div class="sch-hdr-title">➕ إضافة محاضرة / سكشن</div></div>
       </div>
     </div>
     <div class="sch-upload-body">
-      <div class="sch-apikey-wrap">
-        <div class="sch-slbl">🔑 Gemini API Key</div>
-        <div class="sch-apikey-row">
-          <input class="sch-inp" id="sch-api-key" type="password" placeholder="AIza..." oninput="sch_saveKey(this.value)" style="margin-bottom:0;flex:1">
-          <button class="sch-apikey-eye" id="sch-eye-btn" onclick="sch_toggleEye()">👁</button>
-        </div>
-        <div class="sch-apikey-hint">بيتحفظ على جهازك بس — مش بيتبعت لحد</div>
+      <div class="sch-slbl">📚 المادة</div>
+      <input class="sch-inp" id="add-subject" placeholder="مثال: انتقال الحرارة">
+      <div class="sch-slbl">👨‍🏫 الدكتور / المعيد</div>
+      <input class="sch-inp" id="add-doctor" placeholder="مثال: د. محمد علي">
+      <div class="sch-slbl">🚪 القاعة</div>
+      <input class="sch-inp" id="add-hall" placeholder="مثال: SB4-11">
+      <div class="sch-slbl">📅 اليوم</div>
+      <select class="sch-inp" id="add-day">
+        <option value="الأحد">الأحد</option>
+        <option value="الاثنين">الاثنين</option>
+        <option value="الثلاثاء">الثلاثاء</option>
+      </select>
+      <div class="sch-slbl">🕐 من</div>
+      <input class="sch-inp" id="add-from" placeholder="مثال: 9:00 ص">
+      <div class="sch-slbl">🕐 إلى</div>
+      <input class="sch-inp" id="add-to" placeholder="مثال: 10:30 ص">
+      <div class="sch-slbl">🗂️ النوع</div>
+      <select class="sch-inp" id="add-type">
+        <option value="lecture">محاضرة (للكل)</option>
+        <option value="section">سكشن</option>
+      </select>
+      <div id="add-sec-wrap">
+        <div class="sch-slbl">👥 رقم السكشن</div>
+        <select class="sch-inp" id="add-sec">
+          <option value="1">سكشن 1</option>
+          <option value="2">سكشن 2</option>
+          <option value="3">سكشن 3</option>
+        </select>
       </div>
-      <div>
-        <div class="sch-slbl">📷 صورة الجدول</div>
-        <div class="sch-upload-zone" id="sch-uz" onclick="sch_triggerUp()">
-          <div id="sch-uph">
-            <div class="sch-upload-ico">📷</div>
-            <div class="sch-upload-txt">اضغط لرفع صورة الجدول</div>
-            <div class="sch-upload-sub">صورة واضحة للجدول الرسمي</div>
-          </div>
-          <img id="sch-uimg" class="sch-upload-prev" style="display:none">
-          <div class="sch-upload-chg" id="sch-uchg" style="display:none">تغيير ✎</div>
-        </div>
-        <input type="file" id="sch-fi" accept="image/*" style="display:none" onchange="sch_handleFile(event)">
-      </div>
-      <div>
-        <div class="sch-slbl">🗂️ نوع الجدول</div>
-        <div class="sch-type-row">
-          <div class="sch-type-btn active" id="sch-tp-n" onclick="sch_selType('normal')"><div class="sch-type-ico">📅</div><div class="sch-type-lbl">جدول عادي</div><div class="sch-type-sub">طوال الترم</div></div>
-          <div class="sch-type-btn" id="sch-tp-r" onclick="sch_selType('ramadan')"><div class="sch-type-ico">🌙</div><div class="sch-type-lbl">جدول رمضان</div><div class="sch-type-sub">مؤقت بتاريخ</div></div>
-        </div>
-      </div>
-      <div id="sch-date-w" style="display:none">
-        <div class="sch-slbl">📅 تاريخ انتهاء رمضان</div>
-        <div class="sch-date-row"><label>ينتهي في</label><input type="date" id="sch-end-d" oninput="sch_checkRdy()"></div>
-      </div>
-      <button class="sch-anlz-btn" id="sch-ab" onclick="sch_startAnalysis()" disabled><span>✦</span> حلل بالـ AI وحفظ الجدول</button>
-    </div>
-    <div class="sch-anlz-ov" id="sch-anlz-ov">
-      <div class="sch-ai-gem">✦</div>
-      <div class="sch-anlz-title">Shoubra AI بيقرأ الجدول...</div>
-      <div class="sch-anlz-steps">
-        <div class="sch-a-step active" id="sch-st1"><span class="sch-a-ico">🔍</span> بيحلل الصورة</div>
-        <div class="sch-a-step" id="sch-st2"><span class="sch-a-ico">🔵</span> بيحدد المستطيلات الزرقاء</div>
-        <div class="sch-a-step" id="sch-st3"><span class="sch-a-ico">👥</span> بيفصل بيانات السكاشن</div>
-        <div class="sch-a-step" id="sch-st4"><span class="sch-a-ico">🕐</span> بيرتب الترتيب الزمني</div>
-        <div class="sch-a-step" id="sch-st5"><span class="sch-a-ico">☁️</span> بيحفظ للطلاب</div>
-      </div>
-    </div>
-    <div class="sch-suc-ov" id="sch-suc-ov">
-      <div class="sch-suc-ico">✅</div>
-      <div class="sch-suc-t1">الجدول اتحفظ!</div>
-      <div class="sch-suc-t2">الجدول اتنظّم <strong style="color:#4f8ef7">محاضرات وسكاشن</strong><br>مرتبين بالوقت لكل يوم 🎉</div>
-      <div class="sch-suc-prev" id="sch-suc-prev"></div>
-      <button class="sch-suc-btn" onclick="sch_finishUp()">عرض الجدول 🗓️</button>
+      <div class="sch-slbl">🔢 الفترة</div>
+      <input class="sch-inp" id="add-period" type="number" placeholder="مثال: 1" min="1" max="6">
+      <button class="sch-anlz-btn" onclick="sch_saveNewItem()">💾 إضافة وحفظ</button>
+      <div style="height:20px"></div>
+      <button onclick="sch_deleteSelected()" style="width:100%;padding:12px;border-radius:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;">🗑️ حذف محاضرة (ادخل الـ ID)</button>
+      <input class="sch-inp" id="delete-id" placeholder="ID المحاضرة مثال: ah-p1-lec" style="margin-top:8px">
     </div>
   </div>
 
