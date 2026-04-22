@@ -3428,6 +3428,106 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
   };
 
   // ── Send ──
+  // ======= SCHEDULE MANAGER via Shoubra AI =======
+  const SCH_TEMP_CANCELS_KEY = 'sch_temp_cancels';
+
+  function schGetTempCancels() {
+    try { return JSON.parse(localStorage.getItem(SCH_TEMP_CANCELS_KEY)) || []; } catch { return []; }
+  }
+  function schSaveTempCancels(list) {
+    try { localStorage.setItem(SCH_TEMP_CANCELS_KEY, JSON.stringify(list)); } catch {}
+  }
+  // Auto-restore cancelled items after midnight
+  function schCleanExpiredCancels() {
+    const today = new Date().toDateString();
+    const list = schGetTempCancels().filter(c => c.date === today);
+    schSaveTempCancels(list);
+  }
+  schCleanExpiredCancels();
+
+  function schGetScheduleContext() {
+    const lines = [];
+    Object.keys(SCH_DATA).forEach(day => {
+      (SCH_DATA[day] || []).forEach(it => {
+        lines.push(`${day} | ${it.type==='lecture'?'محاضرة':'سكشن '+it.sec} | ${it.subject} | ${it.from}-${it.to} | ${it.doctor} | ${it.hall} | id:${it.id}`);
+      });
+    });
+    return lines.join('\n');
+  }
+
+  function schApplyAICommand(cmd) {
+    const today = new Date().toDateString();
+    let changed = false;
+    let msg = '';
+
+    if (cmd.action === 'cancel_today') {
+      const cancels = schGetTempCancels();
+      const item = Object.values(SCH_DATA).flat().find(it => it.id === cmd.id);
+      if (item && !cancels.find(c => c.id === cmd.id && c.date === today)) {
+        cancels.push({ id: cmd.id, date: today });
+        schSaveTempCancels(cancels);
+        changed = true;
+        msg = `✅ تم إلغاء **${item.subject}** لليوم ده بس — هترجع تاني بكرة تلقائياً`;
+      } else { msg = '⚠️ المحاضرة دي مش موجودة أو اتلغت بالفعل النهارده'; }
+    }
+
+    else if (cmd.action === 'restore') {
+      const item = Object.values(SCH_DATA).flat().find(it => it.id === cmd.id);
+      let cancels = schGetTempCancels().filter(c => c.id !== cmd.id);
+      schSaveTempCancels(cancels);
+      changed = true;
+      msg = `✅ تم استعادة **${item ? item.subject : 'المحاضرة'}** في الجدول`;
+    }
+
+    else if (cmd.action === 'change_time') {
+      let found = false;
+      Object.values(SCH_DATA).forEach(arr => arr.forEach(it => {
+        if (it.id === cmd.id) { it.from = cmd.from; it.to = cmd.to; found = true; changed = true; }
+      }));
+      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
+      msg = found ? `✅ تم تغيير وقت المحاضرة إلى ${cmd.from} - ${cmd.to}` : '⚠️ المحاضرة مش موجودة';
+    }
+
+    else if (cmd.action === 'change_hall') {
+      let found = false;
+      Object.values(SCH_DATA).forEach(arr => arr.forEach(it => {
+        if (it.id === cmd.id) { it.hall = cmd.hall; found = true; changed = true; }
+      }));
+      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
+      msg = found ? `✅ تم تغيير القاعة إلى ${cmd.hall}` : '⚠️ المحاضرة مش موجودة';
+    }
+
+    else if (cmd.action === 'add_item') {
+      const newItem = { id: 'ai-' + Math.random().toString(36).slice(2,8), type: cmd.type, subject: cmd.subject, doctor: cmd.doctor||'', hall: cmd.hall||'', from: cmd.from, to: cmd.to, period: cmd.period||0 };
+      if (cmd.type === 'section') newItem.sec = cmd.sec || '1';
+      if (!SCH_DATA[cmd.day]) SCH_DATA[cmd.day] = [];
+      SCH_DATA[cmd.day].push(newItem);
+      SCH_DATA[cmd.day].sort((a,b) => sch_toMins(a.from) - sch_toMins(b.from));
+      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
+      changed = true;
+      msg = `✅ تمت إضافة **${cmd.subject}** يوم ${cmd.day} الساعة ${cmd.from}`;
+    }
+
+    else if (cmd.action === 'delete_item') {
+      let found = false;
+      Object.keys(SCH_DATA).forEach(day => {
+        const before = SCH_DATA[day].length;
+        SCH_DATA[day] = SCH_DATA[day].filter(it => it.id !== cmd.id);
+        if (SCH_DATA[day].length < before) { found = true; changed = true; }
+      });
+      try { localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA)); } catch {}
+      msg = found ? `✅ تم حذف المحاضرة نهائياً من الجدول` : '⚠️ المحاضرة مش موجودة';
+    }
+
+    if (changed) { sch_renderTimeline(); sch_updateNow(); }
+    return msg;
+  }
+
+  function schIsScheduleCommand(text) {
+    const kw = ['جدول','محاضرة','سكشن','اتلغت','الغي','الغ','بدل','غير','وقت','قاعة','اضف','حذف','ارجع','استعد','بكرا','النهارده','ليوم'];
+    return kw.some(k => text.includes(k));
+  }
+  // ======= END SCHEDULE MANAGER =======
   window.saiSend = async function() {
     const inp = document.getElementById('sai-inp');
     const text = inp.value.trim();
@@ -3460,7 +3560,14 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
     saiIsTyping = true;
 
     // Build context from CONFIG
+    const isSchCmd = schIsScheduleCommand(text);
     let systemContext = `You are Shoubra AI, a helpful assistant for mechanical engineering students at Shoubra Faculty of Engineering. `;
+    if (isSchCmd) {
+      const cancels = schGetTempCancels();
+      const today = new Date().toDateString();
+      const cancelledIds = cancels.filter(c=>c.date===today).map(c=>c.id);
+      systemContext += `\n\nأنت مسؤول عن إدارة جدول المحاضرات. الجدول الحالي:\n${schGetScheduleContext()}\nالمحاضرات الملغية مؤقتاً اليوم: ${cancelledIds.join(', ')||'لا يوجد'}\n\nلو الطالب طلب تعديل في الجدول، رد بـ JSON فقط بالشكل:\n{"schedule_command": {"action": "cancel_today|restore|change_time|change_hall|add_item|delete_item", "id": "item-id", "from":"9:00 ص","to":"10:30 ص","hall":"SB4-11","day":"الأحد","type":"lecture","subject":"...","doctor":"...","sec":"1","period":1}}\nلو مش تعديل جدول، رد طبيعي بالعربي.`;
+    }
     if (typeof CONFIG !== 'undefined') {
       const subjects = Object.keys(CONFIG.database || {});
       systemContext += `Available subjects: ${subjects.join(', ')}. `;
@@ -3504,8 +3611,18 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
         })
       });
       const data = await res.json();
-      const reply = data.reply || 'Sorry, something went wrong.';
+      let reply = data.reply || 'Sorry, something went wrong.';
       typingEl.remove();
+      // Check if reply contains a schedule command
+      try {
+        const jsonMatch = reply.match(/\{[\s\S]*"schedule_command"[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.schedule_command) {
+            reply = schApplyAICommand(parsed.schedule_command);
+          }
+        }
+      } catch(e) {}
       chat.messages.push({ role: 'assistant', text: reply });
       saiSaveChats();
       saiRenderChat();
@@ -3949,61 +4066,16 @@ async function sch_startAnalysis() {
 }
 
 async function sch_callAI(base64) {
-  const prompt = `أنت نظام متخصص في قراءة جداول المحاضرات الجامعية المصرية.
-حلل صورة الجدول وأرجع JSON فقط بدون أي نص إضافي أو backticks بالشكل التالي بالضبط:
-{
-  "days": {
-    "اسم اليوم": [
-      {
-        "id": "unique-id",
-        "type": "lecture أو section",
-        "period": رقم الحصة,
-        "subject": "اسم المادة",
-        "doctor": "اسم الدكتور",
-        "hall": "القاعة",
-        "from": "9:00 ص",
-        "to": "10:30 ص",
-        "sec": "1 أو 2 أو 3 (فقط لو type=section)"
-      }
-    ]
-  }
-}
-قواعد مهمة:
-- أيام الأسبوع بالعربي: الأحد، الاثنين، الثلاثاء، الأربعاء، الخميس
-- الوقت بالصيغة: "9:00 ص" أو "1:30 م"
-- المحاضرات type=lecture، السكاشن type=section
-- لكل عنصر id فريد مثل "ah-p1-lec" أو "tn-p2-s1"
-- رجّع JSON فقط بدون أي شرح`;
-
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: { type: "base64", media_type: "image/jpeg", data: base64 }
-          },
-          { type: "text", text: prompt }
-        ]
-      }]
-    })
+  const SERVER='https://web-production-4948.up.railway.app';
+  const resp=await fetch(`${SERVER}/analyze_schedule`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'omit',
+    body:JSON.stringify({image:base64})
   });
-
-  if (!resp.ok) {
-    const e = await resp.json().catch(() => ({}));
-    throw new Error(e?.error?.message || 'API error ' + resp.status);
-  }
-
-  const data = await resp.json();
-  const text = data.content.map(i => i.text || "").join("").trim();
-  const clean = text.replace(/```json|```/g, "").trim();
-  const parsed = JSON.parse(clean);
-  return parsed;
+  if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
+  const data=await resp.json();
+  return data;
 }
 
 function sch_showSuc() {
