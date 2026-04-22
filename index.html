@@ -3949,16 +3949,61 @@ async function sch_startAnalysis() {
 }
 
 async function sch_callAI(base64) {
-  const SERVER='https://web-production-4948.up.railway.app';
-  const resp=await fetch(`${SERVER}/analyze_schedule`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    credentials:'omit',
-    body:JSON.stringify({image:base64})
+  const prompt = `أنت نظام متخصص في قراءة جداول المحاضرات الجامعية المصرية.
+حلل صورة الجدول وأرجع JSON فقط بدون أي نص إضافي أو backticks بالشكل التالي بالضبط:
+{
+  "days": {
+    "اسم اليوم": [
+      {
+        "id": "unique-id",
+        "type": "lecture أو section",
+        "period": رقم الحصة,
+        "subject": "اسم المادة",
+        "doctor": "اسم الدكتور",
+        "hall": "القاعة",
+        "from": "9:00 ص",
+        "to": "10:30 ص",
+        "sec": "1 أو 2 أو 3 (فقط لو type=section)"
+      }
+    ]
+  }
+}
+قواعد مهمة:
+- أيام الأسبوع بالعربي: الأحد، الاثنين، الثلاثاء، الأربعاء، الخميس
+- الوقت بالصيغة: "9:00 ص" أو "1:30 م"
+- المحاضرات type=lecture، السكاشن type=section
+- لكل عنصر id فريد مثل "ah-p1-lec" أو "tn-p2-s1"
+- رجّع JSON فقط بدون أي شرح`;
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      messages: [{
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: { type: "base64", media_type: "image/jpeg", data: base64 }
+          },
+          { type: "text", text: prompt }
+        ]
+      }]
+    })
   });
-  if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e?.error?.message||'API error '+resp.status); }
-  const data=await resp.json();
-  return data;
+
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e?.error?.message || 'API error ' + resp.status);
+  }
+
+  const data = await resp.json();
+  const text = data.content.map(i => i.text || "").join("").trim();
+  const clean = text.replace(/```json|```/g, "").trim();
+  const parsed = JSON.parse(clean);
+  return parsed;
 }
 
 function sch_showSuc() {
