@@ -2244,6 +2244,8 @@ document.getElementById('new-item-name').style.display = type === 'folder' ? 'bl
                 formData.append('file', file, fileName);
                 formData.append('subject', subject);
                 formData.append('doctor', doctor);
+                const scopeKey = APP_SCOPE ? buildScopeKey(APP_SCOPE) : 'ميكانيكا__second__term2';
+                formData.append('scopeKey', scopeKey);
                 const folderPath = adminNavStack.slice(2).join('/');
                 formData.append('folder_path', folderPath);
                 formData.append('notify', 'true');
