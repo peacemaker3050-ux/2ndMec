@@ -1251,6 +1251,29 @@ body.light-mode .gt-sum-big { color: #0f172a; }
 </head>
 <body>
     <div id="loading-screen"><div class="spinner-container"><div class="spinner"></div><div class="loading-text">Syncing from Cloud... <br><small>You Will Never Walk Alone</small></div></div></div>
+    <div id="scope-selector-overlay" class="modal-overlay" style="z-index:100000;">
+        <div class="ui-modal-box" style="width:430px;max-width:92%;">
+            <div class="ui-modal-title" style="font-size:20px;font-weight:800;color:#fff;margin-bottom:8px;">🎯 Select Academic Scope</div>
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:14px;">اختر القسم والسنة والترم لفتح لوحة وبيانات نفس المجموعة فقط.</div>
+            <div class="form-group">
+                <label class="form-label">Department</label>
+                <select id="scope-department" class="form-select" onchange="window.onScopeDepartmentChange()"></select>
+            </div>
+            <div class="form-group" id="scope-year-wrap">
+                <label class="form-label">Academic Year</label>
+                <select id="scope-year" class="form-select"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Term</label>
+                <select id="scope-term" class="form-select">
+                    <option value="term1">Term 1</option>
+                    <option value="term2">Term 2</option>
+                    <option value="summer">Summer</option>
+                </select>
+            </div>
+            <button class="btn-save" onclick="window.applyScopeSelection()">Continue</button>
+        </div>
+    </div>
 
     <div class="app-container">
         <header id="main-header">
@@ -1270,6 +1293,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                     </div>
                 </div>
                 <div class="menu-item" onclick="window.forceReload()"><span>⚡</span> <span>Force Reload</span></div>
+                <div class="menu-item" onclick="window.openScopeSelector(true)"><span>🏛️</span> <span>Change Scope</span></div>
                 <div class="menu-item" onclick="window.openShoubraAI()"><span>✦</span> <span>Shoubra AI</span></div>
                 <div class="menu-item" onclick="openVoiceNotes(); toggleMenu();">🎙️ Recorder</div>
                 <!-- ============================= -->
@@ -1667,9 +1691,10 @@ body.light-mode .gt-sum-big { color: #0f172a; }
 
     <script>
         const DEFAULT_BG_URL = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/110.jpeg"; 
+        const FIREBASE_DB_ROOT_URL = "https://libirary-b2424-default-rtdb.firebaseio.com";
         const firebaseConfig = { apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ", authDomain: "libirary-b2424.firebaseapp.com", projectId: "libirary-b2424", storageBucket: "libirary-b2424.firebasestorage.app", messagingSenderId: "371129360013", appId: "1:371129360013:web:377ef70759204018a60cc4" };
         const OWNER_EMAIL = "peacemaker3050@gmail.com";
-        FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"        
+        FIREBASE_DB_URL = FIREBASE_DB_ROOT_URL;
         // VAPID KEY FOR FCM PUSH NOTIFICATIONS
         const VAPID_KEY = "BCmmvd3JEj26OLT_bEl986rldLpJiSPjAzjBsRaVN-OO5RCj_dcLXexMobA4K9Y9-3Zrv4Tc2s1H9uakLoIEf0Y";
 
@@ -1680,6 +1705,90 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         let auth; let isAuthInitialized = false; let deferredPrompt; let refreshInterval = null; let fuseSearchEngine = null;
         let botNavStack = []; let adminNavStack = []; let currentAdminTab = 0; let currentModalCallback = null; let adminAddType = 'file';
         let messaging; // FCM Messaging Instance
+        const APP_SCOPE_STORAGE_KEY = 'uniBot_scope_v1';
+        const APP_SCOPE_OPTIONS = {
+            departments: ['اعدادي','ميكانيكا','كهرباء','مدني','عمارة','مساحة','اتصالات'],
+            years: ['first','second','third','fourth'],
+            yearLabels: { first: 'First Year', second: 'Second Year', third: 'Third Year', fourth: 'Fourth Year' }
+        };
+        let APP_SCOPE = null;
+        function normalizeScopeValue(v) { return String(v || '').trim().toLowerCase().replace(/\s+/g, '_'); }
+        function isPreparatoryDepartment(dep) { return normalizeScopeValue(dep) === 'اعدادي'; }
+        function buildScopeKey(scope) {
+            const dep = normalizeScopeValue(scope.department);
+            const year = isPreparatoryDepartment(dep) ? 'prep' : normalizeScopeValue(scope.year || 'first');
+            const term = normalizeScopeValue(scope.term || 'term1');
+            return `${dep}__${year}__${term}`;
+        }
+        function getDefaultScope() {
+            return { department: 'ميكانيكا', year: 'second', term: 'term2' };
+        }
+        function saveScope(scope) { localStorage.setItem(APP_SCOPE_STORAGE_KEY, JSON.stringify(scope)); }
+        function loadScope() {
+            try {
+                const raw = localStorage.getItem(APP_SCOPE_STORAGE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.department || !parsed.term) return null;
+                if (isPreparatoryDepartment(parsed.department)) return { department: parsed.department, year: 'prep', term: parsed.term };
+                return { department: parsed.department, year: parsed.year || 'first', term: parsed.term };
+            } catch(e) { return null; }
+        }
+        function applyScopeRuntime(scope) {
+            APP_SCOPE = scope;
+            const scopeKey = buildScopeKey(scope);
+            FIREBASE_DB_URL = `${FIREBASE_DB_ROOT_URL}/scopes/${encodeURIComponent(scopeKey)}`;
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'SET_SCOPE', scopeKey });
+            }
+        }
+        function fillScopeForm() {
+            const depSel = document.getElementById('scope-department');
+            const yearSel = document.getElementById('scope-year');
+            if (!depSel || !yearSel) return;
+            depSel.innerHTML = APP_SCOPE_OPTIONS.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+            yearSel.innerHTML = APP_SCOPE_OPTIONS.years.map(y => `<option value="${y}">${APP_SCOPE_OPTIONS.yearLabels[y]}</option>`).join('');
+        }
+        function syncScopeFormValues() {
+            const depSel = document.getElementById('scope-department');
+            const yearSel = document.getElementById('scope-year');
+            const termSel = document.getElementById('scope-term');
+            if (!depSel || !yearSel || !termSel || !APP_SCOPE) return;
+            depSel.value = APP_SCOPE.department;
+            yearSel.value = APP_SCOPE.year === 'prep' ? 'first' : APP_SCOPE.year;
+            termSel.value = APP_SCOPE.term;
+            window.onScopeDepartmentChange();
+        }
+        window.onScopeDepartmentChange = function() {
+            const depSel = document.getElementById('scope-department');
+            const yearWrap = document.getElementById('scope-year-wrap');
+            if (!depSel || !yearWrap) return;
+            yearWrap.style.display = isPreparatoryDepartment(depSel.value) ? 'none' : 'block';
+        };
+        window.openScopeSelector = function(forceOpen) {
+            const overlay = document.getElementById('scope-selector-overlay');
+            if (!overlay) return;
+            fillScopeForm();
+            if (!APP_SCOPE) APP_SCOPE = loadScope() || getDefaultScope();
+            syncScopeFormValues();
+            overlay.classList.add('active');
+            if (forceOpen) document.getElementById('menu-dropdown').classList.remove('active');
+        };
+        window.applyScopeSelection = function() {
+            const depSel = document.getElementById('scope-department');
+            const yearSel = document.getElementById('scope-year');
+            const termSel = document.getElementById('scope-term');
+            const scope = {
+                department: depSel ? depSel.value : 'ميكانيكا',
+                year: (depSel && isPreparatoryDepartment(depSel.value)) ? 'prep' : (yearSel ? yearSel.value : 'first'),
+                term: termSel ? termSel.value : 'term1'
+            };
+            saveScope(scope);
+            applyScopeRuntime(scope);
+            document.getElementById('scope-selector-overlay').classList.remove('active');
+            fetchConfig();
+            showToast(`✅ Scope: ${scope.department} / ${scope.year === 'prep' ? 'prep' : scope.year} / ${scope.term}`, 'success');
+        };
 
         // ==========================================
         // === DARK MODE LOGIC ===
@@ -2169,8 +2278,9 @@ document.getElementById('new-item-name').style.display = type === 'folder' ? 'bl
         
         function deleteAdminDataItem(index) { showConfirmModal("Confirm Delete", "Are you sure?", async (confirmed) => { if(!confirmed) return; if (adminNavStack.length === 0) { const subKeys = Object.keys(database); delete database[subKeys[index]]; } else if (adminNavStack.length === 1) { const sub = adminNavStack[0]; const docName = database[sub].doctors[index]; database[sub].doctors.splice(index, 1); delete database[sub][docName]; } else { const currentList = getAdminCurrentContent(); currentList.splice(index, 1); } saveConfigToBin(CONFIG); renderAdminDataView(); initSearchEngine(); }); }
         window.forceReload = function() { document.getElementById('menu-dropdown').classList.remove('active'); showConfirmModal("Force Reload", "Do you want to fully reload app?", (confirm) => { if(confirm) { saveToLocalStorage(CONFIG); const currentUrl = new URL(window.location.href); currentUrl.searchParams.set('t', Date.now()); window.location.href = currentUrl.toString(); } }); };
-        function saveToLocalStorage(data) { try { localStorage.setItem('uniBot_db', JSON.stringify(data)); } catch (e) {} }
-        function loadFromLocalStorage() { try { const data = localStorage.getItem('uniBot_db'); if (data) return JSON.parse(data); } catch (e) {} return null; }
+        function scopedLocalKey() { return 'uniBot_db_' + (APP_SCOPE ? buildScopeKey(APP_SCOPE) : 'default'); }
+        function saveToLocalStorage(data) { try { localStorage.setItem(scopedLocalKey(), JSON.stringify(data)); } catch (e) {} }
+        function loadFromLocalStorage() { try { const data = localStorage.getItem(scopedLocalKey()); if (data) return JSON.parse(data); } catch (e) {} return null; }
         async function fetchConfig() { try { const response = await fetch(`${FIREBASE_DB_URL}/.json`); if (!response.ok) throw new Error("Failed to fetch"); const raw = await response.json();
 let cloudData = raw;
 while (cloudData && typeof cloudData.data === 'string') {
@@ -2372,6 +2482,14 @@ if (window.matchMedia('(display-mode: standalone)').matches) {
         window.onload = () => { 
             
             initTheme();
+            const storedScope = loadScope();
+            APP_SCOPE = storedScope || getDefaultScope();
+            applyScopeRuntime(APP_SCOPE);
+            fillScopeForm();
+            syncScopeFormValues();
+            if (!storedScope) {
+                setTimeout(() => window.openScopeSelector(false), 50);
+            }
 
             const currentUrl = window.location.href;
 const localData = loadFromLocalStorage();
@@ -2382,7 +2500,11 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             .then(reg => {
               console.log('[App] SW Registered:', reg.scope);
               const sendInit = (sw) => { sw.postMessage({ type: 'INIT_POLLING' }); };
-              if (reg.active) { sendInit(reg.active);reg.active.postMessage({ type: 'SET_TOGGLE', value: localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true' }); } else if (reg.installing || reg.waiting) { const sw = reg.installing || reg.waiting; sw.addEventListener('statechange', () => { if (sw.state === 'activated') sendInit(sw); }); }
+              const sendScope = (sw) => {
+                if (!APP_SCOPE) return;
+                sw.postMessage({ type: 'SET_SCOPE', scopeKey: buildScopeKey(APP_SCOPE) });
+              };
+              if (reg.active) { sendInit(reg.active); sendScope(reg.active); reg.active.postMessage({ type: 'SET_TOGGLE', value: localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true' }); } else if (reg.installing || reg.waiting) { const sw = reg.installing || reg.waiting; sw.addEventListener('statechange', () => { if (sw.state === 'activated') { sendInit(sw); sendScope(sw); } }); }
               navigator.serviceWorker.addEventListener('message', event => { console.log('[App] Message from SW:', event.data); });
             })
             .catch(err => console.error('[App] SW Registration Failed:', err));

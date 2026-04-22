@@ -16,7 +16,12 @@ const firebaseConfig = {
   appId: "1:371129360013:web:377ef70759204018a60cc4"
 };
 
-const FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com";
+const FIREBASE_DB_ROOT_URL = "https://libirary-b2424-default-rtdb.firebaseio.com";
+let currentScopeKey = "ميكانيكا__second__term2";
+
+function getScopedDbUrl() {
+  return `${FIREBASE_DB_ROOT_URL}/scopes/${encodeURIComponent(currentScopeKey)}`;
+}
 
 // ── Cache ──
 const CACHE_VERSION = 'v11';
@@ -77,6 +82,10 @@ async function dbSet(key, value) {
   if (!idb) return;
   const tx = idb.transaction('kv', 'readwrite');
   tx.objectStore('kv').put({ k: key, v: value });
+}
+
+function scopeKeyFor(baseKey) {
+  return `${baseKey}__${currentScopeKey}`;
 }
 
 // ============================================================
@@ -251,6 +260,17 @@ self.addEventListener('message', event => {
       console.log('[SW] Toggle saved:', data.value);
     }
   }
+
+  // حفظ scope الحالي لاستخدامه في polling
+  if (data.type === 'SET_SCOPE' && data.scopeKey) {
+    currentScopeKey = String(data.scopeKey);
+    if (!dbReady) {
+      initDB().then(() => dbSet('scopeKey', currentScopeKey));
+    } else {
+      dbSet('scopeKey', currentScopeKey);
+    }
+    checkNotifications();
+  }
 });
 
 // ============================================================
@@ -309,11 +329,13 @@ async function checkNotifications() {
   }
 
   try {
-    const lastNotifTime = (await dbGet('lastNotifTime')) || 0;
-    const lastFileTime  = (await dbGet('lastFileTime'))  || 0;
+    const storedScope = await dbGet('scopeKey');
+    if (storedScope) currentScopeKey = storedScope;
+    const lastNotifTime = (await dbGet(scopeKeyFor('lastNotifTime'))) || 0;
+    const lastFileTime  = (await dbGet(scopeKeyFor('lastFileTime')))  || 0;
 
     const response = await fetch(
-      `${FIREBASE_DB_URL}/.json?nc=${Date.now()}`,
+      `${getScopedDbUrl()}/.json?nc=${Date.now()}`,
       { cache: 'no-store' }
     );
 
@@ -333,7 +355,7 @@ async function checkNotifications() {
       const newest  = data.recentUpdates[0];
       const newTime = newest.timestamp || 0;
       if (newTime > lastNotifTime) {
-        await dbSet('lastNotifTime', newTime);
+        await dbSet(scopeKeyFor('lastNotifTime'), newTime);
         console.log('[SW] New text notification detected, FCM handles display');
       }
     }
