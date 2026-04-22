@@ -3519,7 +3519,10 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
       msg = found ? `✅ تم حذف المحاضرة نهائياً من الجدول` : '⚠️ المحاضرة مش موجودة';
     }
 
-    if (changed) { sch_renderTimeline(); sch_updateNow(); }
+    if (changed) {
+      localStorage.setItem('sch_data_saved', JSON.stringify(SCH_DATA));
+      if (typeof sch_renderTimeline === 'function') { sch_renderTimeline(); sch_updateNow(); }
+    }
     return msg;
   }
 
@@ -3613,24 +3616,23 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
       const data = await res.json();
       let reply = data.reply || 'Sorry, something went wrong.';
       typingEl.remove();
-      // Check if reply contains one or more schedule commands
-      try {
-        const jsonMatches = [...reply.matchAll(/\{[\s\S]*?"schedule_command"[\s\S]*?\}(?=\s*\{|$)/g)];
-        if (jsonMatches.length > 0) {
-          const msgs = [];
-          for (const match of jsonMatches) {
-            try {
-              const parsed = JSON.parse(match[0]);
-              if (parsed.schedule_command) {
-                msgs.push(schApplyAICommand(parsed.schedule_command));
-              }
-            } catch(e2) {}
-          }
-          if (msgs.length > 0) {
-            reply = msgs.join('\n');
-          }
+      // فحص رد الـ AI بحثاً عن أوامر الجدول
+      const jsonPattern = /\{[\s\S]*?"schedule_command"[\s\S]*?\}/g;
+      const jsonMatches = reply.match(jsonPattern);
+      if (jsonMatches) {
+        let feedback = [];
+        jsonMatches.forEach(str => {
+          try {
+            const obj = JSON.parse(str.trim());
+            if (obj.schedule_command) {
+              feedback.push(schApplyAICommand(obj.schedule_command));
+            }
+          } catch(e) { console.error("JSON Parse Error", e); }
+        });
+        if (feedback.length > 0) {
+          reply = feedback.join('\n');
         }
-      } catch(e) {}
+      }
       chat.messages.push({ role: 'assistant', text: reply });
       saiSaveChats();
       saiRenderChat();
