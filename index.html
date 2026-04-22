@@ -125,8 +125,8 @@
 .vn-item-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .vn-item-arrow { font-size: 20px; color: var(--text-secondary); transition: transform 0.3s; flex-shrink: 0; }
 .vn-item-arrow.open { transform: rotate(180deg); }
-.vn-item-actions { overflow: hidden; max-height: 0; transition: max-height 0.35s ease; }
-.vn-item-actions.open { max-height: 600px; }
+.vn-item-actions { overflow: hidden; max-height: 0; transition: max-height 0.5s ease; }
+.vn-item-actions.open { max-height: 3000px; }
 .vn-actions-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
 .vn-audio-player { width: 100%; height: 40px; border-radius: 8px; }
 .vn-action-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
@@ -1958,7 +1958,19 @@ const currentToken = await messaging.getToken({
         document.addEventListener('click', (e) => { const isClickInsideSearch = searchInput.contains(e.target) || searchDropdown.contains(e.target); if (!isClickInsideSearch) searchDropdown.classList.remove('show'); if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active'); });
         function renderKeyboard() { keyboardArea.innerHTML = ''; if (botNavStack.length === 0) { const subjects = Object.keys(database); subjects.forEach(sub => { keyboardArea.appendChild(createButton(sub, () => handleBotNavClick(sub, 'subject'))); }); return; } keyboardArea.appendChild(createButton("🔙 Back", handleBotBack, true)); if (botNavStack.length === 1) { const subjectName = botNavStack[0]; const subjectDoctors = database[subjectName].doctors; subjectDoctors.forEach(doc => { keyboardArea.appendChild(createButton(doc, () => handleBotNavClick(doc, 'doctor'))); }); } else { const currentFolderContent = getBotCurrentContent(); if (!currentFolderContent || currentFolderContent.length === 0) { const emptyBtn = createButton("📂 Empty Folder", () => {}); emptyBtn.style.opacity = "0.5"; emptyBtn.style.cursor = "default"; keyboardArea.appendChild(emptyBtn); } else { currentFolderContent.forEach(item => { if (item.type === 'folder') keyboardArea.appendChild(createButton(`📂 ${item.name}`, () => handleBotNavClick(item.name, 'folder'), false, true)); else {
         const isNotif = item.type === 'notif' || (item.link && item.link.startsWith('content:'));
-        const icon = isNotif ? '🔔' : '📄';
+        function getFileIcon(name) {
+            const n = (name || '').toLowerCase();
+            if (n.endsWith('.pdf')) return '📕';
+            if (n.endsWith('.mp4') || n.endsWith('.mkv') || n.endsWith('.avi') || n.endsWith('.mov')) return '🎬';
+            if (n.endsWith('.mp3') || n.endsWith('.wav') || n.endsWith('.ogg') || n.endsWith('.m4a')) return '🎵';
+            if (n.endsWith('.ppt') || n.endsWith('.pptx')) return '📊';
+            if (n.endsWith('.doc') || n.endsWith('.docx')) return '📝';
+            if (n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.png') || n.endsWith('.gif')) return '🖼️';
+            if (n.endsWith('.zip') || n.endsWith('.rar')) return '🗜️';
+            if (n.endsWith('.xls') || n.endsWith('.xlsx')) return '📗';
+            return '📄';
+        }
+        const icon = isNotif ? '🔔' : getFileIcon(item.name);
         keyboardBtn = createButton(`${icon} ${item.name}`, () => handleFileClick(item));
         if (!isNotif && item.link && item.link !== '#') {
             const starEl = document.createElement('span');
