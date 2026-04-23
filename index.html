@@ -3975,12 +3975,20 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
                 return;
             }
             body.innerHTML = list.map(f => `
-                <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(17,17,24,0.9);border:1px solid rgba(255,255,255,0.07);border-radius:14px;margin-bottom:8px;cursor:pointer;" onclick="window.open('${f.link}','_blank')">
-                    <div style="font-size:22px;">📄</div>
-                    <div style="flex:1;font-size:14px;font-weight:700;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${f.name}</div>
-                    <div style="font-size:11px;color:#64748b;">↗</div>
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(17,17,24,0.9);border:1px solid rgba(255,255,255,0.07);border-radius:14px;margin-bottom:8px;">
+                    <div style="font-size:22px;cursor:pointer;" onclick="window.open('${f.link}','_blank')">📄</div>
+                    <div style="flex:1;font-size:14px;font-weight:700;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;" onclick="window.open('${f.link}','_blank')">${f.name}</div>
+                    <div onclick="window.favRemoveFromModal('${f.id}')" style="width:32px;height:32px;border-radius:50%;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex-shrink:0;" title="Remove from favorites">⭐</div>
                 </div>`).join('');
         }
+        window.favRemoveFromModal = function(fileId) {
+            const list = favLoad();
+            const newList = list.filter(f => f.id !== fileId);
+            favSave(newList);
+            const star = document.getElementById('star-' + fileId);
+            if (star) star.classList.remove('active');
+            renderFavoritesModal();
+        };
         // ==========================================
         // === QUICK LINKS LOGIC ===
         // ==========================================
