@@ -1303,6 +1303,8 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <div class="menu-item" onclick="window.openTodoModal()"><span>📌</span> <span>To-Do List</span></div>
                 <div class="menu-item" onclick="window.openPollModal()"><span>🗳️</span> <span>VOTE</span></div>
                 <div class="menu-item" onclick="window.openSchedule()"><span>🗓️</span> <span>Sheduler</span></div>
+                <div class="menu-item" onclick="window.openFx991Calculator()"><span>🧮</span> <span>FX-991 Calculator</span></div>
+                <div class="menu-item" onclick="window.openWeeklyTasksModal()"><span>📅</span> <span>Weekly Tasks</span></div>
                 <!-- === DARK MODE TOGGLE MENU ITEM === -->
                 
                 <!-- ==================================== -->
@@ -1464,6 +1466,76 @@ body.light-mode .gt-sum-big { color: #0f172a; }
     </div>
 </div>
 <!-- ============================= -->
+<!-- === FX-991 CALCULATOR MODAL === -->
+<div class="grade-modal-container" id="fx991-modal">
+    <div class="grade-header">
+        <div class="grade-header-left">
+            <h2>🧮 FX-991</h2>
+            <div class="grade-welcome">Scientific Calculator</div>
+        </div>
+        <div class="close-modal" onclick="window.closeFx991Calculator()">×</div>
+    </div>
+    <div class="grade-body" style="display:flex;flex-direction:column;gap:10px;">
+        <input id="fx991-display" class="form-input" placeholder="0" style="font-size:20px;font-family:monospace;text-align:left;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;" id="fx991-grid">
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('7')">7</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('8')">8</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('9')">9</button>
+            <button class="btn-sm btn-del" style="margin:0;padding:10px;" onclick="fx991Append('/')">÷</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('4')">4</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('5')">5</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('6')">6</button>
+            <button class="btn-sm btn-del" style="margin:0;padding:10px;" onclick="fx991Append('*')">×</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('1')">1</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('2')">2</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('3')">3</button>
+            <button class="btn-sm btn-del" style="margin:0;padding:10px;" onclick="fx991Append('-')">−</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('0')">0</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('.')">.</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Backspace()">⌫</button>
+            <button class="btn-sm btn-del" style="margin:0;padding:10px;" onclick="fx991Append('+')">+</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.sin(')">sin</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.cos(')">cos</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.tan(')">tan</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.sqrt(')">√</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.log10(')">log</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.log(')">ln</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.PI')">π</button>
+            <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="fx991Append('Math.E')">e</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button class="btn-save" style="margin:0;flex:1;background:linear-gradient(135deg,#ef4444,#b91c1c);" onclick="fx991Clear()">AC</button>
+            <button class="btn-save" style="margin:0;flex:1;" onclick="fx991Calculate()">=</button>
+        </div>
+    </div>
+</div>
+
+<!-- === WEEKLY TASKS MODAL === -->
+<div class="grade-modal-container" id="weekly-modal">
+    <div class="grade-header">
+        <div class="grade-header-left">
+            <h2>📅 Weekly Tasks</h2>
+            <div class="grade-welcome">Section-based weekly requirements</div>
+        </div>
+        <div class="close-modal" onclick="window.closeWeeklyTasksModal()">×</div>
+    </div>
+    <div class="grade-body" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+            <label class="form-label" style="margin:0;min-width:60px;">Section</label>
+            <select id="wt-section-select" class="form-select" onchange="window.wtRenderTasks()"></select>
+        </div>
+        <div id="wt-admin-tools" style="display:none;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:10px;">
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input id="wt-new-section" class="form-input" placeholder="New section name (e.g. 4)">
+                <button class="btn-sm btn-edit" style="margin:0;padding:10px 12px;" onclick="window.wtAddSection()">Add</button>
+                <button class="btn-sm btn-del" style="margin:0;padding:10px 12px;" onclick="window.wtDeleteSection()">Delete</button>
+            </div>
+            <textarea id="wt-task-input" class="form-textarea" style="height:70px;" placeholder="Write weekly task..."></textarea>
+            <button class="btn-save" style="margin-top:8px;" onclick="window.wtAddTask()">Add Task</button>
+        </div>
+        <div id="wt-task-list"></div>
+    </div>
+</div>
 
         <div id="chat-area"></div>
         <div class="typing-indicator" id="typing">Syncing...</div>
@@ -1500,6 +1572,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             <div class="nav-item" id="nav-5" onclick="window.switchAdminTab(5)" style="display: none;"><span>📊</span> <span>Grades</span></div>
             <div class="nav-item" id="nav-6" onclick="window.switchAdminTab(6)"><span>🗳️</span> <span>VOTE</span></div>
             <div class="nav-item" id="nav-7" onclick="window.switchAdminTab(7)"><span>🔗</span> <span>Links</span></div>
+            <div class="nav-item" id="nav-8" onclick="window.switchAdminTab(8)" style="display: none;"><span>🛠️</span> <span>Ops</span></div>
         </div>
         <div class="admin-content-wrapper">
             <div id="tab-settings" class="tab-content active">
@@ -1685,6 +1758,30 @@ body.light-mode .gt-sum-big { color: #0f172a; }
     <div class="admin-section-title" style="color:#38bdf8;">🧾 Recent Audit Log</div>
     <div id="gt-audit-list" style="max-height:180px;overflow:auto;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px;"></div>
 </div>
+            <div id="tab-ops" class="tab-content">
+    <div class="admin-section-title" style="color:#22d3ee;">🛠️ Operations & Management</div>
+    <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Scope-level admin statistics and quick maintenance actions.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="padding:10px;border-radius:10px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);">
+            <div style="font-size:10px;color:#64748b;">Subjects</div>
+            <div id="ops-subjects-count" style="font-size:20px;font-weight:900;">0</div>
+        </div>
+        <div style="padding:10px;border-radius:10px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);">
+            <div style="font-size:10px;color:#64748b;">Doctors</div>
+            <div id="ops-doctors-count" style="font-size:20px;font-weight:900;">0</div>
+        </div>
+        <div style="padding:10px;border-radius:10px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);">
+            <div style="font-size:10px;color:#64748b;">Files</div>
+            <div id="ops-files-count" style="font-size:20px;font-weight:900;">0</div>
+        </div>
+        <div style="padding:10px;border-radius:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);">
+            <div style="font-size:10px;color:#64748b;">Notifications</div>
+            <div id="ops-notif-count" style="font-size:20px;font-weight:900;">0</div>
+        </div>
+    </div>
+    <button class="btn-save" style="background:linear-gradient(135deg,#06b6d4,#0e7490);" onclick="window.refreshOpsStats()">Refresh Stats</button>
+    <button class="btn-delete" onclick="window.clearScopeSeenAlerts()">Clear Seen Alerts (Local)</button>
+</div>
             <div id="tab-manifest" class="tab-content"><div class="admin-section-title" style="color: #a855f7;">App Installation Settings</div><p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how app looks when installed.</p><div class="manifest-preview" id="manifest-icon-preview"><span>📲</span></div><div class="form-group"><label class="form-label">App Name (Short)</label><input type="text" id="manifest-app-name" class="form-input" placeholder="UniBot"></div><div class="form-group"><label class="form-label">App Icon (Upload Image)</label><input type="file" id="manifest-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;"><button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button></div><button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button></div>
         </div>
     </div>
@@ -1699,7 +1796,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         const VAPID_KEY = "BCmmvd3JEj26OLT_bEl986rldLpJiSPjAzjBsRaVN-OO5RCj_dcLXexMobA4K9Y9-3Zrv4Tc2s1H9uakLoIEf0Y";
 
         const defaultDatabase = { "Physics": { "doctors": ["Dr. Ahmed"], "Dr. Ahmed": { "root": [ { "id": "f1", "name": "📚 Lectures", "type": "folder", "children": [] }, { "id": "f2", "name": "🔔 Notifications", "type": "folder", "children": [] } ] } }, "Chemistry": { "doctors": [], "root": [] }, "Mathematics": { "doctors": [], "root": [] } };
-        const defaultConfig = { botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], generalBroadcast: { active: false, title: "", body: "", timestamp: 0 }, englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif", appName: "UniBot Pro", appIcon: "", appVersion: 1, themeColor: "#3b82f6", botMsgColor: "#ffffff", welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.", subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇", categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:", backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", schedules: [], activeAlerts: [], database: defaultDatabase };
+        const defaultConfig = { botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], generalBroadcast: { active: false, title: "", body: "", timestamp: 0 }, englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif", appName: "UniBot Pro", appIcon: "", appVersion: 1, themeColor: "#3b82f6", botMsgColor: "#ffffff", welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.", subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇", categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:", backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", schedules: [], activeAlerts: [], weeklyTasks: { sections: ["1","2","3"], tasks: {} }, database: defaultDatabase };
         let CONFIG = { ...defaultConfig };
         let database = CONFIG.database;
         let auth; let isAuthInitialized = false; let deferredPrompt; let refreshInterval = null; let fuseSearchEngine = null;
@@ -2349,10 +2446,10 @@ else if (DEFAULT_BG_URL) {
         window.testNotification = function() { document.getElementById('menu-dropdown').classList.remove('active'); if (!('Notification' in window)) { showToast("Browser doesn't support notifications.", "error"); return; } Notification.requestPermission().then(permission => { if (permission === 'granted') { if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF', icon: CONFIG.appIcon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }); showToast("Test notification sent...", "success"); } else { new Notification("🧪 Test Successful", { body: "Notifications are working.", icon: CONFIG.appIcon }); showToast("Test notification sent...", "success"); } } else { showToast("Permission denied.", "error"); } }); };
         function hexToRgb(hex) { var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
         function darkenColor(hex, percent) { const rgb = hexToRgb(hex); if (!rgb) return hex; const amt = Math.round(2.55 * percent); const R = (rgb.r - amt) < 0 ? 0 : rgb.r - amt; const G = (rgb.g - amt) < 0 ? 0 : rgb.g - amt; const B = (rgb.b - amt) < 0 ? 0 : rgb.b - amt; return "#" + (0x1000000 + (R << 16) + (G << 8) + B).toString(16).slice(1); }
-        window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); const canManageGrades = hasAdminAccess(); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = canManageGrades ? 'flex' : 'none';
+        window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); const canManageGrades = hasAdminAccess(); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = canManageGrades ? 'flex' : 'none'; document.getElementById('nav-8').style.display = canManageGrades ? 'flex' : 'none';
 if (hasAdminAccess()) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
-        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; if(index < 0 || index > 7) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks'][currentAdminTab]}`; const nextTabId = `tab-${['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks'][index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; }, duration); };
+        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; const tabs = ['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks','ops']; if(index < 0 || index > tabs.length - 1) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${tabs[currentAdminTab]}`; const nextTabId = `tab-${tabs[index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; if (index === 8 && typeof window.refreshOpsStats === 'function') window.refreshOpsStats(); }, duration); };
         window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins, generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
         function renderAdminList() { const container = document.getElementById('admin-list-container'); container.innerHTML = ''; if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; } CONFIG.admins.forEach((adminEmail, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); container.appendChild(div); }); }
         window.addAdmin = function() { const email = document.getElementById('admin-add-input').value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); document.getElementById('admin-add-input').value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
@@ -3509,6 +3606,120 @@ if (localData) { CONFIG = localData; database = CONFIG.database; applyConfig(CON
             showToast(`✅ Imported ${ok} students`, 'success');
         };
         // ==========================================
+        // === FX-991 CALCULATOR + WEEKLY TASKS + OPS ===
+        // ==========================================
+        window.openFx991Calculator = function() { document.getElementById('menu-dropdown').classList.remove('active'); document.getElementById('fx991-modal').classList.add('active'); };
+        window.closeFx991Calculator = function() { document.getElementById('fx991-modal').classList.remove('active'); };
+        window.fx991Append = function(v) { const d = document.getElementById('fx991-display'); if (!d) return; d.value = (d.value || '') + v; };
+        window.fx991Backspace = function() { const d = document.getElementById('fx991-display'); if (!d) return; d.value = (d.value || '').slice(0, -1); };
+        window.fx991Clear = function() { const d = document.getElementById('fx991-display'); if (d) d.value = ''; };
+        window.fx991Calculate = function() {
+            const d = document.getElementById('fx991-display'); if (!d) return;
+            try {
+                const expr = String(d.value || '').replace(/\^/g, '**').replace(/π/g, 'Math.PI');
+                const result = Function('"use strict"; return (' + expr + ')')();
+                d.value = Number.isFinite(result) ? String(result) : 'Error';
+            } catch(e) { d.value = 'Error'; }
+        };
+
+        function wtGetState() {
+            if (!CONFIG.weeklyTasks || typeof CONFIG.weeklyTasks !== 'object') CONFIG.weeklyTasks = { sections: ["1","2","3"], tasks: {} };
+            if (!Array.isArray(CONFIG.weeklyTasks.sections)) CONFIG.weeklyTasks.sections = ["1","2","3"];
+            if (!CONFIG.weeklyTasks.tasks || typeof CONFIG.weeklyTasks.tasks !== 'object') CONFIG.weeklyTasks.tasks = {};
+            return CONFIG.weeklyTasks;
+        }
+        function wtEnsureSection(section) {
+            const st = wtGetState();
+            if (!st.tasks[section]) st.tasks[section] = [];
+        }
+        window.openWeeklyTasksModal = function() {
+            document.getElementById('menu-dropdown').classList.remove('active');
+            const st = wtGetState();
+            const sel = document.getElementById('wt-section-select');
+            if (sel) sel.innerHTML = st.sections.map(s => `<option value="${s}">Section ${s}</option>`).join('');
+            const adminTools = document.getElementById('wt-admin-tools');
+            if (adminTools) adminTools.style.display = (typeof hasAdminAccess === 'function' && hasAdminAccess()) ? 'block' : 'none';
+            document.getElementById('weekly-modal').classList.add('active');
+            window.wtRenderTasks();
+        };
+        window.closeWeeklyTasksModal = function() { document.getElementById('weekly-modal').classList.remove('active'); };
+        window.wtRenderTasks = function() {
+            const st = wtGetState();
+            const sel = document.getElementById('wt-section-select');
+            const list = document.getElementById('wt-task-list');
+            if (!sel || !list) return;
+            const section = sel.value || st.sections[0];
+            wtEnsureSection(section);
+            const tasks = st.tasks[section] || [];
+            if (!tasks.length) {
+                list.innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;">No weekly tasks yet.</div>';
+                return;
+            }
+            list.innerHTML = tasks.map((t, i) => `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;margin-bottom:8px;"><div style="font-size:13px;font-weight:700;">${t.text}</div><div style="font-size:10px;color:#64748b;margin-top:4px;">${t.createdAt || ''}</div>${(typeof hasAdminAccess === 'function' && hasAdminAccess()) ? `<button class="btn-sm btn-del" style="margin-top:8px;" onclick="wtDeleteTask(${i})">Delete</button>` : ''}</div>`).join('');
+        };
+        window.wtAddSection = function() {
+            if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
+            const st = wtGetState();
+            const inp = document.getElementById('wt-new-section');
+            const val = (inp ? inp.value : '').trim();
+            if (!val) return showToast('Enter section name', 'error');
+            if (st.sections.includes(val)) return showToast('Section exists', 'error');
+            st.sections.push(val); wtEnsureSection(val); if (inp) inp.value = '';
+            saveConfigToBin(CONFIG); window.openWeeklyTasksModal(); showToast('✅ Section added', 'success');
+        };
+        window.wtDeleteSection = function() {
+            if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
+            const st = wtGetState();
+            const sel = document.getElementById('wt-section-select');
+            const section = sel ? sel.value : '';
+            if (!section) return;
+            if (st.sections.length <= 1) return showToast('At least one section required', 'error');
+            st.sections = st.sections.filter(s => s !== section);
+            delete st.tasks[section];
+            saveConfigToBin(CONFIG); window.openWeeklyTasksModal(); showToast('✅ Section deleted', 'success');
+        };
+        window.wtAddTask = function() {
+            if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
+            const st = wtGetState();
+            const sel = document.getElementById('wt-section-select');
+            const txt = (document.getElementById('wt-task-input') || {}).value || '';
+            const section = sel ? sel.value : '';
+            const text = txt.trim();
+            if (!section || !text) return showToast('Section and task required', 'error');
+            wtEnsureSection(section);
+            st.tasks[section].unshift({ text, createdAt: new Date().toLocaleString() });
+            document.getElementById('wt-task-input').value = '';
+            saveConfigToBin(CONFIG); window.wtRenderTasks(); showToast('✅ Task added', 'success');
+        };
+        window.wtDeleteTask = function(index) {
+            if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
+            const st = wtGetState();
+            const sel = document.getElementById('wt-section-select');
+            const section = sel ? sel.value : '';
+            wtEnsureSection(section);
+            st.tasks[section].splice(index, 1);
+            saveConfigToBin(CONFIG); window.wtRenderTasks(); showToast('✅ Task deleted', 'success');
+        };
+        window.refreshOpsStats = function() {
+            const subjCount = Object.keys(database || {}).length;
+            let docs = 0, files = 0;
+            const scan = (items) => (items || []).forEach(it => { if (it.type === 'file') files++; if (it.type === 'folder') scan(it.children); });
+            Object.keys(database || {}).forEach(sub => {
+                const ds = (database[sub] && database[sub].doctors) || [];
+                docs += ds.length;
+                ds.forEach(d => { const root = database[sub][d] && database[sub][d].root; scan(root); });
+            });
+            document.getElementById('ops-subjects-count').textContent = subjCount;
+            document.getElementById('ops-doctors-count').textContent = docs;
+            document.getElementById('ops-files-count').textContent = files;
+            document.getElementById('ops-notif-count').textContent = (CONFIG.recentUpdates || []).length;
+        };
+        window.clearScopeSeenAlerts = function() {
+            localStorage.removeItem('uniBot_seenAlerts');
+            showToast('✅ Local seen alerts cleared', 'success');
+        };
+
+        // ==========================================
         // === POLL LOGIC ===
         // ==========================================
         let activePoll      = null;
@@ -4403,6 +4614,9 @@ let SCH_META = {
   subtitle: "الفرقة الثانية — الفصل الثاني 2025/2026"
 };
 let SCH_activeDay = "الأحد", SCH_activeSec = "1", SCH_adminMode = false, SCH_editTarget = null;
+let SCH_BOARDS = [{ id: 'lectures', name: 'جدول المحاضرات', type: 'lecture' }];
+let SCH_ACTIVE_BOARD = 'lectures';
+let SCH_SIMPLE_DATA = {};
 let SCH_lastSerialized = '';
 let SCH_syncTimer = null;
 
@@ -4431,11 +4645,16 @@ function sch_sanitizeMeta(meta) {
   };
 }
 function sch_getPayload() {
-  return { meta: SCH_META, data: SCH_DATA };
+  return { meta: SCH_META, data: SCH_DATA, boards: SCH_BOARDS, activeBoard: SCH_ACTIVE_BOARD, simpleData: SCH_SIMPLE_DATA };
 }
 function sch_applyPayload(payload) {
   if (!payload || typeof payload !== 'object') return;
   if (payload.data && typeof payload.data === 'object') SCH_DATA = payload.data;
+  if (Array.isArray(payload.boards) && payload.boards.length) SCH_BOARDS = payload.boards;
+  if (payload.simpleData && typeof payload.simpleData === 'object') SCH_SIMPLE_DATA = payload.simpleData;
+  SCH_ACTIVE_BOARD = payload.activeBoard || SCH_ACTIVE_BOARD;
+  if (!SCH_BOARDS.some(b => b.id === 'lectures')) SCH_BOARDS.unshift({ id: 'lectures', name: 'جدول المحاضرات', type: 'lecture' });
+  if (!SCH_BOARDS.some(b => b.id === SCH_ACTIVE_BOARD)) SCH_ACTIVE_BOARD = 'lectures';
   SCH_META = sch_sanitizeMeta(payload.meta || SCH_META);
   SCH_META.days.forEach(day => { if (!SCH_DATA[day]) SCH_DATA[day] = []; });
   SCH_META.days = SCH_META.days.filter(day => Array.isArray(SCH_DATA[day]));
@@ -4452,11 +4671,51 @@ function sch_refreshAll() {
   const subEl = document.getElementById('sch-subtitle');
   if (titleEl) titleEl.textContent = SCH_META.title;
   if (subEl) subEl.textContent = SCH_META.subtitle;
-  sch_renderSecs();
-  sch_renderDays();
-  sch_renderTimeline();
-  sch_updateNow();
+  sch_renderBoards();
+  const isLectureBoard = SCH_ACTIVE_BOARD === 'lectures';
+  const secRow = document.getElementById('sch-sec-row');
+  const nowWrap = document.getElementById('sch-now-wrap');
+  const nextWrap = document.getElementById('sch-next-wrap');
+  const daysWrap = document.querySelector('.sch-days-wrap');
+  if (secRow) secRow.style.display = isLectureBoard ? 'flex' : 'none';
+  if (nowWrap) nowWrap.style.display = isLectureBoard ? 'block' : 'none';
+  if (nextWrap) nextWrap.style.display = isLectureBoard ? 'block' : 'none';
+  if (daysWrap) daysWrap.style.display = isLectureBoard ? 'block' : 'none';
+  if (isLectureBoard) {
+    sch_renderSecs();
+    sch_renderDays();
+    sch_renderTimeline();
+    sch_updateNow();
+  } else {
+    sch_renderSimpleTimeline();
+  }
   sch_renderAdminTools();
+}
+function sch_renderBoards() {
+  const wrap = document.getElementById('sch-board-list');
+  if (!wrap) return;
+  wrap.innerHTML = SCH_BOARDS.map(b => `<div style="padding:10px 12px;border-radius:10px;border:1px solid ${b.id===SCH_ACTIVE_BOARD?'rgba(79,142,247,.6)':'rgba(255,255,255,.08)'};background:${b.id===SCH_ACTIVE_BOARD?'rgba(79,142,247,.15)':'#111627'};font-size:12px;font-weight:700;cursor:pointer;" onclick="sch_selectBoard('${b.id}')">${b.name}</div>`).join('');
+}
+function sch_selectBoard(id) {
+  SCH_ACTIVE_BOARD = id;
+  sch_refreshAll();
+  sch_saveToFirebase();
+}
+function sch_renderSimpleTimeline() {
+  const wrap = document.getElementById('sch-timeline'); if (!wrap) return;
+  const list = (SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD] || []).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  if (!list.length) {
+    wrap.innerHTML = `<div class="sch-empty"><div class="sch-empty-ico">🗂️</div><div class="sch-empty-t1">لا يوجد عناصر</div><div class="sch-empty-t2">أضف مواعيد لهذا القسم من زر الإضافة</div></div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(it => `<div class="sch-card"><div class="sch-body"><div class="sch-badge act">${it.day || '—'} · ${it.date || '—'}</div><div class="sch-subj">${it.subject || 'Untitled'}</div><div class="sch-meta">${it.time?`<span class="sch-chip">🕐 ${it.time}</span>`:''}${it.doctor?`<span class="sch-chip">👨‍🏫 ${it.doctor}</span>`:''}</div></div><div class="sch-right">${SCH_adminMode?`<button class="sch-edit-btn" onclick="sch_deleteSimpleItem('${it.id}')">🗑️ حذف</button>`:''}</div></div>`).join('');
+}
+function sch_deleteSimpleItem(id) {
+  if (!sch_canManage()) return;
+  const arr = SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD] || [];
+  SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD] = arr.filter(x => x.id !== id);
+  sch_saveToFirebase();
+  sch_refreshAll();
 }
 function sch_serializePayload() {
   try { return JSON.stringify(sch_getPayload()); } catch(e) { return ''; }
@@ -4723,17 +4982,32 @@ function sch_saveNewItem() {
   const doctor  = document.getElementById('add-doctor').value.trim();
   const hall    = document.getElementById('add-hall').value.trim();
   const day     = document.getElementById('add-day').value;
+  const date    = (document.getElementById('add-date') || {}).value || '';
   const from    = document.getElementById('add-from').value.trim();
   const to      = document.getElementById('add-to').value.trim();
   const type    = document.getElementById('add-type').value;
   const sec     = document.getElementById('add-sec').value;
   const period  = parseInt(document.getElementById('add-period').value) || 1;
-  if(!subject||!from||!to){ sch_toast('⚠️ المادة والوقت مطلوبين'); return; }
-  const newItem = { id:'m-'+Date.now()+'-'+Math.random().toString(36).slice(2,6), type, subject, doctor, hall, from, to, period };
-  if(type==='section') newItem.sec = sec;
-  if(!SCH_DATA[day]) SCH_DATA[day]=[];
-  SCH_DATA[day].push(newItem);
-  SCH_DATA[day].sort((a,b)=>sch_toMins(a.from)-sch_toMins(b.from));
+  if(!subject){ sch_toast('⚠️ المادة مطلوبة'); return; }
+  if (SCH_ACTIVE_BOARD === 'lectures') {
+    if(!from||!to){ sch_toast('⚠️ الوقت مطلوب'); return; }
+    const newItem = { id:'m-'+Date.now()+'-'+Math.random().toString(36).slice(2,6), type, subject, doctor, hall, from, to, period };
+    if(type==='section') newItem.sec = sec;
+    if(!SCH_DATA[day]) SCH_DATA[day]=[];
+    SCH_DATA[day].push(newItem);
+    SCH_DATA[day].sort((a,b)=>sch_toMins(a.from)-sch_toMins(b.from));
+  } else {
+    if (!date) { sch_toast('⚠️ التاريخ مطلوب'); return; }
+    if (!SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD]) SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD] = [];
+    SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD].unshift({
+      id: 's-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      day,
+      date: date.trim(),
+      subject,
+      doctor,
+      time: from && to ? `${from} - ${to}` : from
+    });
+  }
   sch_saveToFirebase();
   sch_closeUpload();
   sch_refreshAll();
@@ -4744,11 +5018,18 @@ function sch_deleteSelected() {
   const id = document.getElementById('delete-id').value.trim();
   if(!id){ sch_toast('⚠️ ادخل الـ ID'); return; }
   let found=false;
-  Object.keys(SCH_DATA).forEach(day=>{
-    const before=SCH_DATA[day].length;
-    SCH_DATA[day]=SCH_DATA[day].filter(it=>it.id!==id);
-    if(SCH_DATA[day].length<before) found=true;
-  });
+  if (SCH_ACTIVE_BOARD === 'lectures') {
+    Object.keys(SCH_DATA).forEach(day=>{
+      const before=SCH_DATA[day].length;
+      SCH_DATA[day]=SCH_DATA[day].filter(it=>it.id!==id);
+      if(SCH_DATA[day].length<before) found=true;
+    });
+  } else {
+    const list = SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD] || [];
+    const before = list.length;
+    SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD] = list.filter(it => it.id !== id);
+    found = SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD].length < before;
+  }
   if(found){
     sch_saveToFirebase();
     sch_renderAdminTools();
@@ -4774,7 +5055,11 @@ function sch_renderAdminTools() {
   const editSecSelect = document.getElementById('sch-inp-sec');
   const removeDaySelect = document.getElementById('remove-day-select');
   const removeSecSelect = document.getElementById('remove-sec-select');
+  const removeBoardSelect = document.getElementById('remove-board-select');
   const delSelect = document.getElementById('delete-item-select');
+  const simpleDateWrap = document.getElementById('simple-date-wrap');
+  const addTypeEl = document.getElementById('add-type');
+  const addSecWrap = document.getElementById('add-sec-wrap');
 
   const dayOptions = SCH_META.days.map(day => `<option value="${day}">${day}</option>`).join('');
   const secOptions = SCH_META.sections.map(sec => `<option value="${sec}">سكشن ${sec}</option>`).join('');
@@ -4785,14 +5070,53 @@ function sch_renderAdminTools() {
   if (addSecSelect) addSecSelect.innerHTML = secOptions;
   if (editSecSelect) editSecSelect.innerHTML = secOptions;
   if (removeSecSelect) removeSecSelect.innerHTML = secOptions;
+  if (removeBoardSelect) {
+    removeBoardSelect.innerHTML = SCH_BOARDS.filter(b => b.id !== 'lectures').map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  }
+
+  const isLectureBoard = SCH_ACTIVE_BOARD === 'lectures';
+  if (simpleDateWrap) simpleDateWrap.style.display = isLectureBoard ? 'none' : 'block';
+  if (addTypeEl) addTypeEl.parentElement.style.display = isLectureBoard ? 'block' : 'none';
+  if (addSecWrap) addSecWrap.style.display = isLectureBoard && addTypeEl && addTypeEl.value === 'section' ? 'block' : 'none';
 
   if (delSelect) {
-    const items = (SCH_DATA[SCH_activeDay] || []);
-    delSelect.innerHTML = '<option value="">اختر محاضرة/سكشن للحذف</option>' + items.map(it => {
-      const itemType = it.type === 'lecture' ? 'محاضرة' : 'سكشن ' + (it.sec || '-');
-      return `<option value="${it.id}">${itemType} · ${it.subject} · ${it.from}-${it.to}</option>`;
-    }).join('');
+    if (isLectureBoard) {
+      const items = (SCH_DATA[SCH_activeDay] || []);
+      delSelect.innerHTML = '<option value="">اختر محاضرة/سكشن للحذف</option>' + items.map(it => {
+        const itemType = it.type === 'lecture' ? 'محاضرة' : 'سكشن ' + (it.sec || '-');
+        return `<option value="${it.id}">${itemType} · ${it.subject} · ${it.from}-${it.to}</option>`;
+      }).join('');
+    } else {
+      const items = SCH_SIMPLE_DATA[SCH_ACTIVE_BOARD] || [];
+      delSelect.innerHTML = '<option value="">اختر عنصر للحذف</option>' + items.map(it => `<option value="${it.id}">${it.subject} · ${it.date}</option>`).join('');
+    }
   }
+}
+function sch_addBoard() {
+  if(!sch_canManage()) return sch_toast('❌ غير مصرح');
+  const input = document.getElementById('new-board-name');
+  const name = (input ? input.value : '').trim();
+  if (!name) return sch_toast('⚠️ اكتب اسم القسم');
+  const id = 'board_' + Date.now();
+  SCH_BOARDS.push({ id, name, type: 'simple' });
+  SCH_SIMPLE_DATA[id] = [];
+  SCH_ACTIVE_BOARD = id;
+  if (input) input.value = '';
+  sch_saveToFirebase();
+  sch_refreshAll();
+  sch_toast('✅ تمت إضافة قسم الجدول');
+}
+function sch_removeBoard() {
+  if(!sch_canManage()) return sch_toast('❌ غير مصرح');
+  const sel = document.getElementById('remove-board-select');
+  const id = sel ? sel.value : '';
+  if (!id) return sch_toast('⚠️ اختر القسم');
+  SCH_BOARDS = SCH_BOARDS.filter(b => b.id !== id);
+  delete SCH_SIMPLE_DATA[id];
+  if (SCH_ACTIVE_BOARD === id) SCH_ACTIVE_BOARD = 'lectures';
+  sch_saveToFirebase();
+  sch_refreshAll();
+  sch_toast('✅ تم حذف قسم الجدول');
 }
 function sch_addDay() {
   if(!sch_canManage()) return sch_toast('❌ غير مصرح');
@@ -5091,6 +5415,7 @@ async function vnSummarize(id) {
       </div>
     </div>
   </div>
+  <div id="sch-board-list" style="padding:10px 14px 0;display:flex;flex-direction:column;gap:6px;"></div>
 
   <div class="sch-sec-row" id="sch-sec-row"></div>
   <div id="sch-now-wrap"></div>
@@ -5146,6 +5471,18 @@ async function vnSummarize(id) {
     <div class="sch-upload-body">
       <div class="sch-slbl">🧭 إدارة الجدول</div>
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px;margin-bottom:12px;">
+        <div style="font-size:11px;color:#7a8ba8;margin-bottom:8px;">أقسام الجدول</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input class="sch-inp" id="new-board-name" placeholder="اسم القسم (مثال: جدول الميد)" style="margin:0;">
+          <button class="sch-btn-save" style="flex:0 0 94px;padding:10px;" onclick="sch_addBoard()">إضافة</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <select class="sch-inp" id="remove-board-select" style="margin:0;"></select>
+          <button class="sch-btn-cancel" style="flex:0 0 94px;padding:10px;" onclick="sch_removeBoard()">حذف</button>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px;margin-bottom:12px;">
         <div style="font-size:11px;color:#7a8ba8;margin-bottom:8px;">الأيام</div>
         <div style="display:flex;gap:8px;margin-bottom:8px;">
           <select class="sch-inp" id="new-day-select" style="margin:0;">
@@ -5180,6 +5517,10 @@ async function vnSummarize(id) {
 
       <div class="sch-slbl">📚 المادة</div>
       <input class="sch-inp" id="add-subject" placeholder="مثال: انتقال الحرارة">
+      <div id="simple-date-wrap">
+        <div class="sch-slbl">📆 التاريخ (للجداول العامة)</div>
+        <input class="sch-inp" id="add-date" placeholder="مثال: 2026-05-20">
+      </div>
       <div class="sch-slbl">👨‍🏫 الدكتور / المعيد</div>
       <input class="sch-inp" id="add-doctor" placeholder="مثال: د. محمد علي">
       <div class="sch-slbl">🚪 القاعة</div>
