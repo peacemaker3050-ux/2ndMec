@@ -5395,7 +5395,7 @@ async function vnTranscribe(id) {
   if (!rec) return;
   const box = document.getElementById(`vn-transcribe-${id}`);
   box.className = 'vn-result-box show';
-  const serverUrl = 'https://web-production-4948.up.railway.app';
+  const serverUrl = 'https://web-production-c391d4.up.railway.app';
   box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التفريغ...</span></div>';
 
   try {
@@ -5436,7 +5436,7 @@ async function vnSummarize(id) {
   box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التلخيص...</span></div>';
 
   try {
-    const serverUrl = 'https://web-production-4948.up.railway.app';
+    const serverUrl = 'https://web-production-c391d4.up.railway.app';
     const response = await fetch(`${serverUrl}/summarize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
