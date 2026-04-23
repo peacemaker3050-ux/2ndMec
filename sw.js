@@ -24,7 +24,7 @@ function getScopedDbUrl() {
 }
 
 // ── Cache ──
-const CACHE_VERSION = 'v11';
+const CACHE_VERSION = 'v12';
 const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
 const CACHE_API     = `uni-api-${CACHE_VERSION}`;
 
@@ -173,9 +173,11 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request)
+    (async () => {
+      const cached = await caches.match(event.request);
+      const isNavigate = event.request.mode === 'navigate';
+
+      const networkPromise = fetch(event.request)
         .then(response => {
           if (response && response.status === 200 && event.request.method === 'GET') {
             const clone = response.clone();
@@ -183,13 +185,23 @@ self.addEventListener('fetch', event => {
           }
           return response;
         })
-        .catch(() => {
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html').then(r => r || caches.match('./'));
-          }
-          return new Response('', { status: 503 });
-        });
-    })
+        .catch(() => null);
+
+      if (isNavigate) {
+        // لـ index.html دايماً جرب الشبكة أولاً، لو فشلت ارجع الـ cache
+        const networkResponse = await networkPromise;
+        if (networkResponse) return networkResponse;
+        return cached || new Response('', { status: 503 });
+      }
+
+      // باقي الملفات: ارجع الـ cache لو موجود وحدّث في الخلفية
+      if (cached) {
+        networkPromise; // تحديث في الخلفية
+        return cached;
+      }
+      const networkResponse = await networkPromise;
+      return networkResponse || new Response('', { status: 503 });
+    })()
   );
 });
 
