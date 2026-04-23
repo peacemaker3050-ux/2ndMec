@@ -2554,7 +2554,18 @@ function updateDynamicManifest(name, iconData) {
         "display": "standalone",
         "background_color": "#0f172a",
         "theme_color": "#0f172a",
-        "icons": []
+        "icons": [],
+        "share_target": {
+            "action": "./",
+            "method": "POST",
+            "enctype": "multipart/form-data",
+            "params": {
+                "title": "title",
+                "text": "text",
+                "url": "url",
+                "files": [{ "name": "file", "accept": ["*/*"] }]
+            }
+        }
     };
    const iconUrl = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/icon-512.png";
 manifest.icons.push({ "src": iconUrl, "sizes": "512x512", "type": "image/png" });
@@ -2625,8 +2636,38 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         const welcomeMsg = replacePlaceholders(CONFIG.welcomeMessage, null); 
         botReply(welcomeMsg, true); 
         renderKeyboard(); 
-        startSync(); 
+        startSync();
+        handleIncomingShare();
     };
+
+        async function handleIncomingShare() {
+            if (!window.location.search.includes('shared=1')) return;
+            window.history.replaceState({}, '', window.location.pathname);
+            try {
+                const db = await new Promise((resolve) => {
+                    const req = indexedDB.open('UniBotSW', 2);
+                    req.onsuccess = e => resolve(e.target.result);
+                    req.onerror = () => resolve(null);
+                });
+                if (!db) return;
+                const shareData = await new Promise(resolve => {
+                    const tx = db.transaction('kv', 'readwrite');
+                    const store = tx.objectStore('kv');
+                    const getReq = store.get('pendingShare');
+                    getReq.onsuccess = () => {
+                        const result = getReq.result ? JSON.parse(getReq.result.v) : null;
+                        store.delete('pendingShare');
+                        store.delete('pendingShareFile');
+                        resolve(result);
+                    };
+                    getReq.onerror = () => resolve(null);
+                });
+                if (!shareData) return;
+                window.openAdminPanel && window.openAdminPanel();
+                window.switchAdminTab && window.switchAdminTab(3);
+                showToast('📎 تم استلام: ' + (shareData.fileName || shareData.title || 'مشاركة'), 'success');
+            } catch(e) { console.error('Share handler error:', e); }
+        }
 
         function initNewFilesPanel() {
     const trigger = document.getElementById('slide-trigger');

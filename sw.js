@@ -24,7 +24,7 @@ function getScopedDbUrl() {
 }
 
 // ── Cache ──
-const CACHE_VERSION = 'v12';
+const CACHE_VERSION = 'v13';
 const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
 const CACHE_API     = `uni-api-${CACHE_VERSION}`;
 
@@ -162,6 +162,30 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
+
+  // === SHARE TARGET ===
+  if (event.request.method === 'POST') {
+    const requestClone = event.request.clone();
+    event.respondWith(
+      (async () => {
+        if (!dbReady) await initDB();
+        const formData = await requestClone.formData();
+        const file     = formData.get('file');
+        const title    = formData.get('title') || '';
+        const text     = formData.get('text')  || '';
+        const shareUrl = formData.get('url')   || '';
+        await dbSet('pendingShare', JSON.stringify({
+            title, text, url: shareUrl,
+            fileName: file ? file.name : null,
+            fileType: file ? file.type : null,
+            ts: Date.now()
+        }));
+        return Response.redirect('./?shared=1', 303);
+      })()
+    );
+    return;
+  }
+  // === END SHARE TARGET ===
 
   if (url.hostname.includes('googleapis.com') ||
       url.hostname.includes('gstatic.com')
