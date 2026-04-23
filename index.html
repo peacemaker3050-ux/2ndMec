@@ -5399,8 +5399,12 @@ async function vnTranscribe(id) {
   box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التفريغ...</span></div>';
 
   try {
-    const res = await fetch(rec.audioData);
-    const blob = await res.blob();
+    // جديد
+const base64 = rec.audioData.split(',')[1];
+const byteChars = atob(base64);
+const byteArr = new Uint8Array(byteChars.length);
+for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+const blob = new Blob([byteArr], { type: 'audio/webm' });
     const audioFile = new File([blob], 'audio.webm', { type: 'audio/webm' });
     const formData = new FormData();
     formData.append('file', audioFile);
