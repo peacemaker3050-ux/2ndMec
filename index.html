@@ -4394,8 +4394,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
     if (!text && !saiAttachments.length) return;
     if (saiIsTyping) return;
 
-    const serverUrl = localStorage.getItem(STORAGE_KEY);
-    if (!serverUrl) { saiShowKeyScreen(); return; }
+    const serverUrl = 'https://web-production-c391d4.up.railway.app';
 
     inp.value = '';
     inp.style.height = 'auto';
