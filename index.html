@@ -1275,7 +1275,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
 
     <div class="app-container">
         <header id="main-header">
-            <div class="header-info"><div class="bot-avatar" id="header-avatar">🎓</div><div class="bot-name"><h2 id="header-name">University Bot</h2><div class="bot-status-row"><span class="bot-status" id="header-status"><div class="sync-dot" id="connection-dot"></div> <span id="status-text">Online</span></span><div class="search-bar"><input type="text" id="search-input" class="search-input" placeholder="Search files..." autocomplete="off"></div></div></div></div>
+            <div class="header-info"><div class="bot-avatar" id="header-avatar">🎓</div><div class="bot-name"><h2 id="header-name">University Bot</h2><div class="bot-status-row"><span class="bot-status" id="header-status"><div class="sync-dot" id="connection-dot"></div> <span id="status-text">Online</span></span><div class="search-bar"><input type="text" id="search-input" class="search-input" placeholder="Search files..." autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" name="no-autofill-search" data-lpignore="true"></div></div></div></div>
             <div class="header-actions" id="menu-btn">⋮</div>
             <div id="search-dropdown" class="search-dropdown"></div>
             <div class="menu-dropdown" id="menu-dropdown">
@@ -1296,6 +1296,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <div class="menu-item" onclick="openVoiceNotes(); document.getElementById('menu-dropdown').classList.remove('active');">🎙️ Recorder</div>
                 <!-- ============================= -->
                 <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
+                <div class="menu-item" onclick="window.openAttendanceModal()"><span>✅</span> <span>Attendance</span></div>
                 <div class="menu-item" onclick="window.openQuickLinksModal()"><span>🔗</span> <span>Quick Links</span></div>
                 <div class="menu-item" onclick="window.openFavoritesModal()"><span>⭐</span> <span>Favorites</span></div>
                 <div class="menu-item" onclick="window.openTodoModal()"><span>📌</span> <span>To-Do List</span></div>
@@ -1716,7 +1717,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
     </div>
     <button class="btn-save" style="background:linear-gradient(135deg,#22c55e,#16a34a);" onclick="window.saveGradeConfig()">Save Grade Config</button>
     <div class="admin-section-title" style="color:#f59e0b;">🔐 Import Student Accounts</div>
-    <p style="font-size:12px;color:#94a3b8;">Upload one-time accounts file columns: <b>code,password</b> (CSV or Excel).</p>
+    <p style="font-size:12px;color:#94a3b8;">Upload one-time accounts file columns: <b>number,code,password</b> (CSV or Excel).</p>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button class="btn-sm btn-edit" style="margin:0;padding:8px 12px;border-radius:8px;" onclick="window.gtDownloadAuthTemplate()">⬇️ Accounts Template</button>
     </div>
@@ -1815,6 +1816,12 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             const term = normalizeScopeValue(scope.term || 'term1');
             return `${dep}__${year}__${term}`;
         }
+        function getScopeStorageSuffix() {
+            return APP_SCOPE ? buildScopeKey(APP_SCOPE) : 'default';
+        }
+        function scopedStorageKey(base) {
+            return `${base}__${getScopeStorageSuffix()}`;
+        }
         function getDefaultScope() {
             return { department: 'ميكانيكا', year: 'second', term: 'term2' };
         }
@@ -1888,7 +1895,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         // ==========================================
         // === DARK MODE LOGIC ===
         // ==========================================
-        const DARK_MODE_KEY = 'uniBot_darkMode';
+        function DARK_MODE_KEY() { return scopedStorageKey('uniBot_darkMode'); }
         
         function applyTheme(isDarkMode) {
             const body = document.body;
@@ -1904,17 +1911,17 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         }
 
         window.toggleDarkMode = function() {
-            const currentState = localStorage.getItem(DARK_MODE_KEY) !== 'false'; 
+            const currentState = localStorage.getItem(DARK_MODE_KEY()) !== 'false'; 
             const newState = !currentState;
             
-            localStorage.setItem(DARK_MODE_KEY, newState);
+            localStorage.setItem(DARK_MODE_KEY(), newState);
             applyTheme(newState);
             
             document.getElementById('menu-dropdown').classList.remove('active');
         };
 
         function initTheme() {
-            const savedState = localStorage.getItem(DARK_MODE_KEY);
+            const savedState = localStorage.getItem(DARK_MODE_KEY());
             const isDarkMode = savedState === null ? true : savedState === 'true';
             applyTheme(isDarkMode);
         }
@@ -1923,8 +1930,8 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         // ==========================================
         // === NEW FILES LOGIC VARIABLES ===
         // ==========================================
-        const NEW_FILES_TOGGLE_KEY = 'uniBot_newFilesToggle';
-        const LAST_SEEN_FILES_KEY = 'uniBot_lastSeenFiles';
+        function NEW_FILES_TOGGLE_KEY() { return scopedStorageKey('uniBot_newFilesToggle'); }
+        function LAST_SEEN_FILES_KEY() { return scopedStorageKey('uniBot_lastSeenFiles'); }
         let isNewFilesPanelOpen = false;
         
         // ==========================================
@@ -1935,7 +1942,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         function getTodoStorageKey() {
             // If user is logged in, use email. Otherwise use 'guest'.
             const user = auth ? auth.currentUser : null;
-            return user ? `todo_list_${user.email}` : 'todo_list_guest';
+            return user ? scopedStorageKey(`todo_list_${user.email}`) : scopedStorageKey('todo_list_guest');
         }
 
         window.openTodoModal = function() {
@@ -2088,7 +2095,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
     try {
         if (!token || token.length < 10) return;
         const safeEmail = userEmail.replace(/\./g, '_');
-        const newFilesEnabled = localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true';
+        const newFilesEnabled = localStorage.getItem(NEW_FILES_TOGGLE_KEY()) === 'true';
 
         let tokens = [];
         try {
@@ -2181,6 +2188,15 @@ const currentToken = await messaging.getToken({
         const menuBtn = document.getElementById('menu-btn');
         const menuDropdown = document.getElementById('menu-dropdown');
         const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.setAttribute('autocomplete', 'new-password');
+            searchInput.setAttribute('autocorrect', 'off');
+            searchInput.setAttribute('autocapitalize', 'off');
+            searchInput.setAttribute('spellcheck', 'false');
+            searchInput.setAttribute('name', 'no-autofill-search');
+            searchInput.readOnly = true;
+            setTimeout(() => { searchInput.readOnly = false; }, 120);
+        }
         const searchDropdown = document.getElementById('search-dropdown');
         function showToast(message, type = 'info') { const container = document.getElementById('toast-container'); const toast = document.createElement('div'); toast.className = `toast ${type}`; let icon = 'ℹ️'; if(type === 'success') icon = '✅'; if(type === 'error') icon = '❌'; toast.innerHTML = `<span>${icon} ${message}</span>`; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(20px) scale(0.9)'; setTimeout(() => toast.remove(), 300); }, 3000); }
         function showInputModal(title, placeholder, callback) { const overlay = document.getElementById('ui-modal-overlay'); document.getElementById('ui-modal-title').innerText = title; document.getElementById('ui-modal-body').style.display = 'none'; const inputContainer = document.getElementById('ui-modal-input-container'); inputContainer.style.display = 'block'; inputContainer.innerHTML = `<input type="text" class="ui-input-field" id="ui-modal-input" placeholder="${placeholder}" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); border:1px solid #475569; color:#fff; border-radius:8px;">`; currentModalCallback = callback; overlay.classList.add('active'); setTimeout(() => document.getElementById('ui-modal-input').focus(), 100); }
@@ -2215,8 +2231,8 @@ const currentToken = await messaging.getToken({
         function handleSearchResultClick(item) { searchDropdown.classList.remove('show'); searchInput.value = ''; if (item.type === 'file' && item.link && item.link !== '#') { const fileName = item.name; const fileLink = item.link; const finalMessageHTML = `<div style="margin-bottom:5px;">📎 <b>${fileName}</b></div><div class="file-link-btn" onclick="window.open('${fileLink}', '_blank')"><span>🔗</span><span>Open in Google Drive</span></div>`; addMessage(finalMessageHTML, 'bot', true); scrollToBottom(); } }
         let searchTimeout; searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const query = searchInput.value.trim(); if (query.length < 2) return; clearTimeout(searchTimeout); const results = performSearch(query); if (results.length > 0) { const fileResults = results.filter(item => item.type === 'file'); if (fileResults.length > 0) handleSearchResultClick(fileResults[0]); } } }); searchInput.addEventListener('input', (e) => { const query = e.target.value.trim(); clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { const results = performSearch(query); renderSearchResults(results, query); }, 200); });
         document.addEventListener('click', (e) => { const isClickInsideSearch = searchInput.contains(e.target) || searchDropdown.contains(e.target); if (!isClickInsideSearch) searchDropdown.classList.remove('show'); if (!menuDropdown.contains(e.target) && e.target !== menuBtn) menuDropdown.classList.remove('active'); });
-        function saveBotNavStack() { try { localStorage.setItem('uniBot_navStack', JSON.stringify(botNavStack)); } catch(e) {} }
-function loadBotNavStack() { try { const d = localStorage.getItem('uniBot_navStack'); return d ? JSON.parse(d) : []; } catch(e) { return []; } }
+        function saveBotNavStack() { try { localStorage.setItem(scopedStorageKey('uniBot_navStack'), JSON.stringify(botNavStack)); } catch(e) {} }
+function loadBotNavStack() { try { const d = localStorage.getItem(scopedStorageKey('uniBot_navStack')); return d ? JSON.parse(d) : []; } catch(e) { return []; } }
 function renderKeyboard() { keyboardArea.innerHTML = ''; if (botNavStack.length === 0) { const subjects = Object.keys(database); subjects.forEach(sub => { keyboardArea.appendChild(createButton(sub, () => handleBotNavClick(sub, 'subject'))); }); return; } keyboardArea.appendChild(createButton("🔙 Back", handleBotBack, true)); if (botNavStack.length === 1) { const subjectName = botNavStack[0]; const subjectDoctors = database[subjectName].doctors; subjectDoctors.forEach(doc => { keyboardArea.appendChild(createButton(doc, () => handleBotNavClick(doc, 'doctor'))); }); } else { const currentFolderContent = getBotCurrentContent(); if (!currentFolderContent || currentFolderContent.length === 0) { const emptyBtn = createButton("📂 Empty Folder", () => {}); emptyBtn.style.opacity = "0.5"; emptyBtn.style.cursor = "default"; keyboardArea.appendChild(emptyBtn); } else { currentFolderContent.forEach(item => { if (item.type === 'folder') keyboardArea.appendChild(createButton(`📂 ${item.name}`, () => handleBotNavClick(item.name, 'folder'), false, true)); else {
         const isNotif = item.type === 'notif' || (item.link && item.link.startsWith('content:'));
         function getFileIcon(name) {
@@ -2401,7 +2417,7 @@ else CONFIG.database = defaultDatabase; saveToLocalStorage(CONFIG); applyConfig(
         dot.classList.add('offline'); text.innerText = "Offline";
         }); const avatarEl = document.getElementById('header-avatar'); if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = `url('${CONFIG.botImage}')`; avatarEl.style.backgroundSize = "cover"; avatarEl.innerText = ""; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerText = CONFIG.botIcon; } const chatArea = document.getElementById('chat-area'); if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`; 
 else if (DEFAULT_BG_URL) {
-    const cachedBg = localStorage.getItem('uniBot_cachedBg');
+    const cachedBg = localStorage.getItem(scopedStorageKey('uniBot_cachedBg'));
     if (cachedBg) {
         chatArea.style.backgroundImage = `url('${cachedBg}')`;
     } else {
@@ -2412,14 +2428,14 @@ else if (DEFAULT_BG_URL) {
             canvas.width = img.width; canvas.height = img.height;
             canvas.getContext('2d').drawImage(img, 0, 0);
             const base64 = canvas.toDataURL('image/jpeg', 0.8);
-            localStorage.setItem('uniBot_cachedBg', base64);
+            localStorage.setItem(scopedStorageKey('uniBot_cachedBg'), base64);
             chatArea.style.backgroundImage = `url('${base64}')`;
         };
         img.onerror = () => { chatArea.style.backgroundImage = `url('${DEFAULT_BG_URL}')`; };
         img.src = DEFAULT_BG_URL;
     }
 } else chatArea.style.backgroundImage = "none"; document.documentElement.style.setProperty('--font-en', CONFIG.englishFont || "'Inter', sans-serif"); document.documentElement.style.setProperty('--font-ar', CONFIG.arabicFont || "'Cairo', sans-serif"); const primaryHex = CONFIG.themeColor || "#3b82f6"; const botColorHex = CONFIG.botMsgColor || "#ffffff"; const botRgb = hexToRgb(botColorHex); document.documentElement.style.setProperty('--accent-primary', primaryHex); const darkerHex = darkenColor(primaryHex, 30); const userGradient = `linear-gradient(135deg, ${primaryHex} 0%, ${darkerHex} 100%)`; document.documentElement.style.setProperty('--accent-gradient', userGradient); document.documentElement.style.setProperty('--msg-user-bg', userGradient); if (botRgb) document.documentElement.style.setProperty('--msg-bot-bg', `rgba(${botRgb.r}, ${botRgb.g}, ${botRgb.b}, 0.1)`); if(CONFIG.appName || CONFIG.appIcon) updateDynamicManifest(CONFIG.appName, CONFIG.appIcon); window.updateAuthUI(); renderKeyboard(); checkAndShowBroadcast();
-            const lastSeenNotif = localStorage.getItem('uniBot_lastSeenNotif'); if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) { const latestUpdate = CONFIG.recentUpdates[0]; if (!lastSeenNotif || parseInt(latestUpdate.timestamp) > parseInt(lastSeenNotif)) { showVisualAlertWithBody(`📢 ${latestUpdate.doctor} (${latestUpdate.subject}):\n${latestUpdate.message || "New notification available"}`); localStorage.setItem('uniBot_lastSeenNotif', latestUpdate.timestamp); } } if (CONFIG.activeAlerts && CONFIG.activeAlerts.length > 0) { CONFIG.activeAlerts.forEach(alert => { const seenAlerts = JSON.parse(localStorage.getItem('uniBot_seenAlerts') || '[]'); if (!seenAlerts.includes(alert.id)) { showVisualAlertWithBody(`🔔 Reminder (${alert.subject} - ${alert.doctor}):\n${alert.message}`); seenAlerts.push(alert.id); localStorage.setItem('uniBot_seenAlerts', JSON.stringify(seenAlerts)); } }); } }
+            const lastSeenNotif = localStorage.getItem(scopedStorageKey('uniBot_lastSeenNotif')); if (CONFIG.recentUpdates && CONFIG.recentUpdates.length > 0) { const latestUpdate = CONFIG.recentUpdates[0]; if (!lastSeenNotif || parseInt(latestUpdate.timestamp) > parseInt(lastSeenNotif)) { showVisualAlertWithBody(`📢 ${latestUpdate.doctor} (${latestUpdate.subject}):\n${latestUpdate.message || "New notification available"}`); localStorage.setItem(scopedStorageKey('uniBot_lastSeenNotif'), latestUpdate.timestamp); } } if (CONFIG.activeAlerts && CONFIG.activeAlerts.length > 0) { CONFIG.activeAlerts.forEach(alert => { const seenAlerts = JSON.parse(localStorage.getItem(scopedStorageKey('uniBot_seenAlerts')) || '[]'); if (!seenAlerts.includes(alert.id)) { showVisualAlertWithBody(`🔔 Reminder (${alert.subject} - ${alert.doctor}):\n${alert.message}`); seenAlerts.push(alert.id); localStorage.setItem(scopedStorageKey('uniBot_seenAlerts'), JSON.stringify(seenAlerts)); } }); } }
         function checkAndShowBroadcast() { const existingBroadcast = document.getElementById('app-broadcast-msg'); if (existingBroadcast) existingBroadcast.remove(); if (CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { const broadcastHTML = `<div id="app-broadcast-msg" class="message msg-bot broadcast-msg" onclick="window.markBroadcastRead()"><div class="broadcast-header"><span>📣</span> <span>Message from Batch Rep</span></div><div><b>${CONFIG.generalBroadcast.title}</b></div><div style="margin-top:5px; font-size:14px; line-height:1.4;">${CONFIG.generalBroadcast.body}</div><span class="timestamp">${new Date(parseInt(CONFIG.generalBroadcast.timestamp)).toLocaleString()}</span></div>`; chatArea.insertAdjacentHTML('afterbegin', broadcastHTML); } }
         
         function showVisualAlertWithBody(bodyText) {
@@ -2618,7 +2634,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
                 if (!APP_SCOPE) return;
                 sw.postMessage({ type: 'SET_SCOPE', scopeKey: buildScopeKey(APP_SCOPE) });
               };
-              if (reg.active) { sendInit(reg.active); sendScope(reg.active); reg.active.postMessage({ type: 'SET_TOGGLE', value: localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true' }); } else if (reg.installing || reg.waiting) { const sw = reg.installing || reg.waiting; sw.addEventListener('statechange', () => { if (sw.state === 'activated') { sendInit(sw); sendScope(sw); } }); }
+              if (reg.active) { sendInit(reg.active); sendScope(reg.active); reg.active.postMessage({ type: 'SET_TOGGLE', value: localStorage.getItem(NEW_FILES_TOGGLE_KEY()) === 'true' }); } else if (reg.installing || reg.waiting) { const sw = reg.installing || reg.waiting; sw.addEventListener('statechange', () => { if (sw.state === 'activated') { sendInit(sw); sendScope(sw); } }); }
               navigator.serviceWorker.addEventListener('message', event => { console.log('[App] Message from SW:', event.data); });
             })
             .catch(err => console.error('[App] SW Registration Failed:', err));
@@ -2697,17 +2713,17 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
 
         function initNewFilesToggle() {
             const toggle = document.getElementById('new-files-toggle');
-            const isActive = localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true';
+            const isActive = localStorage.getItem(NEW_FILES_TOGGLE_KEY()) === 'true';
             
             if(isActive) toggle.classList.add('active');
             sendToggleToSW(isActive);
-            if (!localStorage.getItem(LAST_SEEN_FILES_KEY)) {
-        localStorage.setItem(LAST_SEEN_FILES_KEY, Date.now().toString());}
+            if (!localStorage.getItem(LAST_SEEN_FILES_KEY())) {
+        localStorage.setItem(LAST_SEEN_FILES_KEY(), Date.now().toString());}
 
             toggle.addEventListener('click', () => {
                 toggle.classList.toggle('active');
                 const state = toggle.classList.contains('active');
-                localStorage.setItem(NEW_FILES_TOGGLE_KEY, state);
+                localStorage.setItem(NEW_FILES_TOGGLE_KEY(), state);
                 sendToggleToSW(state);
                 showToast(state ? "✅ New Files Alerts ON" : "🔕 New Files Alerts OFF", "info");
                 // Sync to Firebase
@@ -2866,25 +2882,25 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         }
 
         function checkNewFilesAndNotify() {
-            const toggleState = localStorage.getItem(NEW_FILES_TOGGLE_KEY) === 'true';
+            const toggleState = localStorage.getItem(NEW_FILES_TOGGLE_KEY()) === 'true';
             if (!toggleState) return;
 
             const recentFiles = getRecentFiles();
             if (recentFiles.length === 0) return;
 
-            const lastSeen = localStorage.getItem(LAST_SEEN_FILES_KEY) || '0';
+            const lastSeen = localStorage.getItem(LAST_SEEN_FILES_KEY()) || '0';
             const lastSeenNum = parseInt(lastSeen);
             
             const newestFile = recentFiles[0]; 
             if (newestFile.ts > lastSeenNum) {
-                localStorage.setItem(LAST_SEEN_FILES_KEY, newestFile.ts.toString());
+                localStorage.setItem(LAST_SEEN_FILES_KEY(), newestFile.ts.toString());
             }
         }
 // ==========================================
         // === GRADE TRACKER LOGIC ===
         // ==========================================
-        const GT_SERVER_CACHE_KEY = 'gt_server_scores';
-        const GT_STUDENT_SESSION_KEY = 'gt_student_session';
+        function GT_SERVER_CACHE_KEY() { return scopedStorageKey('gt_server_scores'); }
+        function GT_STUDENT_SESSION_KEY() { return scopedStorageKey('gt_student_session'); }
         let gtCurId = null;
         let gtTempScore = 0;
         let gtHoldT = null, gtHoldI = null;
@@ -2910,14 +2926,14 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         function gtKey(v) { return String(v || '').trim().replace(/[.#$/\[\]]/g, '_'); }
         function gtLoadScores() {
             try {
-                const fromStore = JSON.parse(localStorage.getItem(GT_SERVER_CACHE_KEY) || '{}');
+                const fromStore = JSON.parse(localStorage.getItem(GT_SERVER_CACHE_KEY()) || '{}');
                 gtScoresCache = fromStore || {};
                 return gtScoresCache;
             } catch(e) { return {}; }
         }
         function gtSaveScores(scores) {
             gtScoresCache = scores || {};
-            localStorage.setItem(GT_SERVER_CACHE_KEY, JSON.stringify(gtScoresCache));
+            localStorage.setItem(GT_SERVER_CACHE_KEY(), JSON.stringify(gtScoresCache));
         }
         async function gtHashText(text) {
             const enc = new TextEncoder().encode(String(text || ''));
@@ -2940,18 +2956,18 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         }
         function gtLoadSession() {
             try {
-                const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY) || 'null');
+                const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY()) || 'null');
                 gtStudentSession = sess && sess.studentCode ? sess : null;
             } catch(e) { gtStudentSession = null; }
         }
         function gtSaveSession(sess) {
             gtStudentSession = sess;
-            localStorage.setItem(GT_STUDENT_SESSION_KEY, JSON.stringify(sess));
+            localStorage.setItem(GT_STUDENT_SESSION_KEY(), JSON.stringify(sess));
         }
         function gtClearSession() {
             gtStudentSession = null;
-            localStorage.removeItem(GT_STUDENT_SESSION_KEY);
-            localStorage.removeItem(GT_SERVER_CACHE_KEY);
+            localStorage.removeItem(GT_STUDENT_SESSION_KEY());
+            localStorage.removeItem(GT_SERVER_CACHE_KEY());
             gtScoresCache = {};
         }
         async function gtFetchStudentScores(studentCode) {
@@ -3286,16 +3302,18 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
             if (!lines.length) return [];
             let start = 0;
             let head = gtCsvSplit(lines[0]).map(h => h.toLowerCase());
+            let idxNum = head.indexOf('number');
             let idxCode = head.indexOf('code');
             let idxPass = head.indexOf('password');
+            if (idxNum < 0) idxNum = head.indexOf('no');
             if (idxCode < 0) idxCode = head.indexOf('student_code');
             if (idxPass < 0) idxPass = head.indexOf('pass');
             if (idxCode >= 0 && idxPass >= 0) start = 1;
-            else { idxCode = 0; idxPass = 1; }
+            else { idxNum = 0; idxCode = 1; idxPass = 2; }
             const rows = [];
             for (let i = start; i < lines.length; i++) {
                 const cols = gtCsvSplit(lines[i]);
-                rows.push({ code: (cols[idxCode] || '').trim(), password: String(cols[idxPass] || '').trim() });
+                rows.push({ number: (cols[idxNum] || '').trim(), code: (cols[idxCode] || '').trim(), password: String(cols[idxPass] || '').trim() });
             }
             return rows;
         }
@@ -3307,17 +3325,19 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
             const rowsRaw = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1, defval: '' });
             if (!rowsRaw.length) return [];
             const header = rowsRaw[0].map(h => String(h).trim().toLowerCase());
+            let idxNum = header.indexOf('number');
             let idxCode = header.indexOf('code');
             let idxPass = header.indexOf('password');
+            if (idxNum < 0) idxNum = header.indexOf('no');
             if (idxCode < 0) idxCode = header.indexOf('student_code');
             if (idxPass < 0) idxPass = header.indexOf('pass');
             let start = 0;
             if (idxCode >= 0 && idxPass >= 0) start = 1;
-            else { idxCode = 0; idxPass = 1; }
+            else { idxNum = 0; idxCode = 1; idxPass = 2; }
             const out = [];
             for (let i = start; i < rowsRaw.length; i++) {
                 const r = rowsRaw[i] || [];
-                out.push({ code: String(r[idxCode] || '').trim(), password: String(r[idxPass] || '').trim() });
+                out.push({ number: String(r[idxNum] || '').trim(), code: String(r[idxCode] || '').trim(), password: String(r[idxPass] || '').trim() });
             }
             return out;
         }
@@ -3334,9 +3354,9 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         }
         window.gtDownloadAuthTemplate = function() {
             const csv = [
-                'code,password',
-                '2201001,pass123',
-                '2201002,pass456'
+                'number,code,password',
+                '1,2201001,pass123',
+                '2,2201002,pass456'
             ].join('\n');
             gtDownloadCsvFile('accounts_template.csv', csv);
             showToast('✅ Accounts template downloaded', 'success');
@@ -3548,7 +3568,8 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
             rows.forEach(r => {
                 const code = (r.code || '').trim();
                 const password = String(r.password || '').trim();
-                if (code && password) normalized.set(code, { code, password });
+                const number = String(r.number || '').trim();
+                if (code && password) normalized.set(code, { code, password, number });
             });
             rows = Array.from(normalized.values());
             const updates = {};
@@ -3556,13 +3577,20 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
             for (const row of rows) {
                 if (!row.code || !row.password) { bad++; continue; }
                 const codeKey = gtKey(row.code);
+                const numberVal = Number(String(row.number || '').replace(/[^0-9]/g, ''));
                 updates[`gradeAuth/${codeKey}`] = {
                     studentCode: row.code,
+                    studentNo: Number.isFinite(numberVal) && numberVal > 0 ? numberVal : null,
                     passHash: await gtHashText(row.password),
                     failedAttempts: 0,
                     lockUntil: 0,
                     updatedAt: Date.now(),
                     updatedBy: (auth && auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'admin'
+                };
+                updates[`attendanceStudents/${codeKey}`] = {
+                    code: row.code,
+                    number: Number.isFinite(numberVal) && numberVal > 0 ? numberVal : null,
+                    updatedAt: Date.now()
                 };
                 ok++;
             }
@@ -3760,7 +3788,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
             document.getElementById('ops-notif-count').textContent = (CONFIG.recentUpdates || []).length;
         };
         window.clearScopeSeenAlerts = function() {
-            localStorage.removeItem('uniBot_seenAlerts');
+            localStorage.removeItem(scopedStorageKey('uniBot_seenAlerts'));
             showToast('✅ Local seen alerts cleared', 'success');
         };
 
@@ -3945,7 +3973,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         window.castPollVote = function(index) {
             if (!activePoll || activePoll.myVote !== null || activePoll.ended) return;
             activePoll.myVote = index;
-            localStorage.setItem('uniBot_poll_vote_' + activePoll.id, index);
+            localStorage.setItem(scopedStorageKey('uniBot_poll_vote_' + activePoll.id), index);
             activePoll.options[index].votes++;
             CONFIG.activePoll = activePoll;
             fetch(`${FIREBASE_DB_URL}/.json`, {
@@ -3960,7 +3988,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         (function initPoll() {
             if (CONFIG.activePoll) {
                 activePoll = CONFIG.activePoll;
-                const savedVote = localStorage.getItem('uniBot_poll_vote_' + activePoll.id);
+                const savedVote = localStorage.getItem(scopedStorageKey('uniBot_poll_vote_' + activePoll.id));
                 activePoll.myVote = (savedVote !== null) ? parseInt(savedVote) : null;
                 if (!activePoll.ended && Date.now() < activePoll.endsAt) {
                     pollUpdateActiveBar();
@@ -3971,12 +3999,12 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         // ==========================================
         // === FAVORITES LOGIC ===
         // ==========================================
-        const FAV_KEY = 'fav_files';
+        function FAV_KEY() { return scopedStorageKey('fav_files'); }
 
         function favLoad() {
-            try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch(e) { return []; }
+            try { return JSON.parse(localStorage.getItem(FAV_KEY()) || '[]'); } catch(e) { return []; }
         }
-        function favSave(list) { localStorage.setItem(FAV_KEY, JSON.stringify(list)); }
+        function favSave(list) { localStorage.setItem(FAV_KEY(), JSON.stringify(list)); }
 
         function favIsSaved(fileId) { return favLoad().some(f => f.id === fileId); }
 
@@ -4144,10 +4172,235 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         };
     </script>
     <script>
+// ══ ATTENDANCE MODULE ══
+(function() {
+  function attKey(v) { return String(v || '').trim().toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, '_'); }
+  function attToday() { return new Date().toISOString().slice(0, 10); }
+  function attCanManage() { return typeof hasAdminAccess === 'function' && hasAdminAccess(); }
+  function attStudentCode() {
+    try {
+      const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY()) || 'null');
+      return sess && sess.studentCode ? String(sess.studentCode).trim() : '';
+    } catch (e) { return ''; }
+  }
+  async function attFetchJson(path) {
+    const resp = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+    return (await resp.json()) || null;
+  }
+  async function attPatch(data) {
+    return fetch(`${FIREBASE_DB_URL}/.json`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  }
+  function attMode() { const el = document.getElementById('att-mode'); return el ? el.value : 'lectures'; }
+  function attSubjectKey() { const el = document.getElementById('att-subject'); return attKey(el ? el.value : ''); }
+  function attBucket() {
+    if (attMode() !== 'sections') return 'all';
+    const sec = document.getElementById('att-section');
+    return 'sec_' + attKey(sec ? sec.value : '1');
+  }
+  function attDatePath(dateVal) { return `attendanceRecords/${attMode()}/${attBucket()}/${attSubjectKey()}/${dateVal}`; }
+  function attBasePath() { return `attendanceRecords/${attMode()}/${attBucket()}/${attSubjectKey()}`; }
+  function attRefreshModeUI() {
+    const sec = document.getElementById('att-section');
+    if (sec) sec.style.display = attMode() === 'sections' ? 'block' : 'none';
+  }
+  function attRenderSubjects() {
+    const sel = document.getElementById('att-subject');
+    if (!sel) return;
+    const subs = Object.keys(database || {});
+    sel.innerHTML = subs.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+  function attRenderSections() {
+    const sel = document.getElementById('att-section');
+    if (!sel) return;
+    const sections = ['1','2','3','4','5','6','7','8','9','10'];
+    sel.innerHTML = sections.map(s => `<option value="${s}">Section ${s}</option>`).join('');
+  }
+  function attRenderGrid(maxCount, presentSet) {
+    const grid = document.getElementById('att-grid');
+    if (!grid) return;
+    const n = Math.max(1, Math.min(600, Number(maxCount) || 60));
+    grid.innerHTML = '';
+    for (let i = 1; i <= n; i++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn-sm ' + (presentSet.has(i) ? 'btn-edit' : 'btn-del');
+      b.style.margin = '0';
+      b.style.padding = '6px 4px';
+      b.textContent = String(i);
+      b.dataset.num = String(i);
+      b.dataset.on = presentSet.has(i) ? '1' : '0';
+      b.onclick = () => {
+        const on = b.dataset.on === '1';
+        b.dataset.on = on ? '0' : '1';
+        b.className = 'btn-sm ' + (on ? 'btn-del' : 'btn-edit');
+      };
+      grid.appendChild(b);
+    }
+  }
+  async function attRenderStudentView() {
+    const box = document.getElementById('att-student-view');
+    const status = document.getElementById('att-status');
+    if (!box) return;
+    const code = attStudentCode();
+    if (!code) {
+      box.innerHTML = '<div style="color:#f59e0b;">Login to Grade Tracker first to view attendance.</div>';
+      return;
+    }
+    const codeKey = attKey(code);
+    const profile = (await attFetchJson(`attendanceStudents/${encodeURIComponent(codeKey)}`)) ||
+                    (await attFetchJson(`gradeAuth/${encodeURIComponent(codeKey)}`)) || {};
+    const studentNo = Number(profile.number || profile.studentNo || 0);
+    if (!studentNo) {
+      box.innerHTML = '<div style="color:#f59e0b;">Student number not linked yet. Ask admin to import number,code,password.</div>';
+      return;
+    }
+    const records = (await attFetchJson(attBasePath())) || {};
+    const dates = Object.keys(records).sort();
+    if (!dates.length) {
+      box.innerHTML = '<div style="color:#94a3b8;">No attendance sessions saved yet.</div>';
+      return;
+    }
+    box.innerHTML = `<div style="display:grid;grid-template-columns:1fr auto;gap:6px;">${dates.map(d => {
+      const present = !!(records[d] && records[d].present && records[d].present[String(studentNo)]);
+      return `<div style="padding:8px;border-radius:8px;background:rgba(255,255,255,.03);">${d}</div><div style="padding:8px;border-radius:8px;background:${present ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.12)'};font-weight:800;text-align:center;">${present ? '✅' : '❌'}</div>`;
+    }).join('')}</div>`;
+    if (status) status.textContent = `Student #${studentNo} • ${dates.length} records`;
+  }
+  window.attLoadSheet = async function() {
+    const status = document.getElementById('att-status');
+    const dateEl = document.getElementById('att-date');
+    const maxEl = document.getElementById('att-max');
+    const dateVal = dateEl && dateEl.value ? dateEl.value : attToday();
+    if (dateEl && !dateEl.value) dateEl.value = dateVal;
+    const rec = (await attFetchJson(attDatePath(dateVal))) || {};
+    const present = rec.present || {};
+    const set = new Set(Object.keys(present).map(x => Number(x)).filter(x => Number.isFinite(x) && x > 0));
+    attRenderGrid(maxEl ? Number(maxEl.value) : 60, set);
+    if (status) status.textContent = `Loaded ${set.size} present students for ${dateVal}`;
+  };
+  window.attSaveSheet = async function() {
+    if (!attCanManage()) return showToast('❌ Unauthorized Access.', 'error');
+    const status = document.getElementById('att-status');
+    const dateEl = document.getElementById('att-date');
+    const dateVal = dateEl && dateEl.value ? dateEl.value : attToday();
+    const grid = document.getElementById('att-grid');
+    if (!grid) return;
+    const present = {};
+    grid.querySelectorAll('button[data-num]').forEach(b => { if (b.dataset.on === '1') present[b.dataset.num] = true; });
+    const updates = {};
+    updates[attDatePath(dateVal)] = {
+      ts: Date.now(),
+      by: (auth && auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'admin',
+      present
+    };
+    const resp = await attPatch(updates);
+    if (!resp.ok) {
+      if (status) status.textContent = 'Save failed';
+      return showToast('❌ Save failed', 'error');
+    }
+    if (status) status.textContent = `Saved ${Object.keys(present).length} present students`;
+    showToast('✅ Attendance saved', 'success');
+  };
+  window.attExport = async function() {
+    if (!attCanManage()) return showToast('❌ Unauthorized Access.', 'error');
+    const status = document.getElementById('att-status');
+    const records = (await attFetchJson(attBasePath())) || {};
+    const students = (await attFetchJson('attendanceStudents')) || {};
+    const dates = Object.keys(records).sort();
+    if (!dates.length) return showToast('No attendance records', 'error');
+    const rows = [['number', 'code', ...dates]];
+    const list = Object.values(students).filter(s => s && (s.code || s.studentCode));
+    list.sort((a, b) => Number(a.number || a.studentNo || 999999) - Number(b.number || b.studentNo || 999999));
+    list.forEach(s => {
+      const n = Number(s.number || s.studentNo || 0);
+      const c = String(s.code || s.studentCode || '');
+      if (!n || !c) return;
+      const row = [n, c];
+      dates.forEach(d => {
+        const present = !!(records[d] && records[d].present && records[d].present[String(n)]);
+        row.push(present ? '✅' : '❌');
+      });
+      rows.push(row);
+    });
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance_${attMode()}_${attBucket()}_${attSubjectKey()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (status) status.textContent = `Exported ${Math.max(0, rows.length - 1)} students`;
+  };
+  window.openAttendanceModal = async function() {
+    document.getElementById('menu-dropdown').classList.remove('active');
+    document.getElementById('attendance-modal').classList.add('active');
+    attRenderSubjects();
+    attRenderSections();
+    attRefreshModeUI();
+    const dateEl = document.getElementById('att-date');
+    if (dateEl && !dateEl.value) dateEl.value = attToday();
+    const isAdmin = attCanManage();
+    const studentView = document.getElementById('att-student-view');
+    const adminView = document.getElementById('att-admin-view');
+    if (studentView) studentView.style.display = isAdmin ? 'none' : 'block';
+    if (adminView) adminView.style.display = isAdmin ? 'block' : 'none';
+    if (isAdmin) await window.attLoadSheet();
+    else await attRenderStudentView();
+  };
+  window.closeAttendanceModal = function() {
+    const modal = document.getElementById('attendance-modal');
+    if (modal) modal.classList.remove('active');
+  };
+  document.addEventListener('DOMContentLoaded', () => {
+    ['att-mode', 'att-subject', 'att-section'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', async () => {
+        attRefreshModeUI();
+        if (attCanManage()) await window.attLoadSheet();
+        else await attRenderStudentView();
+      });
+    });
+  });
+})();
+    </script>
+    <script>
 // ══ SHOUBRA AI ══
 (function() {
-  const STORAGE_KEY = 'shoubraAI_serverUrl';
-  const CHATS_KEY   = 'shoubraAI_chats';
+  const STORAGE_KEY_BASE = 'shoubraAI_serverUrl';
+  const CHATS_KEY_BASE   = 'shoubraAI_chats';
+  const DEFAULT_AI_SERVER_URL = 'https://web-production-c391d4.up.railway.app';
+  function saiGetScopeId() {
+    try {
+      const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY()) || 'null');
+      if (sess && sess.studentCode) return 'student_' + String(sess.studentCode).trim();
+    } catch(e) {}
+    try {
+      if (auth && auth.currentUser && auth.currentUser.email) {
+        return 'email_' + auth.currentUser.email.replace(/[^a-zA-Z0-9]/g, '_');
+      }
+    } catch(e) {}
+    try {
+      const anon = localStorage.getItem('fcm_anon_key');
+      if (anon) return 'device_' + anon;
+    } catch(e) {}
+    return 'guest';
+  }
+  function saiStorageKey(base) {
+    return `${base}__${getScopeStorageSuffix()}__${saiGetScopeId()}`;
+  }
+  function saiGetServerUrl() {
+    const saved = (localStorage.getItem(saiStorageKey(STORAGE_KEY_BASE)) || '').trim().replace(/\/$/, '');
+    if (saved.startsWith('http')) return saved;
+    return DEFAULT_AI_SERVER_URL;
+  }
   let saiLang = 'en';
   let saiChats = [];
   let saiCurrentId = null;
@@ -4158,9 +4411,11 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
   window.openShoubraAI = function() {
     document.getElementById('shoubra-ai-modal').classList.add('active');
     document.getElementById('menu-dropdown').classList.remove('active');
-    const url = localStorage.getItem(STORAGE_KEY);
-    if (url) { saiShowChat(); } else { saiShowKeyScreen(); }
     saiLoadChats();
+    const url = localStorage.getItem(saiStorageKey(STORAGE_KEY_BASE));
+    const keyInput = document.getElementById('sai-api-key-input');
+    if (keyInput) keyInput.value = (url || DEFAULT_AI_SERVER_URL).replace(/\/$/, '');
+    if (url) { saiShowChat(); } else { saiShowKeyScreen(); }
   };
 
   window.closeShoubraAI = function() {
@@ -4189,12 +4444,12 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
       return;
     }
     errEl.style.display = 'none';
-    localStorage.setItem(STORAGE_KEY, url.replace(/\/$/, ''));
+    localStorage.setItem(saiStorageKey(STORAGE_KEY_BASE), url.replace(/\/$/, ''));
     saiShowChat();
   };
 
   window.saiChangeKey = function() {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(saiStorageKey(STORAGE_KEY_BASE));
     saiCloseDrawer();
     saiShowKeyScreen();
   };
@@ -4223,12 +4478,12 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
 
   // ── Chats ──
   function saiLoadChats() {
-    try { saiChats = JSON.parse(localStorage.getItem(CHATS_KEY)) || []; } catch { saiChats = []; }
+    try { saiChats = JSON.parse(localStorage.getItem(saiStorageKey(CHATS_KEY_BASE))) || []; } catch { saiChats = []; }
     saiRenderDrawerList();
   }
 
   function saiSaveChats() {
-    localStorage.setItem(CHATS_KEY, JSON.stringify(saiChats));
+    localStorage.setItem(saiStorageKey(CHATS_KEY_BASE), JSON.stringify(saiChats));
   }
 
   window.saiNewChat = function() {
@@ -4394,7 +4649,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
     if (!text && !saiAttachments.length) return;
     if (saiIsTyping) return;
 
-    const serverUrl = 'https://web-production-c391d4.up.railway.app';
+    const serverUrl = saiGetServerUrl();
 
     inp.value = '';
     inp.style.height = 'auto';
@@ -4494,6 +4749,39 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
   });
 })();
 </script>
+<div class="grade-modal-container" id="attendance-modal">
+  <div class="grade-header">
+    <div class="grade-header-left">
+      <h2>✅ Attendance</h2>
+      <div class="grade-welcome" id="att-subtitle">Lectures / Sections Attendance</div>
+    </div>
+    <div class="close-modal" onclick="window.closeAttendanceModal()">×</div>
+  </div>
+  <div class="grade-body" style="display:flex;flex-direction:column;gap:10px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <select id="att-mode" class="form-select" style="flex:1;min-width:130px;">
+        <option value="lectures">Lectures</option>
+        <option value="sections">Sections</option>
+      </select>
+      <select id="att-subject" class="form-select" style="flex:2;min-width:160px;"></select>
+      <select id="att-section" class="form-select" style="flex:1;min-width:120px;display:none;"></select>
+    </div>
+    <div id="att-student-view" style="display:none;"></div>
+    <div id="att-admin-view" style="display:none;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <input id="att-date" type="date" class="form-input" style="max-width:170px;">
+        <input id="att-max" type="number" class="form-input" min="1" max="600" value="60" style="max-width:120px;" placeholder="Students">
+        <button class="btn-sm btn-edit" style="margin:0;padding:8px 10px;" onclick="window.attLoadSheet()">Load</button>
+      </div>
+      <div id="att-grid" style="display:grid;grid-template-columns:repeat(10,minmax(24px,1fr));gap:6px;max-height:240px;overflow:auto;background:rgba(255,255,255,.03);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn-save" style="margin:0;flex:1;" onclick="window.attSaveSheet()">💾 Save Attendance</button>
+        <button class="btn-save" style="margin:0;flex:1;background:linear-gradient(135deg,#14b8a6,#0f766e);" onclick="window.attExport()">📤 Export CSV</button>
+      </div>
+    </div>
+    <div id="att-status" style="font-size:12px;color:#94a3b8;"></div>
+  </div>
+</div>
 <!-- ══ SHOUBRA AI MODAL ══ -->
 <div id="shoubra-ai-modal">
   <div class="sai-overlay" onclick="window.closeShoubraAI()"></div>
@@ -5223,18 +5511,24 @@ function sch_removeSection() {
 }
 // ========== END SCHEDULE SCREEN ==========
 // ==================== VOICE NOTES ====================
+function vnStorageKey(base) { return scopedStorageKey(base); }
+const VN_DEFAULT_SERVER_URL = 'https://web-production-c391d4.up.railway.app';
+function vnGetServerUrl() {
+  const v = (localStorage.getItem(vnStorageKey('vn_server_url')) || '').trim().replace(/\/$/, '');
+  return v.startsWith('http') ? v : VN_DEFAULT_SERVER_URL;
+}
 let vnMediaRecorder = null;
 let vnAudioChunks = [];
 let vnRecording = false;
 let vnTimerInterval = null;
 let vnSeconds = 0;
 let vnCurrentBlob = null;
-let vnRecordings = JSON.parse(localStorage.getItem('vn_recordings') || '[]');
+let vnRecordings = JSON.parse(localStorage.getItem(vnStorageKey('vn_recordings')) || '[]');
 
 function openVoiceNotes() {
   document.getElementById('vnotes-screen').classList.add('open');
   vnRenderList();
-  setTimeout(() => { const inp = document.getElementById('vn-server-url'); if (inp) inp.value = localStorage.getItem('vn_server_url') || ''; }, 100);
+  setTimeout(() => { const inp = document.getElementById('vn-server-url'); if (inp) inp.value = localStorage.getItem(vnStorageKey('vn_server_url')) || ''; }, 100);
 }
 function closeVoiceNotes() {
   document.getElementById('vnotes-screen').classList.remove('open');
@@ -5304,7 +5598,7 @@ function vnSaveRecording() {
       audioData: reader.result
     };
     vnRecordings.unshift(rec);
-    localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+    localStorage.setItem(vnStorageKey('vn_recordings'), JSON.stringify(vnRecordings));
     vnCurrentBlob = null;
     document.getElementById('vn-save-btn').style.display = 'none';
     document.getElementById('vn-name-input').value = '';
@@ -5379,11 +5673,11 @@ function vnShareToAdmin(id) {
 function vnDelete(id) {
   if (!confirm('هتمسح التسجيل ده؟')) return;
   vnRecordings = vnRecordings.filter(r => r.id !== id);
-  localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+  localStorage.setItem(vnStorageKey('vn_recordings'), JSON.stringify(vnRecordings));
   vnRenderList();
 }
 function vnSaveServerUrl(val, showToast) {
-  localStorage.setItem('vn_server_url', val.trim().replace(/\/$/, ''));
+  localStorage.setItem(vnStorageKey('vn_server_url'), val.trim().replace(/\/$/, ''));
   if (showToast) {
     const btn = document.getElementById('vn-save-url-btn');
     if (btn) { btn.textContent = '✅ تم!'; setTimeout(() => btn.textContent = 'حفظ ✓', 1500); }
@@ -5394,7 +5688,7 @@ async function vnTranscribe(id) {
   if (!rec) return;
   const box = document.getElementById(`vn-transcribe-${id}`);
   box.className = 'vn-result-box show';
-  const serverUrl = 'https://web-production-c391d4.up.railway.app';
+  const serverUrl = vnGetServerUrl();
   box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التفريغ...</span></div>';
 
   try {
@@ -5411,7 +5705,7 @@ async function vnTranscribe(id) {
     const data = await response.json();
     if (data.text) {
       rec.transcript = data.text;
-      localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+      localStorage.setItem(vnStorageKey('vn_recordings'), JSON.stringify(vnRecordings));
       box.innerHTML = `<div class="vn-result-title">📝 النص المفرّغ</div>${data.text}`;
     } else {
       box.innerHTML = '❌ ' + (data.error?.message || 'حدث خطأ');
@@ -5435,7 +5729,7 @@ async function vnSummarize(id) {
   box.innerHTML = '<div class="vn-loading"><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><div class="vn-loading-dot"></div><span>جاري التلخيص...</span></div>';
 
   try {
-    const serverUrl = 'https://web-production-c391d4.up.railway.app';
+    const serverUrl = vnGetServerUrl();
     const response = await fetch(`${serverUrl}/summarize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -5445,7 +5739,7 @@ async function vnSummarize(id) {
     const data = await response.json();
     if (data.summary) {
       rec.summary = data.summary;
-      localStorage.setItem('vn_recordings', JSON.stringify(vnRecordings));
+      localStorage.setItem(vnStorageKey('vn_recordings'), JSON.stringify(vnRecordings));
       box.innerHTML = `<div class="vn-result-title">✨ الملخص</div>${data.summary}`;
     } else {
       box.innerHTML = '❌ حدث خطأ في التلخيص';
