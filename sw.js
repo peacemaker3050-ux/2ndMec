@@ -24,7 +24,7 @@ function getScopedDbUrl() {
 }
 
 // ── Cache ──
-const CACHE_VERSION = 'v13';
+const CACHE_VERSION = 'v14';
 const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
 const CACHE_API     = `uni-api-${CACHE_VERSION}`;
 
@@ -164,7 +164,7 @@ self.addEventListener('fetch', event => {
   }
 
   // === SHARE TARGET ===
-  if (event.request.method === 'POST') {
+  if (event.request.method === 'POST' && url.hostname === self.location.hostname) {
     const requestClone = event.request.clone();
     event.respondWith(
       (async () => {
