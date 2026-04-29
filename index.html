@@ -1297,6 +1297,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <!-- ============================= -->
                 <div class="menu-item" onclick="window.openGradeTracker()"><span>📊</span> <span>Grade Tracker</span></div>
                 <div class="menu-item" onclick="window.openAttendanceModal()"><span>✅</span> <span>Attendance</span></div>
+                <div class="menu-item" onclick="window.openCommunityChat()"><span>💬</span> <span>Community Chat</span></div>
                 <div class="menu-item" onclick="window.openQuickLinksModal()"><span>🔗</span> <span>Quick Links</span></div>
                 <div class="menu-item" onclick="window.openFavoritesModal()"><span>⭐</span> <span>Favorites</span></div>
                 <div class="menu-item" onclick="window.openTodoModal()"><span>📌</span> <span>To-Do List</span></div>
@@ -4372,6 +4373,255 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
 })();
     </script>
     <script>
+// ══ COMMUNITY CHAT (PHASE 2) ══
+(function() {
+  const CHAT_API_BASE = 'https://web-production-ae004.up.railway.app';
+  let ccGroups = [];
+  let ccGroupId = 'general';
+  let ccTimer = null;
+  let ccCloudName = '';
+  let ccUploadPreset = '';
+  function ccScopeKey() { return APP_SCOPE ? buildScopeKey(APP_SCOPE) : 'ميكانيكا__second__term2'; }
+  function ccProfileKey() { return scopedStorageKey('chat_profile'); }
+  function ccUiKey(base) { return scopedStorageKey(`chat_ui_${base}`); }
+  function ccProfile() { try { return JSON.parse(localStorage.getItem(ccProfileKey()) || 'null'); } catch(e) { return null; } }
+  function ccIsAdmin() { return typeof hasAdminAccess === 'function' && hasAdminAccess(); }
+  function ccActorEmail() { return (auth && auth.currentUser && auth.currentUser.email) ? String(auth.currentUser.email).trim().toLowerCase() : ''; }
+  async function ccGetIdToken() {
+    try {
+      if (auth && auth.currentUser) return await auth.currentUser.getIdToken(true);
+    } catch(e) {}
+    return '';
+  }
+  function ccSetStatus(text, color) {
+    const el = document.getElementById('cc-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = color || '#94a3b8';
+  }
+  function ccGetPinned() { return localStorage.getItem(ccUiKey('pin_' + ccGroupId)) === '1'; }
+  function ccGetMuted() { return localStorage.getItem(ccUiKey('mute_' + ccGroupId)) === '1'; }
+  function ccRefreshUiToggles() {
+    const meta = document.getElementById('cc-group-meta');
+    if (meta) meta.textContent = `${ccGetPinned() ? '📌 pinned' : ''} ${ccGetMuted() ? '🔕 muted' : ''}`.trim();
+  }
+  async function ccLoadCloudinaryConfig() {
+    try {
+      const r = await fetch(`${CHAT_API_BASE}/chat/config`);
+      const d = await r.json();
+      ccCloudName = d.cloudinaryCloudName || '';
+      ccUploadPreset = d.cloudinaryUploadPreset || '';
+    } catch(e) {}
+  }
+  async function ccLoadGroups() {
+    const r = await fetch(`${CHAT_API_BASE}/chat/groups?scopeKey=${encodeURIComponent(ccScopeKey())}`);
+    const data = await r.json();
+    ccGroups = (data && data.groups) ? data.groups : [{ id: 'general', name: 'General' }];
+    const box = document.getElementById('cc-groups');
+    if (!box) return;
+    box.innerHTML = ccGroups.map(g => `<div onclick="ccPickGroup('${g.id}')" style="padding:8px;border-radius:8px;cursor:pointer;margin-bottom:6px;background:${g.id===ccGroupId?'rgba(59,130,246,.18)':'rgba(255,255,255,.03)'};border:1px solid rgba(255,255,255,.07);">${g.name}</div>`).join('');
+    ccRefreshUiToggles();
+  }
+  async function ccLoadGroupState() {
+    const meta = document.getElementById('cc-group-meta');
+    try {
+      const r = await fetch(`${CHAT_API_BASE}/chat/group-state?scopeKey=${encodeURIComponent(ccScopeKey())}&groupId=${encodeURIComponent(ccGroupId)}`);
+      const d = await r.json();
+      if (meta) {
+        const parts = [];
+        if (d.isLocked) parts.push('🔒 locked');
+        if (Number(d.membersInScope || 0) > 0) parts.push(`👥 ${d.membersInScope}`);
+        if (ccGetPinned()) parts.push('📌 pinned');
+        if (ccGetMuted()) parts.push('🔕 muted');
+        meta.textContent = parts.join('  ');
+      }
+      return !!d.isLocked;
+    } catch(e) { return false; }
+  }
+  window.ccPickGroup = async function(groupId) {
+    ccGroupId = groupId;
+    await ccLoadGroups();
+    await ccLoadMessages();
+  };
+  window.ccReact = async function(messageId) {
+    const prof = ccProfile();
+    if (!prof) return;
+    const reaction = prompt('Reaction emoji (مثال: 👍 ❤️ 😂)', '👍');
+    if (!reaction) return;
+    await fetch(`${CHAT_API_BASE}/chat/reactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopeKey: ccScopeKey(), groupId: ccGroupId, messageId, phone: prof.phone, reaction: reaction.trim().slice(0, 8) })
+    });
+    await ccLoadMessages();
+  };
+  async function ccMarkRead(list) {
+    const prof = ccProfile();
+    if (!prof || !list.length) return;
+    const ids = list.map(m => m.id).filter(Boolean);
+    if (!ids.length) return;
+    fetch(`${CHAT_API_BASE}/chat/read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopeKey: ccScopeKey(), groupId: ccGroupId, phone: prof.phone, messageIds: ids })
+    }).catch(() => {});
+  }
+  async function ccLoadMessages() {
+    const box = document.getElementById('cc-messages');
+    if (!box) return;
+    const r = await fetch(`${CHAT_API_BASE}/chat/messages?scopeKey=${encodeURIComponent(ccScopeKey())}&groupId=${encodeURIComponent(ccGroupId)}&limit=80`);
+    const data = await r.json();
+    const list = (data && data.messages) ? data.messages : [];
+    const prof = ccProfile();
+    if (!list.length) {
+      box.innerHTML = '<div style="color:#64748b;text-align:center;padding:16px;">No messages yet</div>';
+      await ccLoadGroupState();
+      return;
+    }
+    box.innerHTML = list.map(m => {
+      const mine = prof && m.sender_phone === prof.phone;
+      const rx = m.reactions || {};
+      const rxStr = Object.keys(rx).map(k => `${k} ${rx[k]}`).join('  ');
+      return `<div style="margin-bottom:8px;padding:8px;border-radius:10px;background:${mine ? 'rgba(59,130,246,.12)' : 'rgba(255,255,255,.03)'};border:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:11px;color:#93c5fd;display:flex;justify-content:space-between;gap:8px;">
+          <span>${m.sender_name}</span>
+          <span style="color:#64748b;">seen ${m.read_count || 0}</span>
+        </div>
+        <div style="font-size:13px;margin-top:3px;white-space:pre-wrap;">${m.message_text || ''}${m.media_url ? `<div style="margin-top:6px;"><a href="${m.media_url}" target="_blank" style="color:#60a5fa;">Open media</a></div>` : ''}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+          <button class="btn-sm btn-edit" style="margin:0;padding:4px 7px;font-size:10px;" onclick="ccReact(${m.id})">😊 React</button>
+          <div style="font-size:10px;color:#cbd5e1;">${rxStr || ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+    await ccMarkRead(list.slice(-20));
+    await ccLoadGroupState();
+  }
+  window.ccRegister = async function() {
+    const name = (document.getElementById('cc-name')?.value || '').trim();
+    const phone = (document.getElementById('cc-phone')?.value || '').trim();
+    if (!name || !phone) return ccSetStatus('Enter name and phone', '#f59e0b');
+    const res = await fetch(`${CHAT_API_BASE}/chat/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopeKey: ccScopeKey(), name, phone })
+    });
+    if (!res.ok) return ccSetStatus('Register failed', '#ef4444');
+    localStorage.setItem(ccProfileKey(), JSON.stringify({ name, phone }));
+    ccSetStatus('Joined successfully', '#22c55e');
+    await ccLoadMessages();
+  };
+  window.ccPickMedia = function() {
+    const input = document.getElementById('cc-media-file');
+    if (input) input.click();
+  };
+  async function ccUploadToCloudinary(file) {
+    if (!ccCloudName || !ccUploadPreset) throw new Error('Cloudinary not configured');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', ccUploadPreset);
+    const endpoint = `https://api.cloudinary.com/v1_1/${ccCloudName}/${file.type.startsWith('video/') ? 'video' : 'image'}/upload`;
+    const resp = await fetch(endpoint, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok || !data.secure_url) throw new Error(data.error?.message || 'upload failed');
+    return data.secure_url;
+  }
+  window.ccSend = async function() {
+    const prof = ccProfile();
+    if (!prof || !prof.name || !prof.phone) return ccSetStatus('Join first', '#f59e0b');
+    const txt = (document.getElementById('cc-text')?.value || '').trim();
+    let mediaUrl = (document.getElementById('cc-media-url')?.value || '').trim();
+    const fileInput = document.getElementById('cc-media-file');
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    if (!txt && !mediaUrl && !file) return;
+    if (file) {
+      try {
+        ccSetStatus('Uploading media...', '#93c5fd');
+        mediaUrl = await ccUploadToCloudinary(file);
+      } catch(e) {
+        return ccSetStatus(`Upload failed: ${e.message}`, '#ef4444');
+      }
+    }
+    const idToken = await ccGetIdToken();
+    const res = await fetch(`${CHAT_API_BASE}/chat/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scopeKey: ccScopeKey(),
+        groupId: ccGroupId,
+        senderName: prof.name,
+        senderPhone: prof.phone,
+        idToken: idToken,
+        messageType: mediaUrl ? 'media' : 'text',
+        messageText: txt,
+        mediaUrl: mediaUrl
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return ccSetStatus(err.error || 'Send failed', '#ef4444');
+    }
+    document.getElementById('cc-text').value = '';
+    document.getElementById('cc-media-url').value = '';
+    if (fileInput) fileInput.value = '';
+    ccSetStatus('Sent', '#22c55e');
+    await ccLoadMessages();
+  };
+  window.ccTogglePin = function() {
+    const k = ccUiKey('pin_' + ccGroupId);
+    localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1');
+    ccRefreshUiToggles();
+  };
+  window.ccToggleMute = function() {
+    const k = ccUiKey('mute_' + ccGroupId);
+    localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1');
+    ccRefreshUiToggles();
+  };
+  window.ccToggleLock = async function() {
+    if (!ccIsAdmin()) return ccSetStatus('Only admin/owner can lock groups', '#f59e0b');
+    const locked = await ccLoadGroupState();
+    const idToken = await ccGetIdToken();
+    const res = await fetch(`${CHAT_API_BASE}/chat/group-lock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scopeKey: ccScopeKey(),
+        groupId: ccGroupId,
+        isLocked: !locked,
+        idToken: idToken
+      })
+    });
+    if (!res.ok) return ccSetStatus('Lock update failed', '#ef4444');
+    await ccLoadGroupState();
+  };
+  window.openCommunityChat = async function() {
+    document.getElementById('menu-dropdown').classList.remove('active');
+    document.getElementById('community-chat-modal').classList.add('active');
+    const p = ccProfile();
+    if (p) {
+      const n = document.getElementById('cc-name'); const ph = document.getElementById('cc-phone');
+      if (n) n.value = p.name || '';
+      if (ph) ph.value = p.phone || '';
+    }
+    await ccLoadCloudinaryConfig();
+    await ccLoadGroups();
+    await ccLoadMessages();
+    if (ccTimer) clearInterval(ccTimer);
+    ccTimer = setInterval(async () => {
+      if (ccGetMuted()) return;
+      await ccLoadMessages();
+    }, 6000);
+    ccSetStatus(`Connected to scope: ${ccScopeKey()}`, '#94a3b8');
+  };
+  window.closeCommunityChat = function() {
+    const m = document.getElementById('community-chat-modal');
+    if (m) m.classList.remove('active');
+    if (ccTimer) { clearInterval(ccTimer); ccTimer = null; }
+  };
+})();
+    </script>
+    <script>
 // ══ SHOUBRA AI ══
 (function() {
   const STORAGE_KEY_BASE = 'shoubraAI_serverUrl';
@@ -4749,6 +4999,45 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
   });
 })();
 </script>
+<div class="grade-modal-container" id="community-chat-modal">
+  <div class="grade-header">
+    <div class="grade-header-left">
+      <h2>💬 Community Chat</h2>
+      <div class="grade-welcome" id="cc-subtitle">Scope-isolated groups</div>
+    </div>
+    <div class="close-modal" onclick="window.closeCommunityChat()">×</div>
+  </div>
+  <div class="grade-body" style="display:flex;flex-direction:column;gap:8px;height:calc(100vh - 140px);">
+    <div id="cc-auth-box" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:10px;">
+      <div style="font-size:12px;color:#93c5fd;margin-bottom:8px;">Enter once per scope to join chat</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="cc-name" class="form-input" placeholder="Name" style="flex:1;min-width:140px;">
+        <input id="cc-phone" class="form-input" placeholder="Phone" style="flex:1;min-width:140px;">
+        <button class="btn-save" style="margin:0;padding:10px 14px;" onclick="window.ccRegister()">Join</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;min-height:0;flex:1;">
+      <div id="cc-groups" style="width:36%;max-width:170px;min-width:120px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px;overflow:auto;"></div>
+      <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <button class="btn-sm btn-edit" style="margin:0;padding:6px 8px;" onclick="window.ccTogglePin()">📌 Pin</button>
+          <button class="btn-sm btn-edit" style="margin:0;padding:6px 8px;" onclick="window.ccToggleMute()">🔕 Mute</button>
+          <button class="btn-sm btn-edit" style="margin:0;padding:6px 8px;" onclick="window.ccToggleLock()">🔒 Lock</button>
+          <span id="cc-group-meta" style="font-size:11px;color:#94a3b8;display:flex;align-items:center;"></span>
+        </div>
+        <div id="cc-messages" style="flex:1;overflow:auto;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;"></div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <input id="cc-text" class="form-input" placeholder="Write a message..." style="flex:1;">
+          <input id="cc-media-url" class="form-input" placeholder="Media URL (optional)" style="flex:1;">
+          <input id="cc-media-file" type="file" accept="image/*,video/*" style="display:none;">
+          <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="window.ccPickMedia()">📎</button>
+          <button class="btn-save" style="margin:0;padding:10px 14px;" onclick="window.ccSend()">Send</button>
+        </div>
+      </div>
+    </div>
+    <div id="cc-status" style="font-size:11px;color:#94a3b8;"></div>
+  </div>
+</div>
 <div class="grade-modal-container" id="attendance-modal">
   <div class="grade-header">
     <div class="grade-header-left">
