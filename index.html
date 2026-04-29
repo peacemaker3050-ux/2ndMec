@@ -1600,7 +1600,10 @@ body.light-mode .gt-sum-big { color: #0f172a; }
                 <div class="form-group"><label class="form-label">Back Texts</label><textarea id="admin-msg-backs" class="form-textarea" placeholder="Back Subject | Back Doctor | Back Main"></textarea></div>
                 <div id="owner-admin-section" style="display: none;">
                     <div class="admin-section-title" style="color: #fbbf24;">Manage Admins (Owner Only)</div>
-                    <div class="form-group"><label class="form-label">Add Admin (Email)</label><div style="display: flex; gap: 5px;"><input type="email" id="admin-add-input" class="form-input" placeholder="admin@example.com"><button class="btn-save" style="width: auto; margin: 0; padding: 0 20px;" onclick="window.addAdmin()">+</button></div></div>
+                    <div class="form-group"><label class="form-label">Add Admin (Email)</label><div style="display: flex; gap: 5px;"><input type="email" id="admin-add-input" class="form-input" placeholder="admin@example.com"></div></div>
+<div class="form-group"><label class="form-label">Admin Type</label><select id="admin-type-select" class="form-select" onchange="window.onAdminTypeChange()"><option value="general">General Admin (كل حاجة)</option><option value="subject">Subject Admin (ماده محدده)</option></select></div>
+<div class="form-group" id="admin-subject-select-group" style="display:none;"><label class="form-label">Select Subject</label><select id="admin-subject-select" class="form-select"></select></div>
+<button class="btn-save" style="width: auto; padding: 0 20px; margin-top: 8px;" onclick="window.addAdmin()">+ Add Admin</button>
                     <div class="data-list" id="admin-list-container"></div>
                 </div>
                 <button class="btn-save" onclick="window.saveAdminSettings()">Save Settings</button>
@@ -2290,7 +2293,13 @@ starEl.className = 'fav-star' + (_isSaved ? ' active' : '');
         document.getElementById('admin-bg-url').addEventListener('input', function(e) { CONFIG.bgImage = e.target.value; applyConfig(CONFIG); });
         function getAdminCurrentContent() { if (adminNavStack.length === 0) return Object.keys(database); if (adminNavStack.length === 1) return database[adminNavStack[0]].doctors; const subject = adminNavStack[0]; const doctor = adminNavStack[1]; if (!database[subject][doctor].root) database[subject][doctor].root = migrateDoctorData(database[subject][doctor]); let currentList = database[subject][doctor].root; for (let i = 2; i < adminNavStack.length; i++) { const folderName = adminNavStack[i]; const folder = currentList.find(f => f.name === folderName && f.type === 'folder'); if (folder && folder.children) currentList = folder.children; else return []; } return currentList; }
         function migrateDoctorData(doctorObj) { if (doctorObj.root) return doctorObj.root; let newRoot = []; Object.keys(doctorObj).forEach(key => { if (key !== 'doctors' && key !== 'sections' && key !== 'root' && Array.isArray(doctorObj[key])) { newRoot.push({ id: 'migrated_' + Date.now(), name: key, type: 'folder', children: doctorObj[key] }); } }); if (!newRoot.find(f => f.name === "📚 Lectures")) newRoot.push({ id: 'def_lectures', name: "📚 Lectures", type: "folder", children: [] }); if (!newRoot.find(f => f.name === "🔔 Notifications")) newRoot.push({ id: 'def_notif', name: "🔔 Notifications", type: "folder", children: [] }); return newRoot; }
-        function renderAdminDataView() { const pathContainer = document.getElementById('admin-data-path'); const listContainer = document.getElementById('admin-list-items'); const addTypeSelector = document.getElementById('add-type-selector'); const linkGroup = document.getElementById('file-link-input-group'); listContainer.innerHTML = ''; document.getElementById('new-item-name').value = ''; let pathHTML = `<span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(-1)">Home</span>`; adminNavStack.forEach((item, idx) => { pathHTML += ` > <span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(${idx})">${item}</span>`; }); pathContainer.innerHTML = pathHTML; const currentList = getAdminCurrentContent(); if (adminNavStack.length >= 2) { addTypeSelector.style.display = 'flex'; linkGroup.style.display = adminAddType === 'file' ? 'block' : 'none'; document.getElementById('new-item-name').style.display = adminAddType === 'folder' ? 'block' : 'none'; document.getElementById('new-item-name').placeholder = 'Folder Name...'; } else { addTypeSelector.style.display = 'none'; linkGroup.style.display = 'none'; document.getElementById('new-item-name').style.display = 'block'; document.getElementById('new-item-name').placeholder = adminNavStack.length === 0 ? "Subject Name..." : adminNavStack.length === 1 ? "Doctor Name..." : "Folder Name..."; } if (!currentList || currentList.length === 0) { listContainer.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No items found</div>'; return; } currentList.forEach((item, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('div'); nameSpan.className = 'data-name'; if (adminNavStack.length >= 2) { const icon = item.type === 'folder' ? '<span class="folder-icon">📁</span>' : '<span class="file-icon">📄</span>'; nameSpan.innerHTML = `${icon} ${item.name}`; if (item.type === 'folder') { nameSpan.style.cursor = 'pointer'; nameSpan.onclick = () => { adminNavStack.push(item.name); renderAdminDataView(); }; } } else { nameSpan.innerText = item; nameSpan.onclick = () => { adminNavStack.push(item); renderAdminDataView(); }; } const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions'; const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; delBtn.onclick = () => deleteAdminDataItem(index); actionsDiv.appendChild(delBtn); div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div); }); }
+        function renderAdminDataView() {
+    const restrictedSubject = getAdminSubject();
+    const pathContainer = document.getElementById('admin-data-path'); const listContainer = document.getElementById('admin-list-items'); const addTypeSelector = document.getElementById('add-type-selector'); const linkGroup = document.getElementById('file-link-input-group'); listContainer.innerHTML = ''; document.getElementById('new-item-name').value = ''; let pathHTML = `<span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(-1)">Home</span>`; adminNavStack.forEach((item, idx) => { pathHTML += ` > <span style="cursor:pointer; color:#60a5fa;" onclick="window.adminNavTo(${idx})">${item}</span>`; }); pathContainer.innerHTML = pathHTML; let currentList = getAdminCurrentContent();
+// If subject-admin and at root level, filter to their subject only
+if (restrictedSubject && adminNavStack.length === 0) {
+    currentList = currentList.filter(s => s === restrictedSubject);
+} if (adminNavStack.length >= 2) { addTypeSelector.style.display = 'flex'; linkGroup.style.display = adminAddType === 'file' ? 'block' : 'none'; document.getElementById('new-item-name').style.display = adminAddType === 'folder' ? 'block' : 'none'; document.getElementById('new-item-name').placeholder = 'Folder Name...'; } else { addTypeSelector.style.display = 'none'; linkGroup.style.display = 'none'; document.getElementById('new-item-name').style.display = 'block'; document.getElementById('new-item-name').placeholder = adminNavStack.length === 0 ? "Subject Name..." : adminNavStack.length === 1 ? "Doctor Name..." : "Folder Name..."; } if (!currentList || currentList.length === 0) { listContainer.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No items found</div>'; return; } currentList.forEach((item, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('div'); nameSpan.className = 'data-name'; if (adminNavStack.length >= 2) { const icon = item.type === 'folder' ? '<span class="folder-icon">📁</span>' : '<span class="file-icon">📄</span>'; nameSpan.innerHTML = `${icon} ${item.name}`; if (item.type === 'folder') { nameSpan.style.cursor = 'pointer'; nameSpan.onclick = () => { adminNavStack.push(item.name); renderAdminDataView(); }; } } else { nameSpan.innerText = item; nameSpan.onclick = () => { adminNavStack.push(item); renderAdminDataView(); }; } const actionsDiv = document.createElement('div'); actionsDiv.className = 'data-actions'; const delBtn = document.createElement('button'); delBtn.className = 'btn-sm btn-del'; delBtn.innerText = '🗑️'; delBtn.onclick = () => deleteAdminDataItem(index); actionsDiv.appendChild(delBtn); div.appendChild(nameSpan); div.appendChild(actionsDiv); listContainer.appendChild(div); }); }
         window.adminNavTo = function(index) { if (index === -1) adminNavStack = []; else adminNavStack = adminNavStack.slice(0, index + 1); renderAdminDataView(); }
         window.setAddType = function(type, el) { adminAddType = type; document.querySelectorAll('.radio-label').forEach(l => l.classList.remove('active')); el.classList.add('active'); document.getElementById('file-link-input-group').style.display = type === 'file' ? 'block' : 'none';
 document.getElementById('new-item-name').style.display = type === 'folder' ? 'block' : 'none'; }
@@ -2472,10 +2481,68 @@ if (hasAdminAccess()) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); d
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
         window.switchAdminTab = function(index) { if (index === currentAdminTab) return; const tabs = ['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks','ops']; if(index < 0 || index > tabs.length - 1) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${tabs[currentAdminTab]}`; const nextTabId = `tab-${tabs[index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; if (index === 8 && typeof window.refreshOpsStats === 'function') window.refreshOpsStats(); }, duration); };
         window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins || [], generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
-        function renderAdminList() { const container = document.getElementById('admin-list-container'); container.innerHTML = ''; if (!CONFIG.admins || CONFIG.admins.length === 0) { container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>'; return; } CONFIG.admins.forEach((adminEmail, index) => { const div = document.createElement('div'); div.className = 'data-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'data-name'; nameSpan.innerText = adminEmail; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-sm btn-del'; removeBtn.innerText = '🗑️'; removeBtn.onclick = () => removeAdmin(index); div.appendChild(nameSpan); div.appendChild(removeBtn); container.appendChild(div); }); }
-        window.addAdmin = function() { const email = document.getElementById('admin-add-input').value.trim(); if (email && (!CONFIG.admins.includes(email))) { if (!email.includes('@')) return showToast("Valid email required", "error"); CONFIG.admins.push(email); document.getElementById('admin-add-input').value = ''; renderAdminList(); } else if (email) showToast("Email already added", "error"); }
+        function renderAdminList() {
+    const container = document.getElementById('admin-list-container');
+    container.innerHTML = '';
+    if (!CONFIG.admins || CONFIG.admins.length === 0) {
+        container.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center;">No admins added</div>';
+        return;
+    }
+    CONFIG.admins.forEach((admin, index) => {
+        const email = typeof admin === 'string' ? admin : admin.email;
+        const type = typeof admin === 'string' ? 'general' : (admin.type || 'general');
+        const subject = typeof admin === 'string' ? '' : (admin.subject || '');
+        const div = document.createElement('div');
+        div.className = 'data-item';
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'data-name';
+        nameSpan.style.flexDirection = 'column';
+        nameSpan.style.alignItems = 'flex-start';
+        nameSpan.innerHTML = `<span>${email}</span><span style="font-size:10px;color:${type==='subject'?'#fbbf24':'#4ade80'};margin-top:2px;">${type==='subject'?'📚 '+subject:'🌐 General'}</span>`;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-sm btn-del';
+        removeBtn.innerText = '🗑️';
+        removeBtn.onclick = () => removeAdmin(index);
+        div.appendChild(nameSpan);
+        div.appendChild(removeBtn);
+        container.appendChild(div);
+    });
+}
+        window.onAdminTypeChange = function() {
+    const type = document.getElementById('admin-type-select').value;
+    const subGroup = document.getElementById('admin-subject-select-group');
+    subGroup.style.display = type === 'subject' ? 'block' : 'none';
+    if (type === 'subject') {
+        const sel = document.getElementById('admin-subject-select');
+        sel.innerHTML = '<option value="">-- اختار الماده --</option>';
+        Object.keys(database).forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub; opt.innerText = sub;
+            sel.appendChild(opt);
+        });
+    }
+};
+
+window.addAdmin = function() {
+    const email = document.getElementById('admin-add-input').value.trim();
+    if (!email || !email.includes('@')) return showToast("Valid email required", "error");
+    const type = document.getElementById('admin-type-select').value;
+    const subject = type === 'subject' ? document.getElementById('admin-subject-select').value : '';
+    if (type === 'subject' && !subject) return showToast("اختار الماده الأول", "error");
+    if (!CONFIG.admins) CONFIG.admins = [];
+    // check duplicate
+    const exists = CONFIG.admins.some(a => {
+        const ae = typeof a === 'string' ? a : a.email;
+        return ae.toLowerCase() === email.toLowerCase();
+    });
+    if (exists) return showToast("Email already added", "error");
+    const entry = type === 'general' ? { email, type: 'general', subject: '' } : { email, type: 'subject', subject };
+    CONFIG.admins.push(entry);
+    document.getElementById('admin-add-input').value = '';
+    renderAdminList();
+};
         window.removeAdmin = function(index) { if (!auth || !auth.currentUser || auth.currentUser.email !== OWNER_EMAIL) { showToast("⛔ Only Owner can remove admins.", "error"); return; } showConfirmModal("Remove Admin", "Are you sure?", (confirmed) => { if(confirmed) { CONFIG.admins.splice(index,1); renderAdminList(); } }); }
-        window.populateNotifSubjects = function() { const select = document.getElementById('notif-subject-select'); select.innerHTML = '<option value="">-- Select Subject --</option>'; const subjects = Object.keys(database); subjects.forEach(sub => { const opt = document.createElement('option'); opt.value = sub; opt.innerText = sub; select.appendChild(opt); }); };
+        window.populateNotifSubjects = function() { const select = document.getElementById('notif-subject-select'); select.innerHTML = '<option value="">-- Select Subject --</option>'; const _allSubs = Object.keys(database); const _notifAdminSub = getAdminSubject(); const subjects = _notifAdminSub ? _allSubs.filter(s => s === _notifAdminSub) : _allSubs; subjects.forEach(sub => { const opt = document.createElement('option'); opt.value = sub; opt.innerText = sub; select.appendChild(opt); }); };
         window.populateNotifDoctors = function() { const subject = document.getElementById('notif-subject-select').value; const docSelect = document.getElementById('notif-doctor-select'); docSelect.innerHTML = '<option value="">-- Select Doctor --</option>'; if(subject && database[subject] && database[subject].doctors) { database[subject].doctors.forEach(doc => { const opt = document.createElement('option'); opt.value = doc; opt.innerText = doc; docSelect.appendChild(opt); }); } window.loadNotifPreview(); };
         window.loadNotifPreview = function() { };
         window.sendDoctorNotification = function() { if (!hasAdminAccess()) return showToast("❌ Unauthorized Access.", "error"); const subject = document.getElementById('notif-subject-select').value; const doctor = document.getElementById('notif-doctor-select').value; const message = document.getElementById('notif-message-text').value.trim(); if(!subject || !doctor || !message) return showToast("Please fill all fields", "error"); const day = document.getElementById('notif-day-select').value; const time = document.getElementById('notif-time-input').value; const fullDate = Date.now(); const updateId = fullDate.toString() + "_" + Math.random().toString(36).substr(2,5); const docRoot = database[subject][doctor].root || []; let notifFolder = docRoot.find(f => f.name === "🔔 Notifications" && f.type === 'folder'); if (!notifFolder) { notifFolder = { id: 'def_notif', name: "🔔 Notifications", type: "folder", children: [] }; docRoot.push(notifFolder); } notifFolder.children.unshift({ id: updateId, name: message, date: new Date().toLocaleString(), type: "notif", fullDate: fullDate }); if (!CONFIG.recentUpdates) CONFIG.recentUpdates = []; CONFIG.recentUpdates.unshift({ id: updateId, doctor: doctor, subject: subject, timestamp: fullDate, message: message }); if (CONFIG.recentUpdates.length > 5) CONFIG.recentUpdates = CONFIG.recentUpdates.slice(0, 5); CONFIG.latestNotificationUpdate = fullDate; CONFIG.database = database; if (day !== "" && time !== "") { if (!CONFIG.schedules) CONFIG.schedules = []; CONFIG.schedules.push({ id: 'sched_' + Date.now(), subject: subject, doctor: doctor, message: message, day: parseInt(day), time: time, active: true, lastTriggered: 0 }); } const saveBtn = document.querySelector('#tab-notifications .btn-send'); saveBtn.innerText = "Sending..."; saveBtn.disabled = true; fetch(`${FIREBASE_DB_URL}/.json`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: JSON.stringify(CONFIG) }) }).then(res => { if (!res.ok) throw new Error("Send failed"); showToast("✅ Notification Scheduled Successfully", "success"); document.getElementById('notif-message-text').value = ""; document.getElementById('notif-day-select').value = ""; document.getElementById('notif-time-input').value = ""; saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; fetchConfig(); }).catch(err => { showToast("❌ Error: " + err.message, "error"); saveBtn.innerText = "Send Notification"; saveBtn.disabled = false; }); };
@@ -2491,7 +2558,7 @@ if (hasAdminAccess()) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); d
     const user = auth.currentUser;
     if (user) {
         const email = user.email;
-        if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.includes(email))) {
+        if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.some(a => (typeof a==='string'?a:a.email).toLowerCase() === email.toLowerCase()))) {
     openAdminPanel();
 } else {
     showToast("✅ Logged in as: " + email, "success");
@@ -2513,7 +2580,31 @@ if (hasAdminAccess()) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); d
     }
 };
         window.logoutUser = async function() { if (auth) { await auth.signOut(); window.location.reload(); } };
-        function hasAdminAccess() { const user = auth.currentUser; if(!user) return false; if(user.email === OWNER_EMAIL) return true; if(CONFIG.admins && CONFIG.admins.includes(user.email)) return true; return false; }
+        function hasAdminAccess() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    if (user.email === OWNER_EMAIL) return true;
+    if (!CONFIG.admins) return false;
+    return CONFIG.admins.some(a => {
+        const ae = typeof a === 'string' ? a : a.email;
+        return ae.toLowerCase() === user.email.toLowerCase();
+    });
+}
+
+function getAdminSubject() {
+    // returns the restricted subject for subject-admins, or null for general/owner
+    const user = auth.currentUser;
+    if (!user) return null;
+    if (user.email === OWNER_EMAIL) return null;
+    if (!CONFIG.admins) return null;
+    const entry = CONFIG.admins.find(a => {
+        const ae = typeof a === 'string' ? a : a.email;
+        return ae.toLowerCase() === user.email.toLowerCase();
+    });
+    if (!entry || typeof entry === 'string') return null;
+    if (entry.type === 'subject') return entry.subject;
+    return null; // general admin
+}
 
 function initFirebaseAuth() {
     if (!auth) {
@@ -2549,7 +2640,7 @@ function initFirebaseAuth() {
     const user = auth ? auth.currentUser : null;
     if (user) {
         const email = user.email;
-        if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.map(e => e.toLowerCase()).includes(email.toLowerCase()))) {
+        if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.some(a => (typeof a==='string'?a:a.email).toLowerCase() === email.toLowerCase()))) {
             loginText.innerText = "Admin Panel";
             loginIcon.innerText = "⚙️";
         } else {
@@ -3197,7 +3288,9 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
 
         function gtRenderAdminConfig() {
             const gradeConfig = CONFIG.gradeConfig || {};
-            const subjects    = Object.keys(database || {});
+            const _allSubjects = Object.keys(database || {});
+            const _gtAdminSubject = getAdminSubject();
+            const subjects = _gtAdminSubject ? _allSubjects.filter(s => s === _gtAdminSubject) : _allSubjects;
             const container   = document.getElementById('gt-admin-subjects-list');
             if (!container) return;
             container.innerHTML = subjects.map(name => `
@@ -4420,7 +4513,12 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
   async function ccLoadGroups() {
     const r = await fetch(`${CHAT_API_BASE}/chat/groups?scopeKey=${encodeURIComponent(ccScopeKey())}`);
     const data = await r.json();
-    ccGroups = (data && data.groups) ? data.groups : [{ id: 'general', name: 'General' }];
+    let allGroups = (data && data.groups) ? data.groups : [{ id: 'general', name: 'General' }];
+    const _ccAdminSub = (typeof getAdminSubject === 'function') ? getAdminSubject() : null;
+    if (_ccAdminSub && (typeof hasAdminAccess === 'function') && hasAdminAccess()) {
+        allGroups = allGroups.filter(g => g.id === 'general' || g.id === 'subject::' + _ccAdminSub);
+    }
+    ccGroups = allGroups;
     const box = document.getElementById('cc-groups');
     if (!box) return;
     box.innerHTML = ccGroups.map(g => `<div onclick="ccPickGroup('${g.id}')" style="padding:8px;border-radius:8px;cursor:pointer;margin-bottom:6px;background:${g.id===ccGroupId?'rgba(59,130,246,.18)':'rgba(255,255,255,.03)'};border:1px solid rgba(255,255,255,.07);">${g.name}</div>`).join('');
@@ -4486,7 +4584,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
       const mine = prof && m.sender_phone === prof.phone;
       const rx = m.reactions || {};
       const rxStr = Object.keys(rx).map(k => `${k} ${rx[k]}`).join('  ');
-      return `<div style="margin-bottom:8px;padding:8px;border-radius:10px;background:${mine ? 'rgba(59,130,246,.12)' : 'rgba(255,255,255,.03)'};border:1px solid rgba(255,255,255,.06);">
+      return `<div style="margin-bottom:8px;padding:8px;border-radius:10px;background:${mine ? 'rgba(59,130,246,.12)' : 'rgba(255,255,255,.03)'};border:1px solid rgba(255,255,255,.06);direction:auto;text-align:start;unicode-bidi:plaintext;">
         <div style="font-size:11px;color:#93c5fd;display:flex;justify-content:space-between;gap:8px;">
           <span>${m.sender_name}</span>
           <span style="color:#64748b;">seen ${m.read_count || 0}</span>
@@ -5031,7 +5129,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         </div>
         <div id="cc-messages" style="flex:1;overflow:auto;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;"></div>
         <div style="display:flex;gap:6px;margin-top:8px;">
-          <input id="cc-text" class="form-input" placeholder="Write a message..." style="flex:1;">
+          <input id="cc-text" class="form-input" placeholder="Write a message..." style="flex:1; direction:auto; text-align:start; unicode-bidi:plaintext;">
           <input id="cc-media-url" class="form-input" placeholder="Media URL (optional)" style="flex:1;">
           <input id="cc-media-file" type="file" accept="image/*,video/*" style="display:none;">
           <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="window.ccPickMedia()">📎</button>
