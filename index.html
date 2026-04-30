@@ -4519,7 +4519,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         allGroups = allGroups.filter(g => g.id === 'general' || g.id === 'subject::' + _ccAdminSub);
     }
     ccGroups = allGroups;
-    const box = document.getElementById('cc-groups');
+    const box = document.getElementById('cc-groups-panel');
     if (!box) return;
     box.innerHTML = ccGroups.map(g => `<div onclick="ccPickGroup('${g.id}')" style="padding:8px;border-radius:8px;cursor:pointer;margin-bottom:6px;background:${g.id===ccGroupId?'rgba(59,130,246,.18)':'rgba(255,255,255,.03)'};border:1px solid rgba(255,255,255,.07);">${g.name}</div>`).join('');
     ccRefreshUiToggles();
@@ -4540,7 +4540,28 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
       return !!d.isLocked;
     } catch(e) { return false; }
   }
-  window.ccPickGroup = async function(groupId) {
+  window.ccToggleGroupsPanel = function() {
+  const panel = document.getElementById('cc-groups-panel');
+  if (!panel) return;
+  if (panel.style.width === '0px') {
+    panel.style.width = '140px';
+    panel.style.minWidth = '140px';
+    panel.style.opacity = '1';
+    panel.style.padding = '6px';
+  } else {
+    panel.style.width = '0px';
+    panel.style.minWidth = '0px';
+    panel.style.opacity = '0';
+    panel.style.padding = '0';
+  }
+};
+document.addEventListener('input', function(e) {
+  if (e.target && e.target.id === 'cc-text') {
+    e.target.style.height = '38px';
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+  }
+});
+window.ccPickGroup = async function(groupId) {
     ccGroupId = groupId;
     await ccLoadGroups();
     await ccLoadMessages();
@@ -4630,10 +4651,12 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
     return data.secure_url;
   }
   window.ccSend = async function() {
+  const textEl = document.getElementById('cc-text');
+  if (textEl) { textEl.style.height = '38px'; }
     const prof = ccProfile();
     if (!prof || !prof.name || !prof.phone) return ccSetStatus('Join first', '#f59e0b');
     const txt = (document.getElementById('cc-text')?.value || '').trim();
-    let mediaUrl = (document.getElementById('cc-media-url')?.value || '').trim();
+    let mediaUrl = '';
     const fileInput = document.getElementById('cc-media-file');
     const file = fileInput && fileInput.files ? fileInput.files[0] : null;
     if (!txt && !mediaUrl && !file) return;
@@ -4664,8 +4687,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
       const err = await res.json().catch(() => ({}));
       return ccSetStatus(err.error || 'Send failed', '#ef4444');
     }
-    document.getElementById('cc-text').value = '';
-    document.getElementById('cc-media-url').value = '';
+    const _t = document.getElementById('cc-text'); if(_t){_t.value='';_t.style.height='38px';}
     if (fileInput) fileInput.value = '';
     ccSetStatus('Sent', '#22c55e');
     await ccLoadMessages();
@@ -5119,7 +5141,12 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
       </div>
     </div>
     <div style="display:flex;gap:8px;min-height:0;flex:1;">
-      <div id="cc-groups" style="width:36%;max-width:170px;min-width:120px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px;overflow:auto;"></div>
+      <div style="display:flex;flex-direction:row;align-items:stretch;position:relative;">
+  <div id="cc-groups-panel" style="width:140px;min-width:140px;transition:width .25s,opacity .25s;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px;overflow-y:auto;"></div>
+  <div id="cc-groups-toggle" onclick="window.ccToggleGroupsPanel()" style="width:10px;min-width:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 2px;" title="Toggle groups">
+    <div style="width:4px;height:48px;background:rgba(255,255,255,.18);border-radius:4px;"></div>
+  </div>
+</div>
       <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
         <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
           <button class="btn-sm btn-edit" style="margin:0;padding:6px 8px;" onclick="window.ccTogglePin()">📌 Pin</button>
@@ -5129,8 +5156,7 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         </div>
         <div id="cc-messages" style="flex:1;overflow:auto;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;"></div>
         <div style="display:flex;gap:6px;margin-top:8px;">
-          <input id="cc-text" class="form-input" placeholder="Write a message..." style="flex:1; direction:auto; text-align:start; unicode-bidi:plaintext;">
-          <input id="cc-media-url" class="form-input" placeholder="Media URL (optional)" style="flex:1;">
+          <textarea id="cc-text" class="form-input" placeholder="Write a message..." rows="1" style="flex:1; direction:rtl; text-align:right; unicode-bidi:plaintext; resize:none; overflow:hidden; min-height:38px; line-height:1.4; padding-top:8px; font-family:inherit; font-size:inherit;"></textarea>
           <input id="cc-media-file" type="file" accept="image/*,video/*" style="display:none;">
           <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="window.ccPickMedia()">📎</button>
           <button class="btn-save" style="margin:0;padding:10px 14px;" onclick="window.ccSend()">Send</button>
