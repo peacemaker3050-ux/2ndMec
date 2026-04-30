@@ -5155,11 +5155,11 @@ window.ccPickGroup = async function(groupId) {
           <span id="cc-group-meta" style="font-size:11px;color:#94a3b8;display:flex;align-items:center;"></span>
         </div>
         <div id="cc-messages" style="flex:1;overflow:auto;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;"></div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <textarea id="cc-text" class="form-input" placeholder="Write a message..." rows="1" style="flex:1; direction:rtl; text-align:right; unicode-bidi:plaintext; resize:none; overflow:hidden; min-height:38px; line-height:1.4; padding-top:8px; font-family:inherit; font-size:inherit;"></textarea>
+        <div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end;">
+          <textarea id="cc-text" class="form-input" placeholder="Write a message..." rows="1" style="flex:1; min-width:0; width:0; direction:rtl; text-align:right; unicode-bidi:plaintext; resize:none; overflow:hidden; min-height:38px; max-height:120px; line-height:1.4; padding:8px 10px; font-family:inherit; font-size:inherit; box-sizing:border-box;"></textarea>
           <input id="cc-media-file" type="file" accept="image/*,video/*" style="display:none;">
-          <button class="btn-sm btn-edit" style="margin:0;padding:10px;" onclick="window.ccPickMedia()">📎</button>
-          <button class="btn-save" style="margin:0;padding:10px 14px;" onclick="window.ccSend()">Send</button>
+          <button class="btn-sm btn-edit" style="margin:0;padding:8px;flex-shrink:0;" onclick="window.ccPickMedia()">📎</button>
+          <button class="btn-save" style="margin:0;padding:8px 12px;flex-shrink:0;font-size:13px;" onclick="window.ccSend()">Send</button>
         </div>
       </div>
     </div>
