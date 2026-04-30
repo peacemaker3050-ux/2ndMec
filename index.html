@@ -1574,6 +1574,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
             <div class="nav-item" id="nav-6" onclick="window.switchAdminTab(6)"><span>🗳️</span> <span>VOTE</span></div>
             <div class="nav-item" id="nav-7" onclick="window.switchAdminTab(7)"><span>🔗</span> <span>Links</span></div>
             <div class="nav-item" id="nav-8" onclick="window.switchAdminTab(8)" style="display: none;"><span>🛠️</span> <span>Ops</span></div>
+            <div class="nav-item" id="nav-9" onclick="window.switchAdminTab(9)"><span>💬</span> <span>Chat</span></div>
         </div>
         <div class="admin-content-wrapper">
             <div id="tab-settings" class="tab-content active">
@@ -1785,7 +1786,12 @@ body.light-mode .gt-sum-big { color: #0f172a; }
     </div>
     <button class="btn-save" style="background:linear-gradient(135deg,#06b6d4,#0e7490);" onclick="window.refreshOpsStats()">Refresh Stats</button>
     <button class="btn-delete" onclick="window.clearScopeSeenAlerts()">Clear Seen Alerts (Local)</button>
-</div>
+</div><div id="tab-chatmembers" class="tab-content">
+              <div class="admin-section-title" style="color:#22d3ee;">💬 Chat Members</div>
+              <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">بيانات الطلبة المنضمين للشات.</p>
+              <button class="btn-save" style="width:auto;padding:8px 16px;margin-bottom:12px;" onclick="window.loadChatMembers()">🔄 Refresh</button>
+              <div id="chat-members-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
             <div id="tab-manifest" class="tab-content"><div class="admin-section-title" style="color: #a855f7;">App Installation Settings</div><p style="font-size:13px; color:#94a3b8; margin-bottom:20px; text-align:center;">Customize how app looks when installed.</p><div class="manifest-preview" id="manifest-icon-preview"><span>📲</span></div><div class="form-group"><label class="form-label">App Name (Short)</label><input type="text" id="manifest-app-name" class="form-input" placeholder="UniBot"></div><div class="form-group"><label class="form-label">App Icon (Upload Image)</label><input type="file" id="manifest-icon-upload" accept="image/*" style="color: #aaa; font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px;"><button class="btn-sm btn-del" id="manifest-icon-remove" onclick="window.removeAppIcon()" style="display:none; width:auto; margin-top:8px;">Remove Icon</button></div><button class="btn-save" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);" onclick="window.saveAppManifest()">Update App Settings</button></div>
         </div>
     </div>
@@ -2480,7 +2486,8 @@ else if (DEFAULT_BG_URL) {
         window.openAdminPanel = function() { stopSync(); document.getElementById('admin-bot-name').value = CONFIG.botName; document.getElementById('admin-bot-status').value = CONFIG.botStatus; document.getElementById('admin-icon-remove').style.display = CONFIG.botImage ? 'inline-block' : 'none'; document.getElementById('admin-bg-url').value = (CONFIG.bgImage && !CONFIG.bgImage.startsWith('data:')) ? CONFIG.bgImage : ""; document.getElementById('admin-bg-remove').style.display = (CONFIG.bgImage && CONFIG.bgImage.startsWith('data:')) ? 'inline-block' : 'none'; document.getElementById('admin-msg-welcome').value = CONFIG.welcomeMessage; document.getElementById('admin-msg-subject').value = CONFIG.subjectPrompt; document.getElementById('admin-msg-doctor').value = CONFIG.doctorPrompt; document.getElementById('admin-msg-category').value = CONFIG.categoryPrompt; const backs = [CONFIG.backSubject, CONFIG.backDoctor, CONFIG.backMain]; document.getElementById('admin-msg-backs').value = backs.join(' | '); const user = auth.currentUser; const isOwner = (user && user.email === OWNER_EMAIL); const canManageGrades = hasAdminAccess(); document.getElementById('owner-admin-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-typography-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('owner-theme-section').style.display = isOwner ? 'block' : 'none'; document.getElementById('nav-4').style.display = isOwner ? 'flex' : 'none';document.getElementById('nav-5').style.display = canManageGrades ? 'flex' : 'none'; document.getElementById('nav-8').style.display = canManageGrades ? 'flex' : 'none';
 if (hasAdminAccess()) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); document.getElementById('color-primary-input').value = CONFIG.themeColor || "#3b82f6"; document.getElementById('color-bot-input').value = CONFIG.botMsgColor || "#ffffff"; } else document.getElementById('admin-list-container').innerHTML = ''; if(CONFIG.generalBroadcast && CONFIG.generalBroadcast.active) { document.getElementById('broadcast-title').value = CONFIG.generalBroadcast.title; document.getElementById('broadcast-body').value = CONFIG.generalBroadcast.body; } else { document.getElementById('broadcast-title').value = ""; document.getElementById('broadcast-body').value = ""; } window.populateNotifSubjects(); renderAdminDataView(); document.getElementById('manifest-app-name').value = CONFIG.appName || CONFIG.botName; document.getElementById('manifest-icon-remove').style.display = (CONFIG.appIcon && CONFIG.appIcon.length > 10) ? 'inline-block' : 'none'; updateAppIconPreview(CONFIG.appIcon); document.getElementById('select-en-font').value = CONFIG.englishFont || "'Inter', sans-serif"; document.getElementById('select-ar-font').value = CONFIG.arabicFont || "'Cairo', sans-serif"; document.getElementById('admin-modal').classList.add('active'); window.switchAdminTab(0); }
         window.closeAdminPanel = function() { document.getElementById('admin-modal').classList.remove('active'); startSync(); fetchConfig(); }
-        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; const tabs = ['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks','ops']; if(index < 0 || index > tabs.length - 1) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${tabs[currentAdminTab]}`; const nextTabId = `tab-${tabs[index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; if (index === 8 && typeof window.refreshOpsStats === 'function') window.refreshOpsStats(); }, duration); };
+        window.switchAdminTab = function(index) { if (index === currentAdminTab) return; const tabs = ['settings','notifications','broadcast','data','manifest','grades','poll','quicklinks','ops','chatmembers']; if(index < 0 || index > tabs.length - 1) return; const direction = index > currentAdminTab ? 'left' : 'right'; const currentTabId = `tab-${tabs[currentAdminTab]}`; const nextTabId = `tab-${tabs[index]}`; const currentEl = document.getElementById(currentTabId); const nextEl = document.getElementById(nextTabId); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); document.getElementById(`nav-${index}`).classList.add('active'); nextEl.classList.remove('active'); nextEl.style.display = 'block'; nextEl.style.opacity = '0'; nextEl.style.transition = 'none'; nextEl.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)'; void nextEl.offsetWidth; const duration = 300; currentEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; nextEl.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`; currentEl.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)'; currentEl.style.opacity = '0'; nextEl.style.transform = 'translateX(0)'; nextEl.style.opacity = '1'; setTimeout(() => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); nextEl.classList.add('active'); currentAdminTab = index; if (index === 8 && typeof window.refreshOpsStats === 'function') window.refreshOpsStats();
+if (index === 9 && typeof window.loadChatMembers === 'function') window.loadChatMembers(); }, duration); };
         window.saveAdminSettings = function() { const backsArr = document.getElementById('admin-msg-backs').value.split('|').map(s => s.trim()); const newConfig = { botName: document.getElementById('admin-bot-name').value.trim() || defaultConfig.botName, botText: document.getElementById('admin-bot-status').value.trim() || defaultConfig.botStatus, botImage: CONFIG.botImage, bgImage: CONFIG.bgImage, welcomeMessage: document.getElementById('admin-msg-welcome').value, subjectPrompt: document.getElementById('admin-msg-subject').value, doctorPrompt: document.getElementById('admin-msg-doctor').value, categoryPrompt: document.getElementById('admin-msg-category').value, backSubject: backsArr[0] || CONFIG.backSubject, backDoctor: backsArr[1] || CONFIG.backDoctor, backMain: backsArr[2] || CONFIG.backMain, admins: CONFIG.admins || [], generalBroadcast: CONFIG.generalBroadcast, latestNotificationUpdate: CONFIG.latestNotificationUpdate, recentUpdates: CONFIG.recentUpdates, database: database, englishFont: document.getElementById('select-en-font').value, arabicFont: document.getElementById('select-ar-font').value, appName: CONFIG.appName, appIcon: CONFIG.appIcon, appVersion: CONFIG.appVersion, themeColor: document.getElementById('color-primary-input').value, botMsgColor: document.getElementById('color-bot-input').value }; CONFIG = { ...CONFIG, ...newConfig }; applyConfig(CONFIG); saveConfigToBin(newConfig); }
         function renderAdminList() {
     const container = document.getElementById('admin-list-container');
@@ -2523,7 +2530,57 @@ if (hasAdminAccess()) gtRenderAdminConfig(); if (isOwner) { renderAdminList(); d
         });
     }
 };
+window.loadChatMembers = async function() {
+    const container = document.getElementById('chat-members-list');
+    if (!container) return;
+    container.innerHTML = '<div style="color:#94a3b8;font-size:13px;">Loading...</div>';
+    const idToken = await (async () => {
+      try { if (auth && auth.currentUser) return await auth.currentUser.getIdToken(true); } catch(e) {}
+      return '';
+    })();
+    const CHAT_BASE = 'https://web-production-ae004.up.railway.app';
+    try {
+      const scopeKey = typeof buildScopeKey === 'function' && typeof APP_SCOPE !== 'undefined' ? buildScopeKey(APP_SCOPE) : '';
+      const r = await fetch(`${CHAT_BASE}/chat/members?scopeKey=${encodeURIComponent(scopeKey)}&idToken=${encodeURIComponent(idToken)}`);
+      if (!r.ok) { container.innerHTML = '<div style="color:#ef4444;">Failed to load</div>'; return; }
+      const data = await r.json();
+      const members = data.members || [];
+      if (!members.length) { container.innerHTML = '<div style="color:#94a3b8;font-size:13px;text-align:center;">No members yet</div>'; return; }
+      container.innerHTML = members.map(m => `
+        <div class="data-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+            <span style="font-weight:700;color:#f1f5f9;">${m.name}</span>
+            <span style="font-size:10px;color:#64748b;">${new Date(m.created_at).toLocaleDateString('ar-EG')}</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;">📞 ${m.phone}</div>
+          ${m.email ? `<div style="font-size:11px;color:#93c5fd;">📧 ${m.email}</div>` : ''}
+          ${m.student_code ? `<div style="font-size:11px;color:#a78bfa;">🎓 Student Code: ${m.student_code}</div>` : ''}
+          ${m.uid ? `<div style="font-size:10px;color:#475569;">🔑 UID: ${m.uid}</div>` : ''}
+          <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+            <button class="btn-sm btn-edit" style="margin:0;font-size:10px;" onclick="window.promoteFromChat('${m.email || ''}','${m.phone}','${m.name}')">⬆️ Make Admin</button>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) {
+      container.innerHTML = `<div style="color:#ef4444;">Error: ${e.message}</div>`;
+    }
+  };
 
+window.promoteFromChat = function(email, phone, name) {
+    if (!email) return alert(`مفيش email مسجل لـ ${name} — اطلب منه يعمل Sign In الأول`);
+    const type = confirm(`عايز تعينه General Admin?\nاضغط OK للـ General\nاضغط Cancel لـ Subject Admin`) ? 'general' : 'subject';
+    let subject = '';
+    if (type === 'subject') {
+      subject = prompt('اكتب اسم المادة أو الجروب:', '');
+      if (!subject) return;
+    }
+    if (!CONFIG.admins) CONFIG.admins = [];
+    const exists = CONFIG.admins.some(a => (typeof a==='string'?a:a.email).toLowerCase() === email.toLowerCase());
+    if (exists) return alert('الإيميل ده موجود بالفعل في الأدمنز');
+    CONFIG.admins.push({ email, type, subject });
+    renderAdminList();
+    alert(`✅ تم تعيين ${name} كـ ${type === 'general' ? 'General Admin' : 'Subject Admin لـ ' + subject}`);
+  };
 window.addAdmin = function() {
     const email = document.getElementById('admin-add-input').value.trim();
     if (!email || !email.includes('@')) return showToast("Valid email required", "error");
@@ -4613,8 +4670,12 @@ window.ccPickGroup = async function(groupId) {
         </div>
         <div style="font-size:13px;margin-top:3px;white-space:pre-wrap;">${m.message_text || ''}${m.media_url ? `<div style="margin-top:6px;"><a href="${m.media_url}" target="_blank" style="color:#60a5fa;">Open media</a></div>` : ''}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-          <button class="btn-sm btn-edit" style="margin:0;padding:4px 7px;font-size:10px;" onclick="ccReact(${m.id})">😊 React</button>
-          <div style="font-size:10px;color:#cbd5e1;">${rxStr || ''}</div>
+          <button class="btn-sm btn-edit" style="margin:0;padding:4px 7px;font-size:10px;" onclick="ccReact(${m.id})">
+ React</button>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="font-size:10px;color:#cbd5e1;">${rxStr || ''}</div>
+            ${(mine || ccIsAdmin()) ? `<button class="btn-sm btn-del" style="margin:0;padding:3px 7px;font-size:10px;" onclick="ccDeleteMsg(${m.id})">🗑️</button>` : ''}
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -4623,13 +4684,24 @@ window.ccPickGroup = async function(groupId) {
     await ccLoadGroupState();
   }
   window.ccRegister = async function() {
+    // non-admins must be signed in
+    if (!ccIsAdmin()) {
+      const user = auth && auth.currentUser;
+      if (!user) return ccSetStatus('يجب تسجيل الدخول أولاً عشان تنضم للشات', '#ef4444');
+    }
     const name = (document.getElementById('cc-name')?.value || '').trim();
     const phone = (document.getElementById('cc-phone')?.value || '').trim();
     if (!name || !phone) return ccSetStatus('Enter name and phone', '#f59e0b');
+    const idToken = await ccGetIdToken();
+    let studentCode = '';
+    try {
+      const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY()) || 'null');
+      if (sess && sess.studentCode) studentCode = String(sess.studentCode).trim();
+    } catch(e) {}
     const res = await fetch(`${CHAT_API_BASE}/chat/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scopeKey: ccScopeKey(), name, phone })
+      body: JSON.stringify({ scopeKey: ccScopeKey(), name, phone, idToken, studentCode })
     });
     if (!res.ok) return ccSetStatus('Register failed', '#ef4444');
     localStorage.setItem(ccProfileKey(), JSON.stringify({ name, phone }));
@@ -4638,7 +4710,23 @@ window.ccPickGroup = async function(groupId) {
   };
   window.ccPickMedia = function() {
     const input = document.getElementById('cc-media-file');
-    if (input) input.click();
+    if (input) {
+      input.onchange = function() {
+        const file = input.files && input.files[0];
+        const preview = document.getElementById('cc-file-preview');
+        if (preview) {
+          if (file) {
+            const icon = file.type.startsWith('video/') ? '🎥' : '🖼️';
+            preview.textContent = `${icon} ${file.name}`;
+            preview.style.display = 'block';
+          } else {
+            preview.textContent = '';
+            preview.style.display = 'none';
+          }
+        }
+      };
+      input.click();
+    }
   };
   async function ccUploadToCloudinary(file) {
     if (!ccCloudName || !ccUploadPreset) throw new Error('Cloudinary not configured');
@@ -4690,7 +4778,31 @@ window.ccPickGroup = async function(groupId) {
     }
     const _t = document.getElementById('cc-text'); if(_t){_t.value='';_t.style.height='38px';}
     if (fileInput) fileInput.value = '';
+    const _prev = document.getElementById('cc-file-preview');
+    if (_prev) { _prev.textContent = ''; _prev.style.display = 'none'; }
     ccSetStatus('Sent', '#22c55e');
+    await ccLoadMessages();
+  };
+  window.ccDeleteMsg = async function(messageId) {
+    if (!confirm('حذف الرسالة دي؟')) return;
+    const prof = ccProfile();
+    if (!prof) return;
+    const idToken = await ccGetIdToken();
+    const res = await fetch(`${CHAT_API_BASE}/chat/messages/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scopeKey: ccScopeKey(),
+        groupId: ccGroupId,
+        messageId,
+        phone: prof.phone,
+        idToken
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return ccSetStatus(err.error || 'Delete failed', '#ef4444');
+    }
     await ccLoadMessages();
   };
   window.ccTogglePin = function() {
@@ -5156,7 +5268,8 @@ window.ccPickGroup = async function(groupId) {
           <span id="cc-group-meta" style="font-size:11px;color:#94a3b8;display:flex;align-items:center;"></span>
         </div>
         <div id="cc-messages" style="flex:1;overflow:auto;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;"></div>
-        <div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end;">
+        <div id="cc-file-preview" style="display:none;font-size:11px;color:#93c5fd;padding:4px 8px;background:rgba(59,130,246,.1);border-radius:6px;margin-top:6px;"></div>
+<div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end;">
           <textarea id="cc-text" class="form-input" placeholder="Write a message..." rows="1" style="flex:1; min-width:0; width:0; direction:rtl; text-align:right; unicode-bidi:plaintext; resize:none; overflow:hidden; min-height:38px; max-height:120px; line-height:1.4; padding:8px 10px; font-family:inherit; font-size:inherit; box-sizing:border-box;"></textarea>
           <input id="cc-media-file" type="file" accept="image/*,video/*" style="display:none;">
           <button class="btn-sm btn-edit" style="margin:0;padding:8px;flex-shrink:0;" onclick="window.ccPickMedia()">📎</button>
