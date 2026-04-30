@@ -1515,24 +1515,41 @@ body.light-mode .gt-sum-big { color: #0f172a; }
 <div class="grade-modal-container" id="weekly-modal">
     <div class="grade-header">
         <div class="grade-header-left">
-            <h2>📅 Weekly Tasks</h2>
+            <h2>📋 Weekly Tasks</h2>
             <div class="grade-welcome">Section-based weekly requirements</div>
         </div>
-        <div class="close-modal" onclick="window.closeWeeklyTasksModal()">×</div>
+        <div class="close-modal" onclick="window.closeWeeklyTasksModal()"></div>
     </div>
     <div class="grade-body" style="display:flex;flex-direction:column;gap:12px;">
-        <div style="display:flex;gap:8px;align-items:center;">
+        <!-- admin tools -->
+        <div id="wt-admin-tools" style="display:none;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:12px;gap:10px;flex-direction:column;">
+            <div style="font-size:12px;color:#93c5fd;font-weight:700;margin-bottom:4px;">➕ Add Task to Section</div>
+            <select id="wt-section-select-admin" class="form-select"></select>
+            <textarea id="wt-task-input" class="form-textarea" style="height:65px;" placeholder="Write weekly task..."></textarea>
+            <!-- deadline -->
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <label class="form-label" style="margin:0;font-size:11px;">Deadline:</label>
+                <input type="datetime-local" id="wt-deadline-input" class="form-input" style="flex:1;min-width:160px;">
+            </div>
+            <!-- activation toggle -->
+            <div style="display:flex;align-items:center;gap:10px;">
+                <label class="form-label" style="margin:0;font-size:11px;">Activation Link:</label>
+                <input type="text" id="wt-link-input" class="form-input" style="flex:1;" placeholder="Drive link (optional)">
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <label class="form-label" style="margin:0;font-size:11px;">Active:</label>
+                <input type="checkbox" id="wt-active-toggle" style="width:18px;height:18px;cursor:pointer;">
+                <span style="font-size:11px;color:#94a3b8;">فعّل التسليم (هيظهر اللينك للطلبة)</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn-save" style="flex:1;margin:0;" onclick="window.wtAddTask()">➕ Add Task</button>
+                <button class="btn-save" style="flex:1;margin:0;background:linear-gradient(135deg,#059669,#065f46);" onclick="window.wtSendNotification()">🔔 Send Notification</button>
+            </div>
+        </div>
+        <!-- student view: section selector -->
+        <div id="wt-student-section-box" style="display:flex;gap:8px;align-items:center;">
             <label class="form-label" style="margin:0;min-width:60px;">Section</label>
             <select id="wt-section-select" class="form-select" onchange="window.wtRenderTasks()"></select>
-        </div>
-        <div id="wt-admin-tools" style="display:none;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:10px;">
-            <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <input id="wt-new-section" class="form-input" placeholder="New section name (e.g. 4)">
-                <button class="btn-sm btn-edit" style="margin:0;padding:10px 12px;" onclick="window.wtAddSection()">Add</button>
-                <button class="btn-sm btn-del" style="margin:0;padding:10px 12px;" onclick="window.wtDeleteSection()">Delete</button>
-            </div>
-            <textarea id="wt-task-input" class="form-textarea" style="height:70px;" placeholder="Write weekly task..."></textarea>
-            <button class="btn-save" style="margin-top:8px;" onclick="window.wtAddTask()">Add Task</button>
         </div>
         <div id="wt-task-list"></div>
     </div>
@@ -1806,7 +1823,7 @@ body.light-mode .gt-sum-big { color: #0f172a; }
         const VAPID_KEY = "BCmmvd3JEj26OLT_bEl986rldLpJiSPjAzjBsRaVN-OO5RCj_dcLXexMobA4K9Y9-3Zrv4Tc2s1H9uakLoIEf0Y";
 
         const defaultDatabase = { "Physics": { "doctors": ["Dr. Ahmed"], "Dr. Ahmed": { "root": [ { "id": "f1", "name": "📚 Lectures", "type": "folder", "children": [] }, { "id": "f2", "name": "🔔 Notifications", "type": "folder", "children": [] } ] } }, "Chemistry": { "doctors": [], "root": [] }, "Mathematics": { "doctors": [], "root": [] } };
-        const defaultConfig = { botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], generalBroadcast: { active: false, title: "", body: "", timestamp: 0 }, englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif", appName: "UniBot Pro", appIcon: "", appVersion: 1, themeColor: "#3b82f6", botMsgColor: "#ffffff", welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.", subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇", categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:", backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", schedules: [], activeAlerts: [], weeklyTasks: { sections: ["1","2","3"], tasks: {} }, database: defaultDatabase };
+        const defaultConfig = { botName: "University Library", botStatus: "Online", botIcon: "🎓", botImage: "", bgImage: "", typingSpeed: 600, admins: [], latestNotificationUpdate: 0, recentUpdates: [], generalBroadcast: { active: false, title: "", body: "", timestamp: 0 }, englishFont: "'Inter', sans-serif", arabicFont: "'Cairo', sans-serif", appName: "UniBot Pro", appIcon: "", appVersion: 1, themeColor: "#3b82f6", botMsgColor: "#ffffff", welcomeMessage: "Welcome! 🎓<br>This is <b>{botName}</b>.<br>Please select a subject to begin.", subjectPrompt: "<b>{name}</b>\nPlease select a Doctor 👇", doctorPrompt: "<b>{name}</b>\nSelect a section 👇", categoryPrompt: "<b>{name}</b> list:", backSubject: "Back to <b>{name}</b> doctors:", backDoctor: "Back to <b>{name}</b> sections:", backMain: "Back to Main Menu.", schedules: [], activeAlerts: [], weeklyTasks: { tasks: {} }, database: defaultDatabase };
         let CONFIG = { ...defaultConfig };
         let database = CONFIG.database;
         let auth; let isAuthInitialized = false; let deferredPrompt; let refreshInterval = null; let fuseSearchEngine = null;
@@ -3851,9 +3868,22 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
             } catch(e) { d.value = 'Error'; }
         };
 
+        function wtGetSectionsFromSchedule() {
+            // جيب السكشنز من الجدول اللي الأدمن حاطه يدوي
+            try {
+                const sched = CONFIG.schedules || [];
+                const found = [];
+                sched.forEach(s => {
+                    const sec = String(s.section || '').trim();
+                    if (sec && !found.includes(sec)) found.push(sec);
+                });
+                if (found.length) return found.sort();
+            } catch(e) {}
+            // fallback لو الجدول فاضي
+            return ["1","2","3"];
+        }
         function wtGetState() {
-            if (!CONFIG.weeklyTasks || typeof CONFIG.weeklyTasks !== 'object') CONFIG.weeklyTasks = { sections: ["1","2","3"], tasks: {} };
-            if (!Array.isArray(CONFIG.weeklyTasks.sections)) CONFIG.weeklyTasks.sections = ["1","2","3"];
+            if (!CONFIG.weeklyTasks || typeof CONFIG.weeklyTasks !== 'object') CONFIG.weeklyTasks = { tasks: {} };
             if (!CONFIG.weeklyTasks.tasks || typeof CONFIG.weeklyTasks.tasks !== 'object') CONFIG.weeklyTasks.tasks = {};
             return CONFIG.weeklyTasks;
         }
@@ -3863,71 +3893,138 @@ if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from 
         }
         window.openWeeklyTasksModal = function() {
             document.getElementById('menu-dropdown').classList.remove('active');
-            const st = wtGetState();
-            const sel = document.getElementById('wt-section-select');
-            if (sel) sel.innerHTML = st.sections.map(s => `<option value="${s}">Section ${s}</option>`).join('');
+            const sections = wtGetSectionsFromSchedule();
+            // populate both selects
+            const optHtml = sections.map(s => `<option value="${s}">Section ${s}</option>`).join('');
+            const selStudent = document.getElementById('wt-section-select');
+            const selAdmin   = document.getElementById('wt-section-select-admin');
+            if (selStudent) selStudent.innerHTML = optHtml;
+            if (selAdmin)   selAdmin.innerHTML   = optHtml;
+            const isAdmin = typeof hasAdminAccess === 'function' && hasAdminAccess();
             const adminTools = document.getElementById('wt-admin-tools');
-            if (adminTools) adminTools.style.display = (typeof hasAdminAccess === 'function' && hasAdminAccess()) ? 'block' : 'none';
+            const studentBox = document.getElementById('wt-student-section-box');
+            if (adminTools) adminTools.style.display = isAdmin ? 'flex' : 'none';
+            if (studentBox) studentBox.style.display = isAdmin ? 'none' : 'flex';
             document.getElementById('weekly-modal').classList.add('active');
             window.wtRenderTasks();
         };
         window.closeWeeklyTasksModal = function() { document.getElementById('weekly-modal').classList.remove('active'); };
         window.wtRenderTasks = function() {
             const st = wtGetState();
-            const sel = document.getElementById('wt-section-select');
+            const isAdmin = typeof hasAdminAccess === 'function' && hasAdminAccess();
             const list = document.getElementById('wt-task-list');
-            if (!sel || !list) return;
-            const section = sel.value || st.sections[0];
-            wtEnsureSection(section);
-            const tasks = st.tasks[section] || [];
-            if (!tasks.length) {
-                list.innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;">No weekly tasks yet.</div>';
-                return;
-            }
-            list.innerHTML = tasks.map((t, i) => `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;margin-bottom:8px;"><div style="font-size:13px;font-weight:700;">${t.text}</div><div style="font-size:10px;color:#64748b;margin-top:4px;">${t.createdAt || ''}</div>${(typeof hasAdminAccess === 'function' && hasAdminAccess()) ? `<button class="btn-sm btn-del" style="margin-top:8px;" onclick="wtDeleteTask(${i})">Delete</button>` : ''}</div>`).join('');
+            if (!list) return;
+            const now = Date.now();
+
+            // الأدمن يشوف كل السكشنز مع بعض
+            // الطالب يشوف السكشن اللي اختاره بس
+            const sections = isAdmin
+                ? wtGetSectionsFromSchedule()
+                : [(() => { const s = document.getElementById('wt-section-select'); return s ? s.value : wtGetSectionsFromSchedule()[0]; })()];
+
+            let html = '';
+            sections.forEach(section => {
+                wtEnsureSection(section);
+                const tasks = (st.tasks[section] || []).filter(t => {
+                    if (!t.deadline) return true;
+                    return isAdmin || now < new Date(t.deadline).getTime();
+                });
+                if (!tasks.length && !isAdmin) return;
+                html += `<div style="margin-bottom:16px;">
+                    <div style="font-size:12px;font-weight:800;color:#93c5fd;margin-bottom:6px;padding:4px 8px;background:rgba(59,130,246,.1);border-radius:8px;">📂 Section ${section}</div>`;
+                if (!tasks.length) {
+                    html += `<div style="text-align:center;color:#64748b;padding:12px;font-size:12px;">No tasks yet.</div>`;
+                } else {
+                    tasks.forEach((t, i) => {
+                        const deadlineMs = t.deadline ? new Date(t.deadline).getTime() : 0;
+                        const remaining  = deadlineMs ? Math.max(0, deadlineMs - now) : 0;
+                        const deadlineTxt = deadlineMs
+                            ? (remaining > 0
+                                ? `⏳ ${Math.floor(remaining/3600000)}h ${Math.floor((remaining%3600000)/60000)}m remaining`
+                                : '❌ Deadline passed')
+                            : '';
+                        const linkHtml = (t.active && t.link)
+                            ? `<a href="${t.link}" target="_blank" style="display:inline-block;margin-top:6px;padding:5px 12px;background:linear-gradient(135deg,#059669,#065f46);color:#fff;border-radius:8px;font-size:11px;text-decoration:none;">📤 Submit Here</a>`
+                            : (isAdmin && t.link ? `<span style="font-size:10px;color:#64748b;">🔗 ${t.link} (inactive)</span>` : '');
+                        const activeBadge = isAdmin
+                            ? `<span style="font-size:10px;padding:2px 7px;border-radius:6px;background:${t.active?'rgba(5,150,105,.2)':'rgba(100,116,139,.15)'};color:${t.active?'#34d399':'#64748b'};">${t.active?'✅ Active':'⬜ Inactive'}</span>`
+                            : '';
+                        html += `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;margin-bottom:8px;">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+                                <div style="font-size:13px;font-weight:700;">${t.text}</div>
+                                ${activeBadge}
+                            </div>
+                            ${deadlineTxt ? `<div style="font-size:10px;color:${remaining>0?'#fbbf24':'#ef4444'};margin-top:4px;">${deadlineTxt}</div>` : ''}
+                            ${linkHtml}
+                            <div style="font-size:10px;color:#64748b;margin-top:4px;">${t.createdAt || ''}</div>
+                            ${isAdmin ? `<div style="display:flex;gap:6px;margin-top:8px;"><button class="btn-sm btn-del" style="margin:0;" onclick="wtDeleteTask('${section}',${i})">🗑️ Delete</button></div>` : ''}
+                        </div>`;
+                    });
+                }
+                html += `</div>`;
+            });
+            list.innerHTML = html || '<div style="text-align:center;color:#64748b;padding:20px;">No weekly tasks yet.</div>';
+
+            // عد تنازلي كل دقيقة
+            if (window._wtTimer) clearInterval(window._wtTimer);
+            window._wtTimer = setInterval(() => window.wtRenderTasks(), 60000);
         };
-        window.wtAddSection = function() {
-            if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
-            const st = wtGetState();
-            const inp = document.getElementById('wt-new-section');
-            const val = (inp ? inp.value : '').trim();
-            if (!val) return showToast('Enter section name', 'error');
-            if (st.sections.includes(val)) return showToast('Section exists', 'error');
-            st.sections.push(val); wtEnsureSection(val); if (inp) inp.value = '';
-            saveConfigToBin(CONFIG); window.openWeeklyTasksModal(); showToast('✅ Section added', 'success');
-        };
-        window.wtDeleteSection = function() {
-            if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
-            const st = wtGetState();
-            const sel = document.getElementById('wt-section-select');
-            const section = sel ? sel.value : '';
-            if (!section) return;
-            if (st.sections.length <= 1) return showToast('At least one section required', 'error');
-            st.sections = st.sections.filter(s => s !== section);
-            delete st.tasks[section];
-            saveConfigToBin(CONFIG); window.openWeeklyTasksModal(); showToast('✅ Section deleted', 'success');
-        };
+        
         window.wtAddTask = function() {
             if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
             const st = wtGetState();
-            const sel = document.getElementById('wt-section-select');
-            const txt = (document.getElementById('wt-task-input') || {}).value || '';
+            const sel   = document.getElementById('wt-section-select-admin');
+            const txt   = (document.getElementById('wt-task-input') || {}).value || '';
             const section = sel ? sel.value : '';
-            const text = txt.trim();
+            const text    = txt.trim();
             if (!section || !text) return showToast('Section and task required', 'error');
+            const deadlineVal = (document.getElementById('wt-deadline-input') || {}).value || '';
+            const linkVal     = ((document.getElementById('wt-link-input') || {}).value || '').trim();
+            const activeVal   = (document.getElementById('wt-active-toggle') || {}).checked || false;
             wtEnsureSection(section);
-            st.tasks[section].unshift({ text, createdAt: new Date().toLocaleString() });
+            st.tasks[section].unshift({
+                text,
+                createdAt: new Date().toLocaleString(),
+                deadline: deadlineVal || null,
+                link: linkVal || '',
+                active: activeVal
+            });
             document.getElementById('wt-task-input').value = '';
+            if (document.getElementById('wt-deadline-input')) document.getElementById('wt-deadline-input').value = '';
+            if (document.getElementById('wt-link-input')) document.getElementById('wt-link-input').value = '';
+            if (document.getElementById('wt-active-toggle')) document.getElementById('wt-active-toggle').checked = false;
             saveConfigToBin(CONFIG); window.wtRenderTasks(); showToast('✅ Task added', 'success');
         };
-        window.wtDeleteTask = function(index) {
+        window.wtSendNotification = async function() {
+            if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
+            const sel = document.getElementById('wt-section-select-admin');
+            const section = sel ? sel.value : '';
+            if (!section) return showToast('اختار Section الأول', 'error');
+            const CHAT_API_BASE = 'https://web-production-ae004.up.railway.app';
+            const scopeKey = (typeof buildScopeKey === 'function' && APP_SCOPE) ? buildScopeKey(APP_SCOPE) : '';
+            if (!scopeKey) return showToast('Scope غير محدد، أعد تحميل التطبيق', 'error');
+            try {
+                const res = await fetch(`${CHAT_API_BASE}/send-notification`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scopeKey,
+                        title: `📋 Weekly Tasks — Section ${section}`,
+                        body: `في مهام جديدة للـ Section ${section}، افتح التطبيق عشان تشوفها.`
+                    })
+                });
+                const d = await res.json();
+                showToast(`✅ Sent to ${d.success || 0} devices`, 'success');
+            } catch(e) {
+                showToast('Send failed: ' + e.message, 'error');
+            }
+        };
+        window.wtDeleteTask = function(section, index) {
             if (!(typeof hasAdminAccess === 'function' && hasAdminAccess())) return;
             const st = wtGetState();
-            const sel = document.getElementById('wt-section-select');
-            const section = sel ? sel.value : '';
             wtEnsureSection(section);
             st.tasks[section].splice(index, 1);
-            saveConfigToBin(CONFIG); window.wtRenderTasks(); showToast('✅ Task deleted', 'success');
+            saveConfigToBin(CONFIG); window.wtRenderTasks(); showToast('🗑️ Task deleted', 'success');
         };
         window.refreshOpsStats = function() {
             const subjCount = Object.keys(database || {}).length;
