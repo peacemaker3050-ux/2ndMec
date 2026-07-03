@@ -9522,7 +9522,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
         (function () {
             const STORAGE_KEY_BASE = 'shoubraAI_serverUrl';
             const CHATS_KEY_BASE = 'shoubraAI_chats';
-            const DEFAULT_AI_SERVER_URL = 'https://web-production-c391d4.up.railway.app';
+            const DEFAULT_AI_SERVER_URL = 'https://web-production-4bcba.up.railway.app';
             function saiGetScopeId() {
                 try {
                     const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY()) || 'null');
@@ -10734,7 +10734,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
         // ========== END SCHEDULE SCREEN ==========
         // ==================== VOICE NOTES ====================
         function vnStorageKey(base) { return scopedStorageKey(base); }
-        const VN_DEFAULT_SERVER_URL = 'https://web-production-c391d4.up.railway.app';
+        const VN_DEFAULT_SERVER_URL = 'https://web-production-4bcba.up.railway.app';
         function vnGetServerUrl() {
             const v = (localStorage.getItem(vnStorageKey('vn_server_url')) || '').trim().replace(/\/$/, '');
             return v.startsWith('http') ? v : VN_DEFAULT_SERVER_URL;
