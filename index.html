@@ -29,6 +29,8 @@
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
     <!-- SheetJS for Excel Import -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Marked.js for rendering Markdown in Shoubra AI replies -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 
     <style>
         :root {
@@ -9733,7 +9735,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
         <div class="sai-bot-gem">✦</div>
         <div class="sai-bot-content">
           <div class="sai-bot-label"><div class="sai-bot-dot"></div> Shoubra AI</div>
-          <div class="sai-bot-bubble">${m.text}</div>
+          <div class="sai-bot-bubble">${typeof marked !== 'undefined' ? marked.parse(m.text || '') : m.text}</div>
           <div class="sai-bot-actions">
             <div class="sai-bot-action" onclick="navigator.clipboard.writeText(this.closest('.sai-bot-content').querySelector('.sai-bot-bubble').innerText)">📋 Copy</div>
           </div>
@@ -9829,6 +9831,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
                     }
                 }
                 if (saiLang === 'ar') systemContext += 'Please respond in Arabic.';
+                systemContext += ' Format your answers using simple Markdown (headings, bold, bullet lists, tables) suited for a mobile chat bubble. Never use LaTeX syntax (no \\[ \\], \\( \\), \\boxed, \\frac, or $ signs) — write all equations and formulas as plain readable text instead, e.g. "q = -k * (dT/dx)" or "Q_dot = (k*A/L) * (T1 - T2)".';
 
                 // Build messages for API
                 const history = chat.messages.slice(-10).map(m => ({
