@@ -6925,7 +6925,7 @@
                 progressEl.style.display = 'block';
                 progressEl.innerText = 'Uploading to Google Drive...';
 
-                const RAILWAY_URL = 'https://web-production-ae004.up.railway.app';
+                const RAILWAY_URL = 'https://web-production-f5fa0.up.railway.app';
                 const subject = adminNavStack[0] || '';
                 const doctor = adminNavStack[1] || '';
 
@@ -7109,7 +7109,7 @@
                 try { if (auth && auth.currentUser) return await auth.currentUser.getIdToken(true); } catch (e) { }
                 return '';
             })();
-            const CHAT_BASE = 'https://web-production-ae004.up.railway.app';
+            const CHAT_BASE = 'https://web-production-f5fa0.up.railway.app';
             try {
                 const scopeKey = typeof buildScopeKey === 'function' && typeof APP_SCOPE !== 'undefined' ? buildScopeKey(APP_SCOPE) : '';
                 const r = await fetch(`${CHAT_BASE}/chat/members?scopeKey=${encodeURIComponent(scopeKey)}&idToken=${encodeURIComponent(idToken)}`);
@@ -8562,7 +8562,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
             const sel = document.getElementById('wt-section-select-admin');
             const section = sel ? sel.value : '';
             if (!section) return showToast('اختار Section الأول', 'error');
-            const CHAT_API_BASE = 'https://web-production-ae004.up.railway.app';
+            const CHAT_API_BASE = 'https://web-production-f5fa0.up.railway.app';
             const scopeKey = (typeof buildScopeKey === 'function' && APP_SCOPE) ? buildScopeKey(APP_SCOPE) : '';
             if (!scopeKey) return showToast('Scope غير محدد، أعد تحميل التطبيق', 'error');
             try {
@@ -9189,7 +9189,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
     <script>
         // ══ COMMUNITY CHAT (PHASE 2) ══
         (function () {
-            const CHAT_API_BASE = 'https://web-production-ae004.up.railway.app';
+            const CHAT_API_BASE = 'https://web-production-f5fa0.up.railway.app';
             let ccGroups = [];
             let ccGroupId = 'general';
             let ccTimer = null;
