@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = [
+  "python -m venv /opt/venv",
+  ". /opt/venv/bin/activate && pip install -r requirements.txt"
+]
+
+[start]
+cmd = ". /opt/venv/bin/activate && gunicorn api:app_flask --bind 0.0.0.0:$PORT --workers 1 --threads 4"
