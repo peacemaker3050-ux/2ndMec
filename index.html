@@ -6927,7 +6927,7 @@
                 progressEl.style.display = 'block';
                 progressEl.innerText = 'Uploading to Google Drive...';
 
-                const RAILWAY_URL = 'http://127.0.0.1:8080/health';
+                const RAILWAY_URL = 'https://2ndmec-production.up.railway.app';
                 const subject = adminNavStack[0] || '';
                 const doctor = adminNavStack[1] || '';
 
@@ -7111,7 +7111,7 @@
                 try { if (auth && auth.currentUser) return await auth.currentUser.getIdToken(true); } catch (e) { }
                 return '';
             })();
-            const CHAT_BASE = 'https://web-production-f5fa0.up.railway.app';
+            const CHAT_BASE = 'https://2ndmec-production.up.railway.app';
             try {
                 const scopeKey = typeof buildScopeKey === 'function' && typeof APP_SCOPE !== 'undefined' ? buildScopeKey(APP_SCOPE) : '';
                 const r = await fetch(`${CHAT_BASE}/chat/members?scopeKey=${encodeURIComponent(scopeKey)}&idToken=${encodeURIComponent(idToken)}`);
@@ -8564,7 +8564,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
             const sel = document.getElementById('wt-section-select-admin');
             const section = sel ? sel.value : '';
             if (!section) return showToast('اختار Section الأول', 'error');
-            const CHAT_API_BASE = 'https://web-production-f5fa0.up.railway.app';
+            const CHAT_API_BASE = 'https://2ndmec-production.up.railway.app';
             const scopeKey = (typeof buildScopeKey === 'function' && APP_SCOPE) ? buildScopeKey(APP_SCOPE) : '';
             if (!scopeKey) return showToast('Scope غير محدد، أعد تحميل التطبيق', 'error');
             try {
@@ -9191,7 +9191,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
     <script>
         // ══ COMMUNITY CHAT (PHASE 2) ══
         (function () {
-            const CHAT_API_BASE = 'https://web-production-f5fa0.up.railway.app';
+            const CHAT_API_BASE = 'https://2ndmec-production.up.railway.app';
             let ccGroups = [];
             let ccGroupId = 'general';
             let ccTimer = null;
@@ -9524,7 +9524,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
         (function () {
             const STORAGE_KEY_BASE = 'shoubraAI_serverUrl';
             const CHATS_KEY_BASE = 'shoubraAI_chats';
-            const DEFAULT_AI_SERVER_URL = 'https://web-production-4bcba.up.railway.app';
+            const DEFAULT_AI_SERVER_URL = 'https://2ndmec-production.up.railway.app';
             function saiGetScopeId() {
                 try {
                     const sess = JSON.parse(localStorage.getItem(GT_STUDENT_SESSION_KEY()) || 'null');
@@ -9546,7 +9546,7 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
             }
             function saiGetServerUrl() {
                 const saved = (localStorage.getItem(saiStorageKey(STORAGE_KEY_BASE)) || '').trim().replace(/\/$/, '');
-                if (saved.startsWith('http')) return saved;
+                // removed
                 return DEFAULT_AI_SERVER_URL;
             }
             let saiLang = 'en';
@@ -10737,10 +10737,10 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
         // ========== END SCHEDULE SCREEN ==========
         // ==================== VOICE NOTES ====================
         function vnStorageKey(base) { return scopedStorageKey(base); }
-        const VN_DEFAULT_SERVER_URL = 'https://web-production-4bcba.up.railway.app';
+        const VN_DEFAULT_SERVER_URL = 'https://2ndmec-production.up.railway.app';
         function vnGetServerUrl() {
             const v = (localStorage.getItem(vnStorageKey('vn_server_url')) || '').trim().replace(/\/$/, '');
-            return v.startsWith('http') ? v : VN_DEFAULT_SERVER_URL;
+            return VN_DEFAULT_SERVER_URL;
         }
         let vnMediaRecorder = null;
         let vnAudioChunks = [];

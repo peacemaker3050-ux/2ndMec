@@ -24,7 +24,7 @@ function getScopedDbUrl() {
 }
 
 // ── Cache ──
-const CACHE_VERSION = 'v14';
+const CACHE_VERSION = 'v15';
 const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
 const CACHE_API     = `uni-api-${CACHE_VERSION}`;
 
@@ -144,6 +144,7 @@ self.addEventListener('activate', event => {
 // ============================================================
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+if (!url.protocol.startsWith('http')) return;
 
   if (url.hostname.includes('firebaseio.com')) {
     event.respondWith(
