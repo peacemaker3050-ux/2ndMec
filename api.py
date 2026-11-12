@@ -37,7 +37,7 @@ DRIVE_FOLDER_ID = "1T0MwUb-dc3UN3hMjrio1GVT6lm1mQl4Q"
 # Google Drive OAuth credentials (from bot.py)
 CLIENT_ID     = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com'
 CLIENT_SECRET = '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'
-REFRESH_TOKEN = '1//03rBdYnjPptutCgYIARAAGAMSNwF-L9IrQdCoaaWtNHykuevaFyU2BIgZx_xgfy6NmuNo7UVCb4uluy-f6K3utU6LFZvJpVMSZUE'
+REFRESH_TOKEN = '1//03HqTaKPYw7WKCgYIARAAGAMSSQF-L9Ir8KvWsYYNuxjp5fPgDigkv8JdtVnuhJxRh6L4u1H903Hga3cR8I8a8Pd3hlCU5lLxP4HwBOsq_RbBvP2xRWRzyVd1qcw'
 
 RAILWAY_URL = "https://web-production-f5fa0.up.railway.app"
 
