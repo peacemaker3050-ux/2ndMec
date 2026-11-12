@@ -398,6 +398,21 @@ def send_fcm_new_files(title, body, scope_key=None):
 def health():
     return jsonify({"status": "ok", "service": "UniBot API"})
 
+# TEMPORARY: remove after debugging (exposes emails)
+@app_flask.route('/debug/tokens', methods=['GET'])
+def debug_tokens():
+    import requests
+    scope_key = normalize_scope_key(request.args.get('scopeKey'))
+    r = requests.get(f"{scoped_db_base(scope_key)}/userTokens.json", timeout=10)
+    data = r.json() or {}
+    out = {}
+    for k, v in data.items():
+        if isinstance(v, dict):
+            out[k] = {"tokens": len(v.get('tokens', [])), "newFilesEnabled": v.get('newFilesEnabled', False)}
+        elif isinstance(v, list):
+            out[k] = {"tokens": len(v)}
+    return jsonify(out)
+
 @app_flask.route('/chat/config', methods=['GET'])
 def chat_config():
     return jsonify({

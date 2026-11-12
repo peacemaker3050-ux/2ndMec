@@ -7470,17 +7470,20 @@ window.enableNotifications = async function () {
                 localStorage.setItem(NEW_FILES_TOGGLE_KEY(), state);
                 sendToggleToSW(state);
                 showToast(state ? "✅ New Files Alerts ON" : "🔕 New Files Alerts OFF", "info");
-                // Sync to Firebase
+                // Sync to Firebase (logged-in or anonymous device)
                 const user = auth.currentUser;
-                if (user) {
-                    user.getIdToken().then(idToken => {
-                        const safeEmail = user.email.replace(/\./g, '_');
-                        fetch(`${FIREBASE_DB_URL}/userTokens/${safeEmail}/newFilesEnabled.json?auth=${idToken}`, {
+                const anonKey = localStorage.getItem('fcm_anon_key');
+                const safeKey = user ? user.email.replace(/\./g, '_') : anonKey;
+                if (safeKey) {
+                    (async () => {
+                        let q = '';
+                        if (user) { try { q = '?auth=' + await user.getIdToken(); } catch (e) { } }
+                        fetch(`${FIREBASE_DB_URL}/userTokens/${safeKey}/newFilesEnabled.json${q}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(state)
-                        });
-                    });
+                        }).catch(() => { });
+                    })();
                 }
             });
         }
