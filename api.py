@@ -934,6 +934,9 @@ def poll_watcher():
                     poll_id = str(poll.get('question', '')) + str(poll.get('endsAt', 0))
                     ends_at_ms  = poll.get('endsAt', 0)
                     remaining_s = max(0, int((ends_at_ms - time.time() * 1000) / 1000))
+                    if scope_key not in last_poll_id_by_scope:
+                        last_poll_id_by_scope[scope_key] = poll_id
+                        continue
                     if poll_id != last_poll_id_by_scope.get(scope_key) and remaining_s > 0:
                         print(f"🗳️ New poll [{scope_key}]: {poll.get('question','')}")
                         send_fcm_all(
@@ -1133,8 +1136,11 @@ def broadcast_watcher():
         try:
             for scope_key in get_all_scope_keys():
                 db = get_database_sync(force_refresh=True, scope_key=scope_key)
-                broadcast = db.get('generalBroadcast', {})
-                last_ts = last_broadcast_ts_by_scope.get(scope_key, 0)
+                broadcast = db.get('generalBroadcast', {}) or {}
+                if scope_key not in last_broadcast_ts_by_scope:
+                    last_broadcast_ts_by_scope[scope_key] = broadcast.get('timestamp', 0)
+                    continue
+                last_ts = last_broadcast_ts_by_scope[scope_key]
                 if broadcast.get('active') and broadcast.get('timestamp', 0) > last_ts:
                     last_broadcast_ts_by_scope[scope_key] = broadcast['timestamp']
                     send_fcm_all(
