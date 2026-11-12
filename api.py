@@ -250,7 +250,7 @@ def clean_invalid_tokens(user_tokens, token_results, all_tokens, scope_key=None)
         for i, result in enumerate(token_results):
             if not result.success:
                 err = str(result.exception)
-                if 'registration-token-not-registered' in err or 'invalid-registration-token' in err or 'InvalidRegistration' in err:
+                if any(k in err for k in ('registration-token-not-registered', 'invalid-registration-token', 'InvalidRegistration', 'NotRegistered', 'unregistered', 'Unregistered')):
                     if i < len(all_tokens):
                         invalid_tokens.add(all_tokens[i])
 
