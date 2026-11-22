@@ -30,16 +30,31 @@ import io
 # ==========================================
 # 1. Config
 # ==========================================
-FIREBASE_DB_URL = "https://libirary-b2424-default-rtdb.firebaseio.com"
-DEFAULT_SCOPE_KEY = "ميكانيكا__second__term2"
-DRIVE_FOLDER_ID = "1T0MwUb-dc3UN3hMjrio1GVT6lm1mQl4Q"
+FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "https://libirary-b2424-default-rtdb.firebaseio.com")
+DEFAULT_SCOPE_KEY = os.environ.get("DEFAULT_SCOPE_KEY", "ميكانيكا__second__term2")
+DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID", "1T0MwUb-dc3UN3hMjrio1GVT6lm1mQl4Q")
 
-# Google Drive OAuth credentials (from bot.py)
-CLIENT_ID     = '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com'
-CLIENT_SECRET = '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'
-REFRESH_TOKEN = '1//03yfdEJxYAguyCgYIARAAGAMSSQF-L9IruzdSRBumVMvyheXX-34VNO8hLn7Z3FJxgmkmzQmHB9f8QyS7KF6JDeSz5QkkO_lvCFEWg43xiJFEx2CEXKpye1pkXQ4'
+# Google Drive OAuth credentials
+# Priority: Environment Variables (recommended for Railway) -> Local fallback
+CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '1006485502608-ok2u5i6nt6js64djqluithivsko4mnom.apps.googleusercontent.com')
+CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+REFRESH_TOKEN = os.environ.get('GOOGLE_REFRESH_TOKEN', '')
 
-RAILWAY_URL = "https://web-production-f5fa0.up.railway.app"
+# If not in env, fallback to refresh_token.txt if available
+if not REFRESH_TOKEN and os.path.exists('refresh_token.txt'):
+    try:
+        with open('refresh_token.txt', 'r', encoding='utf-8') as _rf:
+            REFRESH_TOKEN = _rf.read().strip()
+    except Exception as _e:
+        print(f"⚠️ Could not read refresh_token.txt: {_e}")
+
+# Fallback for backward compatibility if env vars not yet configured on Railway
+if not CLIENT_SECRET:
+    CLIENT_SECRET = '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'
+if not REFRESH_TOKEN:
+    REFRESH_TOKEN = '1//03yfdEJxYAguyCgYIARAAGAMSSQF-L9IruzdSRBumVMvyheXX-34VNO8hLn7Z3FJxgmkmzQmHB9f8QyS7KF6JDeSz5QkkO_lvCFEWg43xiJFEx2CEXKpye1pkXQ4'
+
+RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-f5fa0.up.railway.app")
 
 # ==========================================
 # 2. Firebase init
@@ -61,24 +76,29 @@ except Exception as e:
 # 3. Google Drive init
 # ==========================================
 SCOPES = ['https://www.googleapis.com/auth/drive']
-drive_credentials = Credentials(
-    token=None,
-    refresh_token=REFRESH_TOKEN,
-    token_uri="https://oauth2.googleapis.com/token",
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    scopes=SCOPES
-)
+
+def get_drive_credentials():
+    return Credentials(
+        token=None,
+        refresh_token=REFRESH_TOKEN,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPES
+    )
 
 def get_drive_service():
+    if not CLIENT_SECRET or not REFRESH_TOKEN:
+        raise ValueError("Google Drive credentials not set. Provide GOOGLE_CLIENT_SECRET and GOOGLE_REFRESH_TOKEN in environment variables.")
+    creds = get_drive_credentials()
     try:
         import httplib2
         from google_auth_httplib2 import AuthorizedHttp
         http = httplib2.Http()
-        authorized_http = AuthorizedHttp(drive_credentials, http=http)
+        authorized_http = AuthorizedHttp(creds, http=http)
         return build('drive', 'v3', http=authorized_http)
     except ImportError:
-        return build('drive', 'v3', credentials=drive_credentials)
+        return build('drive', 'v3', credentials=creds)
 
 # ==========================================
 # 4. Flask App
@@ -398,11 +418,19 @@ def send_fcm_new_files(title, body, scope_key=None):
 def health():
     return jsonify({"status": "ok", "service": "UniBot API"})
 
-# TEMPORARY: remove after debugging (exposes emails)
+# Restricted to scope admins
 @app_flask.route('/debug/tokens', methods=['GET'])
 def debug_tokens():
-    import requests
     scope_key = normalize_scope_key(request.args.get('scopeKey'))
+    id_token = str(request.args.get('idToken', '')).strip() or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    if not id_token:
+        return jsonify({"error": "Admin auth required"}), 401
+    decoded = verify_firebase_id_token(id_token)
+    actor_email = str((decoded or {}).get('email', '')).strip().lower()
+    if not is_scope_admin(scope_key, actor_email):
+        return jsonify({"error": "Admin privileges required"}), 403
+
+    import requests
     r = requests.get(f"{scoped_db_base(scope_key)}/userTokens.json", timeout=10)
     data = r.json() or {}
     out = {}
@@ -571,7 +599,7 @@ def chat_message_delete():
     group_id = str(data.get('groupId', 'general')).strip() or 'general'
     message_id = int(data.get('messageId', 0) or 0)
     phone = str(data.get('phone', '')).strip()
-    id_token = str(data.get('idToken', '')).strip()
+    id_token = str(data.get('idToken', '')).strip() or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
     if message_id <= 0:
         return jsonify({"error": "invalid messageId"}), 400
     conn = get_chat_conn()
@@ -582,17 +610,34 @@ def chat_message_delete():
     if not row:
         conn.close()
         return jsonify({"error": "message not found"}), 404
+
+    sender_phone = str(row['sender_phone']).strip()
     actor_is_admin = False
-    actor_email = ''
+    is_owner = False
+
     if id_token:
         decoded = verify_firebase_id_token(id_token)
-        actor_email = str((decoded or {}).get('email', '')).strip().lower()
-        actor_is_admin = is_scope_admin(scope_key, actor_email)
-    sender_phone = str(row['sender_phone']).strip()
-    # permission: own message OR admin
-    if not actor_is_admin and sender_phone != phone:
+        if decoded:
+            actor_email = str(decoded.get('email', '')).strip().lower()
+            actor_uid = str(decoded.get('uid', '')).strip()
+            actor_is_admin = is_scope_admin(scope_key, actor_email)
+            if not actor_is_admin:
+                cur.execute("SELECT phone, email, uid FROM chat_members WHERE scope_key=? AND phone=?", (scope_key, sender_phone))
+                member = cur.fetchone()
+                if member:
+                    m_email = str(member['email'] or '').strip().lower()
+                    m_uid = str(member['uid'] or '').strip()
+                    if (m_email and m_email == actor_email) or (m_uid and m_uid == actor_uid):
+                        is_owner = True
+                elif sender_phone == phone:
+                    is_owner = True
+    elif sender_phone == phone:
+        is_owner = True
+
+    if not actor_is_admin and not is_owner:
         conn.close()
         return jsonify({"error": "not allowed"}), 403
+
     cur.execute("DELETE FROM chat_messages WHERE id=? AND scope_key=?", (message_id, scope_key))
     cur.execute("DELETE FROM chat_reactions WHERE message_id=? AND scope_key=?", (message_id, scope_key))
     conn.commit()
@@ -705,17 +750,36 @@ def chat_group_state_get():
         "membersInScope": members
     })
 
-# --- Send notification to all users ---
+# --- Send notification to all users (Protected) ---
 @app_flask.route('/send-notification', methods=['POST'])
 def send_notification():
-    data = request.get_json()
+    data = request.get_json() or {}
     if not data:
         return jsonify({"error": "No data"}), 400
     title = data.get('title', '')
     body  = data.get('body', '')
-    scope_key = data.get('scopeKey') or DEFAULT_SCOPE_KEY
+    scope_key = normalize_scope_key(data.get('scopeKey') or DEFAULT_SCOPE_KEY)
     if not title or not body:
         return jsonify({"error": "title and body required"}), 400
+
+    id_token = data.get('idToken') or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    admin_api_key = os.environ.get('INTERNAL_ADMIN_KEY', '')
+    provided_key = request.headers.get('X-Admin-Key', '')
+
+    is_authorized = False
+    if admin_api_key and provided_key == admin_api_key:
+        is_authorized = True
+    elif id_token:
+        decoded = verify_firebase_id_token(id_token)
+        actor_email = str((decoded or {}).get('email', '')).strip().lower()
+        is_authorized = is_scope_admin(scope_key, actor_email)
+    else:
+        # Fallback check: If Firebase is initialized and user provides no token, require token
+        is_authorized = False
+
+    if not is_authorized:
+        return jsonify({"error": "Admin authorization required to send notifications"}), 403
+
     success, failure = send_fcm_all(title, body, scope_key=scope_key)
     return jsonify({"success": success, "failure": failure})
 
@@ -738,7 +802,7 @@ def get_or_create_folder(service, name, parent_id):
     print(f"📁 Created folder: {name} ({folder['id']})")
     return folder['id']
 
-# --- Upload file to Google Drive ---
+# --- Upload file to Google Drive (Protected) ---
 @app_flask.route('/upload-file', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -749,6 +813,23 @@ def upload_file():
     folder_path = request.form.get('folder_path', '')  # e.g. "Lectures/Week1"
     notify      = request.form.get('notify', 'true') == 'true'
     scope_key   = normalize_scope_key(request.form.get('scopeKey', DEFAULT_SCOPE_KEY))
+
+    id_token    = request.form.get('idToken') or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    admin_api_key = os.environ.get('INTERNAL_ADMIN_KEY', '')
+    provided_key  = request.headers.get('X-Admin-Key', '')
+
+    is_authorized = False
+    if admin_api_key and provided_key == admin_api_key:
+        is_authorized = True
+    elif id_token:
+        decoded = verify_firebase_id_token(id_token)
+        actor_email = str((decoded or {}).get('email', '')).strip().lower()
+        is_authorized = is_scope_admin(scope_key, actor_email)
+    else:
+        is_authorized = False
+
+    if not is_authorized:
+        return jsonify({"error": "Admin authentication required to upload files"}), 403
 
     try:
         service = get_drive_service()
@@ -1171,7 +1252,17 @@ def broadcast_watcher():
 # ==========================================
 # 10. Start
 # ==========================================
+_watchers_started = False
+
 def start_watchers():
+    global _watchers_started
+    if _watchers_started:
+        return
+    enable_watchers = os.environ.get("ENABLE_BACKGROUND_WATCHERS", "true").lower() in ("true", "1", "yes")
+    if not enable_watchers:
+        print("ℹ️ Background watchers disabled via ENABLE_BACKGROUND_WATCHERS=false")
+        return
+    _watchers_started = True
     print("🚀 Starting all watchers...")
     threading.Thread(target=poll_watcher,            daemon=True).start()
     threading.Thread(target=quicklinks_watcher,      daemon=True).start()
@@ -1180,7 +1271,7 @@ def start_watchers():
     threading.Thread(target=broadcast_watcher,       daemon=True).start()
     print("✅ All watchers started")
 
-# Auto-start watchers when gunicorn loads the module
+# Auto-start watchers when module loads
 start_watchers()
 
 if __name__ == '__main__':

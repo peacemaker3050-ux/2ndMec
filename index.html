@@ -6950,6 +6950,12 @@ window.enableNotifications = async function () {
                 const folderPath = adminNavStack.slice(2).join('/');
                 formData.append('folder_path', folderPath);
                 formData.append('notify', 'true');
+                if (typeof auth !== 'undefined' && auth && auth.currentUser) {
+                    try {
+                        const idToken = await auth.currentUser.getIdToken(true);
+                        formData.append('idToken', idToken);
+                    } catch (e) { }
+                }
 
                 const resp = await fetch(`${RAILWAY_URL}/upload-file`, { method: 'POST', body: formData });
                 const result = await resp.json();
@@ -8581,11 +8587,16 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
             const scopeKey = (typeof buildScopeKey === 'function' && APP_SCOPE) ? buildScopeKey(APP_SCOPE) : '';
             if (!scopeKey) return showToast('Scope غير محدد، أعد تحميل التطبيق', 'error');
             try {
+                let idToken = '';
+                if (typeof auth !== 'undefined' && auth && auth.currentUser) {
+                    try { idToken = await auth.currentUser.getIdToken(true); } catch (e) { }
+                }
                 const res = await fetch(`${CHAT_API_BASE}/send-notification`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         scopeKey,
+                        idToken,
                         title: `📋 Weekly Tasks — Section ${section}`,
                         body: `في مهام جديدة للـ Section ${section}، افتح التطبيق عشان تشوفها.`
                     })
