@@ -1077,50 +1077,54 @@ def quicklinks_watcher():
             print(f"Quick Links Watcher Error: {e}")
         time.sleep(30)
 
-# --- New Files watcher ---
+# --- New Files watcher (Scope Isolated) ---
 def new_files_watcher():
     import time
     print("📂 New Files Watcher started")
-    last_seen_ts = int(time.time() * 1000)
+    last_seen_ts_by_scope = {}
     time.sleep(60)
     while True:
         try:
-            db = get_database_sync(force_refresh=True)
-            database = db.get('database', {})
-            newest_ts      = 0
-            newest_name    = ""
-            newest_subject = ""
+            for scope_key in get_all_scope_keys():
+                db = get_database_sync(force_refresh=True, scope_key=scope_key)
+                database = db.get('database', {})
+                newest_ts      = 0
+                newest_name    = ""
+                newest_subject = ""
 
-            def scan(items, subject_key):
-                nonlocal newest_ts, newest_name, newest_subject
-                if not isinstance(items, list):
-                    return
-                for item in items:
-                    if item.get('type') == 'file' and item.get('ts', 0) > newest_ts:
-                        newest_ts      = item['ts']
-                        newest_name    = item.get('name', '')
-                        newest_subject = subject_key
-                    if item.get('type') == 'folder':
-                        scan(item.get('children', []), subject_key)
+                def scan(items, subject_key):
+                    nonlocal newest_ts, newest_name, newest_subject
+                    if not isinstance(items, list):
+                        return
+                    for item in items:
+                        if item.get('type') == 'file' and item.get('ts', 0) > newest_ts:
+                            newest_ts      = item['ts']
+                            newest_name    = item.get('name', '')
+                            newest_subject = subject_key
+                        if item.get('type') == 'folder':
+                            scan(item.get('children', []), subject_key)
 
-            for subject_key, subject_val in database.items():
-                if not isinstance(subject_val, dict):
-                    continue
-                for key, val in subject_val.items():
-                    if key == 'doctors':
+                for subject_key, subject_val in database.items():
+                    if not isinstance(subject_val, dict):
                         continue
-                    if isinstance(val, dict) and 'root' in val:
-                        scan(val['root'], subject_key)
+                    for key, val in subject_val.items():
+                        if key == 'doctors':
+                            continue
+                        if isinstance(val, dict) and 'root' in val:
+                            scan(val['root'], subject_key)
 
-            if newest_ts > last_seen_ts:
-                print(f"🆕 New file: {newest_name} ({newest_subject})")
-                send_fcm_new_files(
-                    f"📂 New file — {newest_subject}",
-                    newest_name
-                )
-                last_seen_ts = newest_ts
-            else:
-                print(f"📂 No new files (last_ts={last_seen_ts})")
+                if scope_key not in last_seen_ts_by_scope:
+                    last_seen_ts_by_scope[scope_key] = newest_ts or int(time.time() * 1000)
+                    continue
+
+                if newest_ts > last_seen_ts_by_scope[scope_key]:
+                    print(f"🆕 New file [{scope_key}]: {newest_name} ({newest_subject})")
+                    send_fcm_new_files(
+                        f"📂 New file — {newest_subject}",
+                        newest_name,
+                        scope_key=scope_key
+                    )
+                    last_seen_ts_by_scope[scope_key] = newest_ts
         except Exception as e:
             print(f"New Files Watcher Error: {e}")
         time.sleep(60)

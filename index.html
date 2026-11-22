@@ -84,6 +84,21 @@
             position: relative;
             box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
             z-index: 10;
+            transition: max-width 0.3s ease;
+        }
+
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 720px;
+                border-left: 1px solid var(--border-color);
+                border-right: 1px solid var(--border-color);
+            }
+        }
+
+        @media (min-width: 1100px) {
+            .app-container {
+                max-width: 860px;
+            }
         }
 
         header {
@@ -4084,16 +4099,13 @@
            === LIGHT MODE OVERRIDES ===
            ========================================== */
         body.light-mode {
-            --bg-dark: #f1f5f9;
-            /* Light Gray Background */
+            --bg-dark: #f8fafc;
             --text-primary: #0f172a;
-            /* Dark Text */
-            --text-secondary: #64748b;
-            --bg-glass: rgba(255, 255, 255, 0.85);
-            /* Light Glass */
+            --text-secondary: #334155;
+            --bg-glass: rgba(255, 255, 255, 0.92);
             --bg-glass-heavy: rgba(255, 255, 255, 0.98);
-            background-image: none;
-            /* Remove dark gradients */
+            --border-color: rgba(15, 23, 42, 0.12);
+            background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
         }
 
         body.light-mode .app-container {
@@ -6436,6 +6448,27 @@
             overlay.classList.add('active');
             if (forceOpen) document.getElementById('menu-dropdown').classList.remove('active');
         };
+        async function migrateScopeToken(oldScopeKey, newScopeKey) {
+            try {
+                const user = auth ? auth.currentUser : null;
+                const anonKey = localStorage.getItem('fcm_anon_key');
+                const safeKey = user ? user.email.replace(/\./g, '_') : anonKey;
+                if (safeKey && oldScopeKey && oldScopeKey !== newScopeKey) {
+                    const oldDbUrl = `${FIREBASE_DB_ROOT_URL}/scopes/${encodeURIComponent(oldScopeKey)}`;
+                    let authParam = '';
+                    if (user) {
+                        try { authParam = '?auth=' + await user.getIdToken(); } catch (e) { }
+                    }
+                    fetch(`${oldDbUrl}/userTokens/${safeKey}.json${authParam}`, { method: 'DELETE' }).catch(() => { });
+                }
+                if (typeof setupFCMToken === 'function') {
+                    setupFCMToken(user);
+                }
+            } catch (err) {
+                console.warn('Scope token migration error:', err);
+            }
+        }
+
         window.applyScopeSelection = function () {
             const depSel = document.getElementById('scope-department');
             const yearSel = document.getElementById('scope-year');
@@ -6445,10 +6478,23 @@
                 year: (depSel && isPreparatoryDepartment(depSel.value)) ? 'prep' : (yearSel ? yearSel.value : 'first'),
                 term: termSel ? termSel.value : 'term1'
             };
+            const oldScope = APP_SCOPE || loadScope() || getDefaultScope();
+            const oldScopeKey = buildScopeKey(oldScope);
+            const newScopeKey = buildScopeKey(scope);
+
             saveScope(scope);
             applyScopeRuntime(scope);
             document.getElementById('scope-selector-overlay').classList.remove('active');
             fetchConfig();
+
+            if (oldScopeKey !== newScopeKey) {
+                migrateScopeToken(oldScopeKey, newScopeKey);
+                if (typeof ccGroupId !== 'undefined') {
+                    ccGroupId = 'general';
+                    if (typeof ccFetchGroups === 'function') ccFetchGroups();
+                }
+            }
+
             showToast(`✅ Scope: ${scope.department} / ${scope.year === 'prep' ? 'prep' : scope.year} / ${scope.term}`, 'success');
         };
 
@@ -6732,8 +6778,13 @@
                             });
                         }
                     });
-                    const emailKey = user ? user.email : ('device_' + Math.random().toString(36).substr(2, 9));
-                    if (!user) localStorage.setItem('fcm_anon_key', emailKey.replace(/\./g, '_'));
+                    let anonKey = localStorage.getItem('fcm_anon_key');
+                    if (!anonKey) {
+                        anonKey = 'device_' + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem('fcm_anon_key', anonKey);
+                    }
+                    const emailKey = user ? user.email : anonKey;
+                    localStorage.setItem('fcm_token_cache', currentToken);
                     saveUserToken(emailKey, currentToken);
                 } else { console.log("[FCM] No registration token available."); }
             } catch (err) { console.log("[FCM] Error getting token:", err); }
@@ -10878,9 +10929,31 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
         <div class="vn-actions-inner">
           <audio class="vn-audio-player" controls src="${rec.audioData}"></audio>
           <button class="vn-action-btn" onclick="vnTranscribe(${rec.id})">📝 تفريغ الكلام لنص</button>
-          <div class="vn-result-box" id="vn-transcribe-${rec.id}"></div>
+          <div class="vn-result-box ${rec.transcript ? 'show' : ''}" id="vn-transcribe-${rec.id}">
+            ${rec.transcript ? `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px;">
+                    <div class="vn-result-title" style="margin:0;">📝 النص المفرّغ</div>
+                    <div style="display:flex;gap:4px;">
+                        <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnCopyText(this, vnRecordings.find(r=>r.id===${rec.id}).transcript)">📋 نسخ</button>
+                        <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnDownloadText('${rec.name}_تفريغ', vnRecordings.find(r=>r.id===${rec.id}).transcript)">💾 TXT</button>
+                    </div>
+                </div>
+                <div style="white-space:pre-wrap;line-height:1.6;font-size:14px;">${rec.transcript}</div>
+            ` : ''}
+          </div>
           <button class="vn-action-btn" onclick="vnSummarize(${rec.id})">✨ تلخيص بالـ AI</button>
-          <div class="vn-result-box" id="vn-summary-${rec.id}"></div>
+          <div class="vn-result-box ${rec.summary ? 'show' : ''}" id="vn-summary-${rec.id}">
+            ${rec.summary ? `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px;">
+                    <div class="vn-result-title" style="margin:0;">✨ الملخص الذكي</div>
+                    <div style="display:flex;gap:4px;">
+                        <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnCopyText(this, vnRecordings.find(r=>r.id===${rec.id}).summary)">📋 نسخ</button>
+                        <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnDownloadText('${rec.name}_ملخص', vnRecordings.find(r=>r.id===${rec.id}).summary)">💾 TXT</button>
+                    </div>
+                </div>
+                <div style="white-space:pre-wrap;line-height:1.6;font-size:14px;">${rec.summary}</div>
+            ` : ''}
+          </div>
           ${hasAdminAccess() ? `<button class="vn-action-btn" style="background:rgba(74,222,128,0.1);border-color:rgba(74,222,128,0.3);color:#4ade80;" onclick="vnShareToAdmin(${rec.id})">📤 مشاركة مع الطلاب</button>` : ''}
           <button class="vn-action-btn vn-delete-btn" onclick="vnDelete(${rec.id})">🗑️ حذف التسجيل</button>
         </div>
@@ -10925,6 +10998,30 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
             localStorage.setItem(vnStorageKey('vn_recordings'), JSON.stringify(vnRecordings));
             vnRenderList();
         }
+        window.vnCopyText = function (btn, text) {
+            if (!navigator.clipboard) {
+                showToast('تعذر النسخ', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                const orig = btn.innerText;
+                btn.innerText = '✅ تم النسخ!';
+                setTimeout(() => { btn.innerText = orig; }, 2000);
+                showToast('تم نسخ النص بنجاح', 'success');
+            }).catch(() => showToast('تعذر النسخ', 'error'));
+        };
+
+        window.vnDownloadText = function (name, text) {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${name}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('تم حفظ الملف بنجاح', 'success');
+        };
+
         function vnSaveServerUrl(val, showToast) {
             localStorage.setItem(vnStorageKey('vn_server_url'), val.trim().replace(/\/$/, ''));
             if (showToast) {
@@ -10955,7 +11052,16 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
                 if (data.text) {
                     rec.transcript = data.text;
                     localStorage.setItem(vnStorageKey('vn_recordings'), JSON.stringify(vnRecordings));
-                    box.innerHTML = `<div class="vn-result-title">📝 النص المفرّغ</div>${data.text}`;
+                    box.innerHTML = `
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px;">
+                            <div class="vn-result-title" style="margin:0;">📝 النص المفرّغ</div>
+                            <div style="display:flex;gap:4px;">
+                                <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnCopyText(this, vnRecordings.find(r=>r.id===${rec.id}).transcript)">📋 نسخ</button>
+                                <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnDownloadText('${rec.name}_تفريغ', vnRecordings.find(r=>r.id===${rec.id}).transcript)">💾 TXT</button>
+                            </div>
+                        </div>
+                        <div style="white-space:pre-wrap;line-height:1.6;font-size:14px;">${data.text}</div>
+                    `;
                 } else {
                     box.innerHTML = '❌ ' + (data.error?.message || 'حدث خطأ');
                 }
@@ -10989,7 +11095,16 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
                 if (data.summary) {
                     rec.summary = data.summary;
                     localStorage.setItem(vnStorageKey('vn_recordings'), JSON.stringify(vnRecordings));
-                    box.innerHTML = `<div class="vn-result-title">✨ الملخص</div>${data.summary}`;
+                    box.innerHTML = `
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px;">
+                            <div class="vn-result-title" style="margin:0;">✨ الملخص الذكي</div>
+                            <div style="display:flex;gap:4px;">
+                                <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnCopyText(this, vnRecordings.find(r=>r.id===${rec.id}).summary)">📋 نسخ</button>
+                                <button class="vn-action-btn" style="padding:4px 8px;font-size:11px;margin:0;" onclick="vnDownloadText('${rec.name}_ملخص', vnRecordings.find(r=>r.id===${rec.id}).summary)">💾 TXT</button>
+                            </div>
+                        </div>
+                        <div style="white-space:pre-wrap;line-height:1.6;font-size:14px;">${data.summary}</div>
+                    `;
                 } else {
                     box.innerHTML = '❌ حدث خطأ في التلخيص';
                 }
