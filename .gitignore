@@ -1,0 +1,12 @@
+# Secrets & private local data
+service-account.json
+refresh_token.txt
+.env
+.env.*
+chat.db
+
+# IDE & Python caches
+__pycache__/
+*.pyc
+.idea/
+.vscode/
