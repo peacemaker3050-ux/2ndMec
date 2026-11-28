@@ -24,7 +24,7 @@ function getScopedDbUrl() {
 }
 
 // ── Cache ──
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16-web';
 const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
 const CACHE_API     = `uni-api-${CACHE_VERSION}`;
 
