@@ -38,7 +38,7 @@
 
     <style>
         :root {
-            --safe-area-top: max(env(safe-area-inset-top, 0px), 28px);
+            --safe-area-top: env(safe-area-inset-top, 0px);
             --safe-area-bottom: env(safe-area-inset-bottom, 0px);
             --bg-dark: #0b1220;
             --bg-surface: #111a2e;
@@ -114,7 +114,7 @@
         }
 
         header {
-            padding: var(--safe-area-top, env(safe-area-inset-top, 0px)) 16px 0 16px;
+            padding: calc(6px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 16px 6px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -123,7 +123,7 @@
             z-index: 20;
             user-select: none;
             position: relative;
-            min-height: calc(70px + var(--safe-area-top, env(safe-area-inset-top, 0px)));
+            min-height: calc(64px + var(--safe-area-top, env(safe-area-inset-top, 0px)));
             box-sizing: border-box;
             transition: background 0.3s ease, border-color 0.3s ease;
         }
@@ -506,8 +506,8 @@
         }
 
         .vnotes-header {
-            padding: calc(12px + var(--safe-area-top, env(safe-area-inset-top, 24px))) 18px 12px;
-            min-height: calc(64px + var(--safe-area-top, env(safe-area-inset-top, 24px)));
+            padding: calc(12px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 18px 12px;
+            min-height: calc(64px + var(--safe-area-top, env(safe-area-inset-top, 0px)));
             box-sizing: border-box;
             display: flex;
             align-items: center;
@@ -1547,7 +1547,7 @@
             background: #0b1220;
             border-bottom: 1px solid var(--border-color);
             z-index: 20;
-            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 24px))) 18px 14px;
+            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 18px 14px;
         }
 
         .modal-title {
@@ -1998,7 +1998,7 @@
         }
 
         .grade-header {
-            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 24px))) 18px 14px;
+            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 18px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -3061,7 +3061,7 @@
         }
 
         .sch-hdr {
-            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 24px))) 18px 12px;
+            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 18px 12px;
             background: #111a2e;
             border-bottom: 1px solid rgba(148, 163, 184, 0.14);
             flex-shrink: 0;
@@ -4440,7 +4440,7 @@
         }
 
         .todo-header {
-            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 24px))) 18px 14px;
+            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 18px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -4928,7 +4928,7 @@
         }
 
         .sai-header {
-            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 24px))) 18px 14px;
+            padding: calc(14px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 18px 14px;
             border-bottom: 1px solid rgba(148, 163, 184, 0.14);
             display: flex;
             align-items: center;
@@ -6114,7 +6114,7 @@
             flex-direction: column;
             gap: 12px;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: contain;
+            overscroll-behavior-y: auto;
             transform: translateZ(0);
         }
 
@@ -6468,7 +6468,7 @@
             flex: 1;
             min-height: 0;
             overflow: auto;
-            padding: calc(var(--safe-area-top, 24px) + 12px) 10px 24px;
+            padding: calc(var(--safe-area-top, 0px) + 12px) 10px 24px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -6577,6 +6577,119 @@
             font-size: 17px;
             font-weight: 800;
             color: #ffffff;
+        }
+
+        /* ===== WEB PULL-TO-REFRESH INDICATOR ===== */
+        #orvix-ptr-pill {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translate(-50%, -80px);
+            z-index: 999999;
+            background: rgba(17, 26, 46, 0.96);
+            color: #e2e8f0;
+            border: 1px solid rgba(96, 165, 250, 0.4);
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+            opacity: 0;
+        }
+        #orvix-ptr-pill.visible {
+            opacity: 1;
+        }
+
+        /* ===== FULL ARABIC BROWSER-TRANSLATION RTL SUPPORT ===== */
+        html[dir="rtl"] body,
+        html.translated-rtl body {
+            direction: rtl;
+            text-align: right;
+        }
+        html[dir="rtl"] .menu-dropdown,
+        html.translated-rtl .menu-dropdown {
+            left: 12px;
+            right: auto;
+            text-align: right;
+        }
+        html[dir="rtl"] .menu-item,
+        html.translated-rtl .menu-item {
+            text-align: right;
+        }
+        html[dir="rtl"] .home-panel,
+        html[dir="rtl"] .home-panel-header,
+        html[dir="rtl"] .home-item-row,
+        html[dir="rtl"] .home-select-prompt,
+        html[dir="rtl"] .admin-card,
+        html[dir="rtl"] .admin-tab-content,
+        html[dir="rtl"] .form-group,
+        html[dir="rtl"] .form-label,
+        html[dir="rtl"] .ui-modal-box,
+        html[dir="rtl"] .modal-content,
+        html[dir="rtl"] .audit-row,
+        html[dir="rtl"] .user-row,
+        html[dir="rtl"] .data-item,
+        html[dir="rtl"] .vn-card,
+        html[dir="rtl"] .sch-card,
+        html.translated-rtl .home-panel,
+        html.translated-rtl .home-panel-header,
+        html.translated-rtl .home-item-row,
+        html.translated-rtl .admin-card,
+        html.translated-rtl .admin-tab-content,
+        html.translated-rtl .form-group,
+        html.translated-rtl .form-label,
+        html.translated-rtl .ui-modal-box,
+        html.translated-rtl .modal-content {
+            text-align: right;
+            direction: rtl;
+        }
+        html[dir="rtl"] .form-input,
+        html[dir="rtl"] .form-select,
+        html[dir="rtl"] textarea,
+        html[dir="rtl"] .search-input,
+        html.translated-rtl .form-input,
+        html.translated-rtl .form-select,
+        html.translated-rtl textarea,
+        html.translated-rtl .search-input {
+            text-align: right;
+            direction: rtl;
+        }
+        html[dir="rtl"] .admin-tabs,
+        html.translated-rtl .admin-tabs {
+            direction: rtl;
+        }
+        html[dir="rtl"] .admin-header,
+        html[dir="rtl"] .vnotes-header,
+        html[dir="rtl"] .sch-hdr,
+        html.translated-rtl .admin-header,
+        html.translated-rtl .vnotes-header,
+        html.translated-rtl .sch-hdr {
+            direction: rtl;
+        }
+        html[dir="rtl"] #orvix-viewer-close-btn,
+        html.translated-rtl #orvix-viewer-close-btn {
+            left: 14px;
+            right: auto;
+        }
+        html[dir="rtl"] .vnotes-screen:not(.open),
+        html.translated-rtl .vnotes-screen:not(.open) {
+            transform: translateX(-100%);
+        }
+        html[dir="rtl"] .bot-msg,
+        html[dir="rtl"] .user-msg,
+        html.translated-rtl .bot-msg,
+        html.translated-rtl .user-msg {
+            text-align: right;
+        }
+        html[dir="rtl"] table,
+        html[dir="rtl"] th,
+        html[dir="rtl"] td,
+        html.translated-rtl table,
+        html.translated-rtl th,
+        html.translated-rtl td {
+            text-align: right;
         }
     </style>
 </head>
@@ -6745,7 +6858,7 @@
 
     <!-- ==================== ORVIX EDU IN-APP VIEWER MODAL ==================== -->
     <div id="orvix-viewer-modal" class="modal-overlay" style="z-index: 1000000; display: none; flex-direction: column; background: #0b1220; inset: 0; position: fixed;">
-        <button type="button" id="orvix-viewer-close-btn" onclick="window.orvixCloseViewer()" aria-label="Close" style="position: fixed; top: calc(var(--safe-area-top, 24px) + 12px); right: 14px; z-index: 1000005; width: 38px; height: 38px; background: rgba(11, 18, 32, 0.78); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; color: #f8fafc; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);">×</button>
+        <button type="button" id="orvix-viewer-close-btn" onclick="window.orvixCloseViewer()" aria-label="Close" style="position: fixed; top: calc(var(--safe-area-top, 0px) + 12px); right: 14px; z-index: 1000005; width: 38px; height: 38px; background: rgba(11, 18, 32, 0.78); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; color: #f8fafc; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);">×</button>
         <div id="orvix-viewer-body" style="flex: 1; width: 100%; height: 100%; min-height: 0; overflow: hidden; position: relative; display: flex; flex-direction: column;"></div>
     </div>
     <!-- ==================== END IN-APP VIEWER MODAL ==================== -->
@@ -12532,28 +12645,35 @@ window.enableNotifications = async function () {
                 }
             })();
         }
+        let _lastOnlineState = null;
         function updateOnlineStatus(isOnline) {
+            const nextOnline = Boolean(isOnline);
+            if (_lastOnlineState === nextOnline) return;
+            _lastOnlineState = nextOnline;
             const dot = document.getElementById('connection-dot');
             const text = document.getElementById('status-text');
             if (!dot || !text) return;
-            if (isOnline) {
-                dot.classList.remove('offline');
-                text.innerText = window.t ? window.t('online') : 'Online';
-            } else {
-                dot.classList.add('offline');
-                text.innerText = window.t ? window.t('offline') : 'Offline';
+            const nextLabel = nextOnline
+                ? (window.t ? window.t('online') : 'Online')
+                : (window.t ? window.t('offline') : 'Offline');
+            if (nextOnline) dot.classList.remove('offline');
+            else dot.classList.add('offline');
+            if (text.dataset.rawStatus !== nextLabel) {
+                text.dataset.rawStatus = nextLabel;
+                text.textContent = nextLabel;
             }
         }
         function applyConfig(newConfig) {
             CONFIG = newConfig; database = CONFIG.database;
             if (window.OrvixOfflineManager && typeof window.OrvixOfflineManager.runBackgroundSync === 'function') {
                 setTimeout(() => window.OrvixOfflineManager.runBackgroundSync(database), 1500);
-            } document.getElementById('header-name').innerText = CONFIG.botName; document.getElementById('header-status').innerHTML = `<div class="sync-dot" id="connection-dot"></div> <span id="status-text">${CONFIG.botStatus}</span>`; const dot = document.getElementById('connection-dot'); const text = document.getElementById('status-text');
-            fetch(`${FIREBASE_DB_URL}/.json`, { cache: 'no-store' }).then(() => {
-                dot.classList.remove('offline'); text.innerText = "Online";
-            }).catch(() => {
-                dot.classList.add('offline'); text.innerText = "Offline";
-            }); const avatarEl = document.getElementById('header-avatar'); if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = "none"; avatarEl.innerHTML = `<img src="${CONFIG.botImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerHTML = '<img src="header-logo.png" style="width:100%;height:100%;object-fit:contain;">'; } const chatArea = document.getElementById('chat-area'); if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`;
+            }
+            const headerNameEl = document.getElementById('header-name');
+            if (headerNameEl && headerNameEl.dataset.rawName !== String(CONFIG.botName || '')) {
+                headerNameEl.dataset.rawName = String(CONFIG.botName || '');
+                headerNameEl.innerText = CONFIG.botName;
+            }
+            updateOnlineStatus(navigator.onLine); const avatarEl = document.getElementById('header-avatar'); if (CONFIG.botImage && CONFIG.botImage.trim().length > 50) { avatarEl.style.backgroundImage = "none"; avatarEl.innerHTML = `<img src="${CONFIG.botImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; } else { avatarEl.style.backgroundImage = "none"; avatarEl.innerHTML = '<img src="header-logo.png" style="width:100%;height:100%;object-fit:contain;">'; } const chatArea = document.getElementById('chat-area'); if (CONFIG.bgImage && CONFIG.bgImage.trim().length > 10) chatArea.style.backgroundImage = `url('${CONFIG.bgImage}')`;
             else if (DEFAULT_BG_URL) {
                 const cachedBg = localStorage.getItem(scopedStorageKey('uniBot_cachedBg'));
                 if (cachedBg) {
@@ -13169,25 +13289,29 @@ window.enableNotifications = async function () {
             const loginText = document.getElementById('auth-text');
             const loginIcon = document.getElementById('auth-icon');
             if (!loginText || !loginIcon) return;
+            let nextLabel = "Sign In";
+            let nextIcon = "🌐";
             if (!isAuthInitialized) {
-                loginText.innerText = "Loading...";
-                loginIcon.innerText = "⏳";
-                return;
-            }
-            const user = auth ? auth.currentUser : null;
-            if (user) {
-                const email = user.email;
-                if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.some(a => (typeof a === 'string' ? a : a.email).toLowerCase() === email.toLowerCase()))) {
-                    loginText.innerText = "Admin Panel";
-                    loginIcon.innerText = "⚙️";
-                } else {
-                    loginText.innerText = "Sign Out";
-                    loginIcon.innerText = "🔓";
-                }
+                nextLabel = "Loading...";
+                nextIcon = "⏳";
             } else {
-                loginText.innerText = "Sign In";
-                loginIcon.innerText = "🌐";
+                const user = auth ? auth.currentUser : null;
+                if (user) {
+                    const email = user.email;
+                    if (email === OWNER_EMAIL || (CONFIG.admins && CONFIG.admins.some(a => (typeof a === 'string' ? a : a.email).toLowerCase() === email.toLowerCase()))) {
+                        nextLabel = "Admin Panel";
+                        nextIcon = "⚙️";
+                    } else {
+                        nextLabel = "Sign Out";
+                        nextIcon = "🔓";
+                    }
+                }
             }
+            if (loginText.dataset.rawAuth !== nextLabel) {
+                loginText.dataset.rawAuth = nextLabel;
+                loginText.innerText = nextLabel;
+            }
+            if (loginIcon.textContent !== nextIcon) loginIcon.innerText = nextIcon;
         };
         function startSync() {
             if (refreshInterval) clearInterval(refreshInterval);
@@ -17108,6 +17232,104 @@ ${deadlineTxt ? `<div style="font-size:10px;color:${remaining > 0 ? '#fbbf24' : 
         </div>
     </div>
     <!-- ========== END VOICE NOTES SCREEN ========== -->
+    <div id="orvix-ptr-pill" aria-hidden="true">↓ Pull to refresh</div>
+    <script>
+        // ===== 1. MOBILE WEB PULL-TO-REFRESH =====
+        (function initWebPullToRefresh() {
+            if (window.Capacitor?.isNativePlatform?.()) return;
+            const pill = document.getElementById('orvix-ptr-pill');
+            let startY = 0;
+            let pulling = false;
+            let readyToRefresh = false;
+
+            function getActiveScroller() {
+                const home = document.getElementById('home-main-scroll');
+                const chat = document.getElementById('chat-area');
+                if (home && home.offsetParent !== null) return home;
+                if (chat && chat.offsetParent !== null) return chat;
+                return document.scrollingElement || document.documentElement;
+            }
+
+            function hasOpenOverlay() {
+                const viewer = document.getElementById('orvix-viewer-modal');
+                const admin = document.getElementById('admin-panel');
+                if (viewer && getComputedStyle(viewer).display !== 'none') return true;
+                if (admin && getComputedStyle(admin).display !== 'none') return true;
+                return false;
+            }
+
+            window.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1 || hasOpenOverlay()) return;
+                const sc = getActiveScroller();
+                if (sc && sc.scrollTop <= 0) {
+                    startY = e.touches[0].clientY;
+                    pulling = true;
+                    readyToRefresh = false;
+                } else {
+                    pulling = false;
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (!pulling || e.touches.length !== 1) return;
+                const dy = e.touches[0].clientY - startY;
+                if (dy <= 10) {
+                    if (pill) {
+                        pill.classList.remove('visible');
+                        pill.style.transform = 'translate(-50%, -80px)';
+                    }
+                    readyToRefresh = false;
+                    return;
+                }
+                const sc = getActiveScroller();
+                if (sc && sc.scrollTop > 0) {
+                    pulling = false;
+                    if (pill) pill.classList.remove('visible');
+                    return;
+                }
+                const pullDist = Math.min(dy * 0.45, 72);
+                readyToRefresh = dy >= 85;
+                if (pill) {
+                    pill.classList.add('visible');
+                    pill.textContent = readyToRefresh ? '↻ Release to refresh' : '↓ Pull to refresh';
+                    pill.style.transform = `translate(-50%, ${Math.round(pullDist - 12)}px)`;
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => {
+                if (!pulling) return;
+                pulling = false;
+                if (readyToRefresh) {
+                    if (pill) {
+                        pill.textContent = '⟳ Refreshing...';
+                        pill.style.transform = 'translate(-50%, 16px)';
+                    }
+                    setTimeout(() => window.location.reload(), 120);
+                } else if (pill) {
+                    pill.classList.remove('visible');
+                    pill.style.transform = 'translate(-50%, -80px)';
+                }
+            }, { passive: true });
+        })();
+
+        // ===== 2. BROWSER TRANSLATION RTL DETECTOR =====
+        (function initTranslationRtlObserver() {
+            function syncTranslationRtl() {
+                const html = document.documentElement;
+                const lang = (html.getAttribute('lang') || '').toLowerCase();
+                const isRtl = html.classList.contains('translated-rtl') || /^(ar|he|fa|ur)(-|$)/.test(lang);
+                const nextDir = isRtl ? 'rtl' : 'ltr';
+                if (html.getAttribute('dir') !== nextDir) {
+                    html.setAttribute('dir', nextDir);
+                }
+                html.classList.toggle('orvix-rtl', isRtl);
+            }
+            window.syncOrvixTranslationRtl = syncTranslationRtl;
+            syncTranslationRtl();
+            const obs = new MutationObserver(syncTranslationRtl);
+            obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'lang'] });
+        })();
+    </script>
 </body>
 
 </html>
