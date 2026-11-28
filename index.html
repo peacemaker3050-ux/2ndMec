@@ -12528,11 +12528,12 @@ window.enableNotifications = async function () {
         function loadFromLocalStorage() { try { const data = localStorage.getItem(scopedLocalKey()); if (data) return JSON.parse(data); } catch (e) { } return null; }
         let _syncInFlight = false;
         let _lastCloudRawHash = '';
+        let _consecutiveSyncFailures = 0;
         async function fetchConfig() {
             if (_syncInFlight) return;
             _syncInFlight = true;
             const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 3500);
+            const timer = setTimeout(() => ctrl.abort(), 8000);
             try {
                 if (window.Capacitor?.Plugins?.Network) {
                     const net = await window.Capacitor.Plugins.Network.getStatus();
@@ -12541,6 +12542,7 @@ window.enableNotifications = async function () {
                 const response = await fetch(`${FIREBASE_DB_URL}/.json`, { cache: 'no-store', signal: ctrl.signal });
                 if (!response.ok) throw new Error("Failed to fetch");
                 const rawText = await response.text();
+                _consecutiveSyncFailures = 0;
                 updateOnlineStatus(true);
                 if (rawText === _lastCloudRawHash) {
                     const ls = document.getElementById('loading-screen');
@@ -12589,7 +12591,10 @@ window.enableNotifications = async function () {
                     setTimeout(() => { ls.style.display = 'none'; }, 150);
                 }
             } catch (error) {
-                updateOnlineStatus(false);
+                _consecutiveSyncFailures++;
+                if (!navigator.onLine || _consecutiveSyncFailures >= 3) {
+                    updateOnlineStatus(false);
+                }
                 if (!CONFIG || !CONFIG.database) {
                     const localData = loadFromLocalStorage();
                     if (localData) { CONFIG = localData; applyConfig(CONFIG); initSearchEngine(); checkNewFilesAndNotify(); }
