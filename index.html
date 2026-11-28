@@ -6,12 +6,13 @@
     <meta http-equiv="Cache-Control" content="max-age=0">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>University Bot Pro</title>
+    <title>UniBot</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="UniBot">
     <meta name="theme-color" content="#0f172a">
-    <link rel="manifest" id="dynamic-manifest" href="./manifest.json">
+    <link rel="manifest" id="dynamic-manifest" href="/2ndMec/manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="/2ndMec/apple-touch-icon.png">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11300,8 +11301,9 @@
             window.renderInstantOnlinePreview(encodeURIComponent(url), encodeURIComponent(fileName), type, driveId || '');
         };
 
-        window.renderInstantOnlinePreview = function(encUrl, encName, type, driveId) {
+        window.renderInstantOnlinePreview = async function(encUrl, encName, type, driveId) {
             const url = decodeURIComponent(encUrl);
+            const fileName = decodeURIComponent(encName || '');
             const bodyEl = document.getElementById('orvix-viewer-body');
             if (!bodyEl) return;
             if (typeof window.setViewerActions === 'function') {
@@ -11309,6 +11311,32 @@
                     const btn = document.getElementById('orvix-open-new-tab-btn');
                     if (btn) btn.onclick = () => window.openOrvixExternalUrl(url);
                 });
+            }
+
+            // Record opened file in Cache API / localStorage for offline access
+            try {
+                const openedMap = JSON.parse(localStorage.getItem('orvix_web_opened_files_v1') || '{}');
+                openedMap[url] = { url, fileName, type, driveId, ts: Date.now() };
+                localStorage.setItem('orvix_web_opened_files_v1', JSON.stringify(openedMap));
+                if ('caches' in window && navigator.onLine) {
+                    caches.open('unibot-files-v19-pwa').then(c => {
+                        fetch(url, { mode: 'no-cors' }).then(r => { if (r) c.put(url, r); }).catch(() => {});
+                    }).catch(() => {});
+                }
+            } catch (e) {}
+
+            if (!navigator.onLine) {
+                const hasCached = ('caches' in window) ? await caches.match(url).catch(() => null) : null;
+                if (!hasCached) {
+                    bodyEl.innerHTML = `
+                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;color:#e2e8f0;background:#0b1220;">
+                            <div style="font-size:40px;margin-bottom:12px;">📡</div>
+                            <div style="font-weight:800;font-size:16px;margin-bottom:6px;">${escapeHtmlText(fileName || 'File')}</div>
+                            <div style="font-size:13px;color:#94a3b8;max-width:340px;">You are currently offline. Cross-origin Drive previews require an internet connection when not cached locally.</div>
+                        </div>
+                    `;
+                    return;
+                }
             }
 
             if (driveId) {
@@ -13331,44 +13359,7 @@ window.enableNotifications = async function () {
         }
         function stopSync() { if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; } }
         function updateDynamicManifest(name, iconData) {
-            const version = CONFIG.appVersion || 1;
-            const baseUrl = window.location.href.split('?')[0] || window.location.href;
-            const startUrl = baseUrl;
-            const manifest = {
-                "name": name || CONFIG.botName,
-                "short_name": name || CONFIG.botName,
-                "start_url": startUrl,
-                "id": window.location.origin + window.location.pathname,
-                "display": "standalone",
-                "background_color": "#0f172a",
-                "theme_color": "#0f172a",
-                "icons": [],
-                "share_target": {
-                    "action": "./",
-                    "method": "POST",
-                    "enctype": "multipart/form-data",
-                    "params": {
-                        "title": "title",
-                        "text": "text",
-                        "url": "url",
-                        "files": [{ "name": "file", "accept": ["*/*"] }]
-                    }
-                }
-            };
-            const iconUrl = "https://raw.githubusercontent.com/peacemaker3050-ux/2ndMec/main/icon-512.png";
-            manifest.icons.push({ "src": iconUrl, "sizes": "512x512", "type": "image/png" });
-            const stringManifest = JSON.stringify(manifest);
-            const dataUrl = 'data:application/manifest+json,' + encodeURIComponent(stringManifest);
-            const link = document.querySelector('#dynamic-manifest');
-            link.setAttribute('href', dataUrl);
-
-            let appleLink = document.querySelector('link[rel="apple-touch-icon"]');
-            if (!appleLink) {
-                appleLink = document.createElement('link');
-                appleLink.rel = 'apple-touch-icon';
-                document.head.appendChild(appleLink);
-            }
-            appleLink.href = iconUrl;
+            return;
         } window.addEventListener('appinstalled', () => {
             localStorage.setItem('pwa_installed', 'true');
             const btn = document.getElementById('install-guide-btn');
@@ -13439,7 +13430,7 @@ window.enableNotifications = async function () {
                 if (loadingTextEl) { loadingTextEl.innerHTML = navigator.onLine ? 'Syncing from Cloud... <br><small>You Will Never Walk Alone</small>' : 'Loading saved data... <br><small>You Will Never Walk Alone</small>'; }
 
                 if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('./sw.js')
+                    navigator.serviceWorker.register('/2ndMec/sw.js', { scope: '/2ndMec/' })
                         .then(reg => {
                             console.log('[App] SW Registered:', reg.scope);
                             const sendInit = (sw) => { sw.postMessage({ type: 'INIT_POLLING' }); };

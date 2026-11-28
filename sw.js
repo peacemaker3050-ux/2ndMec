@@ -1,405 +1,195 @@
 // ============================================================
-// === UNIFIED SERVICE WORKER (FCM + OFFLINE + POLLING) ===
-// === v10 — Added SET_TOGGLE handler ===
+// === UNIBOT PWA SERVICE WORKER (OFFLINE SHELL + RUNTIME) ===
+// === v19-pwa (Push notifications intentionally deferred)  ===
 // ============================================================
 
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+const CACHE_VERSION = 'v19-pwa';
+const CACHE_STATIC = `unibot-static-${CACHE_VERSION}`;
+const CACHE_API = `unibot-api-${CACHE_VERSION}`;
+const CACHE_FILES = `unibot-files-${CACHE_VERSION}`;
 
-// ── Config ──
-const firebaseConfig = {
-  apiKey: "AIzaSyBUzcbZDAFS3rhjcp2-maEiSTmuBmUlGPQ",
-  authDomain: "libirary-b2424.firebaseapp.com",
-  projectId: "libirary-b2424",
-  storageBucket: "libirary-b2424.firebasestorage.app",
-  messagingSenderId: "371129360013",
-  appId: "1:371129360013:web:377ef70759204018a60cc4"
-};
-
-const FIREBASE_DB_ROOT_URL = "https://libirary-b2424-default-rtdb.firebaseio.com";
-let currentScopeKey = "ميكانيكا__second__term2";
-
-function getScopedDbUrl() {
-  return `${FIREBASE_DB_ROOT_URL}/scopes/${encodeURIComponent(currentScopeKey)}`;
-}
-
-// ── Cache ──
-const CACHE_VERSION = 'v18-web';
-const CACHE_STATIC  = `uni-static-${CACHE_VERSION}`;
-const CACHE_API     = `uni-api-${CACHE_VERSION}`;
-
-const STATIC_FILES = [
-  './',
-  './index.html',
-  'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap',
-  'https://cdn.jsdelivr.net/npm/fuse.js@6.6.2',
-  'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js',
-  'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js'
+const SHELL_FILES = [
+  '/2ndMec/',
+  '/2ndMec/index.html',
+  '/2ndMec/manifest.json',
+  '/2ndMec/header-logo.png',
+  '/2ndMec/icon-192.png',
+  '/2ndMec/icon-512.png',
+  '/2ndMec/apple-touch-icon.png',
+  '/2ndMec/110.jpeg',
+  '/2ndMec/vendor/pdf.min.js',
+  '/2ndMec/vendor/pdf.worker.min.js',
+  '/2ndMec/vendor/mammoth.browser.min.js',
+  '/2ndMec/vendor/jszip.min.js'
 ];
 
-// ── Firebase + FCM ──
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+const OFFLINE_FALLBACK_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>UniBot — Offline</title>
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1220;color:#f8fafc;font-family:system-ui,sans-serif;text-align:center;padding:24px;}
+    .box{max-width:360px;background:#111a2e;border:1px solid rgba(148,163,184,0.2);border-radius:18px;padding:24px;}
+    button{margin-top:14px;background:#3b82f6;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>You are offline</h2>
+    <p>This page has not been cached yet. Reconnect to load new content.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</body>
+</html>`;
 
-// ── IndexedDB ──
-let idb = null;
-let dbReady = false;
-let pollingTimer = null;
-
-function initDB() {
-  return new Promise((resolve) => {
-    try {
-      const req = indexedDB.open('UniBotSW', 2);
-      req.onupgradeneeded = e => {
-        const d = e.target.result;
-        if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv', { keyPath: 'k' });
-      };
-      req.onsuccess = e => { idb = e.target.result; dbReady = true; resolve(); };
-      req.onerror  = e => { 
-        console.warn('[SW] DB error', e);
-        dbReady = false;
-        resolve(); // ✅ resolve بدل reject عشان الـ SW ميوقفش
-      };
-    } catch(e) {
-      console.warn('[SW] IndexedDB not available:', e);
-      resolve(); // ✅ لو IndexedDB مش متاح خالص
-    }
-  });
-}
-
-async function dbGet(key) {
-  if (!idb) return null;
-  return new Promise(resolve => {
-    const tx = idb.transaction('kv', 'readonly');
-    const req = tx.objectStore('kv').get(key);
-    req.onsuccess = () => resolve(req.result ? req.result.v : null);
-    req.onerror   = () => resolve(null);
-  });
-}
-
-async function dbSet(key, value) {
-  if (!idb) return;
-  const tx = idb.transaction('kv', 'readwrite');
-  tx.objectStore('kv').put({ k: key, v: value });
-}
-
-function scopeKeyFor(baseKey) {
-  return `${baseKey}__${currentScopeKey}`;
-}
-
-// ============================================================
-// INSTALL
-// ============================================================
-self.addEventListener('install', event => {
-  console.log('[SW] Installing', CACHE_VERSION);
+self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    (async () => {
-      await initDB();
-      const cache = await caches.open(CACHE_STATIC);
-      await Promise.allSettled(
-        STATIC_FILES.map(url =>
-          cache.add(url).catch(e => console.warn('[SW] Cache skip:', url, e.message))
+    caches.open(CACHE_STATIC).then((cache) =>
+      Promise.allSettled(
+        SHELL_FILES.map((url) =>
+          cache.add(new Request(url, { cache: 'reload' })).catch((err) => {
+            console.warn('[SW] Precache skip:', url, err?.message || err);
+          })
         )
-      );
-      console.log('[SW] Static files cached');
-    })()
+      )
+    )
   );
 });
 
-// ============================================================
-// ACTIVATE
-// ============================================================
-self.addEventListener('activate', event => {
-  console.log('[SW] Activating', CACHE_VERSION);
+self.addEventListener('activate', (event) => {
+  const activeCaches = new Set([CACHE_STATIC, CACHE_API, CACHE_FILES]);
   event.waitUntil(
     (async () => {
-      await self.clients.claim();
-
       const keys = await caches.keys();
-      await Promise.all(
-        keys
-          .filter(k => k !== CACHE_STATIC && k !== CACHE_API)
-          .map(k => { console.log('[SW] Deleting old cache:', k); return caches.delete(k); })
-      );
-
-      if (!dbReady) await initDB();
-
-      if ('periodicSync' in self.registration) {
-        try {
-          await self.registration.periodicSync.register('check-notif', { minInterval: 15 * 60 * 1000 });
-          console.log('[SW] Periodic Sync registered');
-        } catch(e) { console.log('[SW] Periodic Sync not available'); }
-      }
-
-      await checkNotifications();
-      startPolling();
+      await Promise.all(keys.filter((k) => !activeCaches.has(k)).map((k) => caches.delete(k)));
+      await self.clients.claim();
     })()
   );
 });
 
-// ============================================================
-// FETCH
-// ============================================================
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-if (!url.protocol.startsWith('http')) return;
+function isDynamicApiRequest(url) {
+  return (
+    url.hostname.includes('firebaseio.com') ||
+    url.hostname.includes('workers.dev')
+  );
+}
 
-  if (url.hostname.includes('firebaseio.com')) {
+function isRuntimeMaterialRequest(url) {
+  return (
+    /\.(pdf|docx?|pptx?|xlsx?|txt|png|jpe?g|webp|mp3|mp4)(\?|$)/i.test(url.pathname) ||
+    url.hostname.includes('drive.google.com') ||
+    url.hostname.includes('googleusercontent.com')
+  );
+}
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+  if (!url.protocol.startsWith('http')) return;
+
+  // 1. Dynamic RTDB & Worker API -> Network-first with Cache fallback
+  if (isDynamicApiRequest(url)) {
     event.respondWith(
-      fetch(event.request.clone())
-        .then(response => {
-          if (response && response.status === 200 && event.request.method === 'GET') {
-            const clone = response.clone();
-            caches.open(CACHE_API).then(c => c.put(event.request, clone));
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_API).then((c) => c.put(req, copy));
           }
-          return response;
+          return res;
         })
-        .catch(() => {
-          console.log('[SW] Offline: serving Firebase from cache');
-          return caches.match(event.request);
+        .catch(async () => {
+          const cached = await caches.match(req);
+          return cached || new Response(JSON.stringify({ offline: true }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          });
         })
     );
     return;
   }
 
-  // === SHARE TARGET ===
-  if (event.request.method === 'POST' && url.hostname === self.location.hostname) {
-    const requestClone = event.request.clone();
+  // 2. Navigation (HTML shell) -> Network-first with cached shell / offline fallback
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_STATIC).then((c) => c.put('/2ndMec/index.html', copy));
+          }
+          return res;
+        })
+        .catch(async () => {
+          return (
+            (await caches.match('/2ndMec/index.html')) ||
+            (await caches.match('/2ndMec/')) ||
+            new Response(OFFLINE_FALLBACK_HTML, {
+              status: 200,
+              headers: { 'Content-Type': 'text/html; charset=utf-8' }
+            })
+          );
+        })
+    );
+    return;
+  }
+
+  // 3. Opened materials/PDFs -> Stale-while-revalidate / Cache-first in CACHE_FILES
+  if (isRuntimeMaterialRequest(url) && url.origin !== self.location.origin) {
     event.respondWith(
       (async () => {
-        if (!dbReady) await initDB();
-        const formData = await requestClone.formData();
-        const file     = formData.get('file');
-        const title    = formData.get('title') || '';
-        const text     = formData.get('text')  || '';
-        const shareUrl = formData.get('url')   || '';
-        await dbSet('pendingShare', JSON.stringify({
-            title, text, url: shareUrl,
-            fileName: file ? file.name : null,
-            fileType: file ? file.type : null,
-            ts: Date.now()
-        }));
-        return Response.redirect('./?shared=1', 303);
+        const cache = await caches.open(CACHE_FILES);
+        const cached = await cache.match(req);
+        if (cached) {
+          fetch(req).then((res) => { if (res && (res.status === 200 || res.type === 'opaque')) cache.put(req, res.clone()); }).catch(() => {});
+          return cached;
+        }
+        try {
+          const netRes = await fetch(req);
+          if (netRes && (netRes.status === 200 || netRes.type === 'opaque')) {
+            cache.put(req, netRes.clone());
+          }
+          return netRes;
+        } catch {
+          return new Response('', { status: 503 });
+        }
       })()
     );
     return;
   }
-  // === END SHARE TARGET ===
 
-  if (url.hostname.includes('googleapis.com') ||
-      url.hostname.includes('gstatic.com')
-      ) {
-    event.respondWith(
-      fetch(event.request).catch(() => new Response('', { status: 503 }))
-    );
-    return;
-  }
-
+  // 4. App shell, same-origin assets & CDN scripts -> Cache-first with background refresh
   event.respondWith(
     (async () => {
-      const cached = await caches.match(event.request);
-      const isNavigate = event.request.mode === 'navigate';
-
-      const networkPromise = fetch(event.request)
-        .then(response => {
-          if (response && response.status === 200 && event.request.method === 'GET') {
-            const clone = response.clone();
-            caches.open(CACHE_STATIC).then(c => c.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => null);
-
-      if (isNavigate) {
-        // لـ index.html دايماً جرب الشبكة أولاً، لو فشلت ارجع الـ cache
-        const networkResponse = await networkPromise;
-        if (networkResponse) return networkResponse;
-        return cached || new Response('', { status: 503 });
-      }
-
-      // باقي الملفات: ارجع الـ cache لو موجود وحدّث في الخلفية
+      const cached = await caches.match(req);
       if (cached) {
-        networkPromise; // تحديث في الخلفية
+        fetch(req)
+          .then((res) => {
+            if (res && (res.status === 200 || res.type === 'opaque')) {
+              caches.open(CACHE_STATIC).then((c) => c.put(req, res.clone()));
+            }
+          })
+          .catch(() => {});
         return cached;
       }
-      const networkResponse = await networkPromise;
-      return networkResponse || new Response('', { status: 503 });
+      try {
+        const netRes = await fetch(req);
+        if (netRes && (netRes.status === 200 || netRes.type === 'opaque')) {
+          const targetCache = isRuntimeMaterialRequest(url) ? CACHE_FILES : CACHE_STATIC;
+          caches.open(targetCache).then((c) => c.put(req, netRes.clone()));
+        }
+        return netRes;
+      } catch {
+        return new Response('', { status: 503 });
+      }
     })()
   );
 });
 
-
-// ============================================================
-// NOTIFICATION CLICK
-// ============================================================
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  const url = event.notification.data?.click_action || self.location.origin;
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      return clients.openWindow(url);
-    })
-  );
-});
-
-// ============================================================
-// MESSAGES من الصفحة
-// ============================================================
-self.addEventListener('message', event => {
-  const data = event.data;
-  if (!data) return;
-
-  // بدء الـ Polling
-  if (data.type === 'INIT_POLLING') {
-    console.log('[SW] INIT_POLLING received');
-    if (!dbReady) initDB().then(() => { startPolling(); checkNotifications(); });
-    else { startPolling(); checkNotifications(); }
-  }
-
-  // Test Notification
-  if (data.type === 'TEST_NOTIF') {
-    self.registration.showNotification('Test Successful', {
-      body: 'Push notifications are working correctly!',
-      icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-      vibrate: [200, 100, 200]
-    });
-  }
-
-  // اشعار فوري من الصفحة عند اكتشاف ملف جديد
-  if (data.type === 'SHOW_NOTIFICATION') {
-    self.registration.showNotification(data.title || 'New File', {
-      body: data.body || '',
-      icon: data.icon || 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-      vibrate: [200, 100, 200],
-      tag: 'new-file-notif',
-      data: { click_action: self.location.origin }
-    });
-  }
-
-  // حفظ حالة التوجل من الصفحة في IndexedDB
-  // الصفحة بتبعت SET_TOGGLE عند كل تغيير وعند التحميل
-  if (data.type === 'SET_TOGGLE') {
-    if (!dbReady) {
-      initDB().then(() => {
-        dbSet('newFilesToggle', data.value);
-        console.log('[SW] Toggle saved after DB init:', data.value);
-      });
-    } else {
-      dbSet('newFilesToggle', data.value);
-      console.log('[SW] Toggle saved:', data.value);
-    }
-  }
-
-  // حفظ scope الحالي لاستخدامه في polling
-  if (data.type === 'SET_SCOPE' && data.scopeKey) {
-    currentScopeKey = String(data.scopeKey);
-    if (!dbReady) {
-      initDB().then(() => dbSet('scopeKey', currentScopeKey));
-    } else {
-      dbSet('scopeKey', currentScopeKey);
-    }
-    checkNotifications();
-  }
-});
-
-// ============================================================
-// PERIODIC SYNC
-// ============================================================
-self.addEventListener('periodicsync', event => {
-  if (event.tag === 'check-notif') event.waitUntil(checkNotifications());
-});
-
-self.addEventListener('sync', event => {
-  if (event.tag === 'check-notif') event.waitUntil(checkNotifications());
-});
-
-// ============================================================
-// POLLING
-// ============================================================
-function startPolling() {
-  if (pollingTimer) return;
-  console.log('[SW] Polling started (60s interval)');
-  pollingTimer = setInterval(() => checkNotifications(), 60 * 1000);
-}
-
-// ============================================================
-// دالة تجيب احدث ملف في الـ database
-// ============================================================
-function findNewestFile(database) {
-  if (!database) return null;
-  let newest = null;
-
-  function scan(list) {
-    for (const item of list || []) {
-      if (item.type === 'file' && item.ts) {
-        if (!newest || item.ts > newest.ts) newest = item;
-      }
-      if (item.type === 'folder' && item.children) scan(item.children);
-    }
-  }
-
-  for (const subject of Object.values(database)) {
-    for (const key of Object.keys(subject)) {
-      if (key === 'doctors') continue;
-      const doctor = subject[key];
-      if (doctor && doctor.root) scan(doctor.root);
-    }
-  }
-
-  return newest;
-}
-
-// ============================================================
-// CHECK NOTIFICATIONS — اشعارات الاطباء + ملفات جديدة
-// ============================================================
-async function checkNotifications() {
-  if (!dbReady) {
-    try { await initDB(); } catch(e) { return; }
-  }
-
-  try {
-    const storedScope = await dbGet('scopeKey');
-    if (storedScope) currentScopeKey = storedScope;
-    const lastNotifTime = (await dbGet(scopeKeyFor('lastNotifTime'))) || 0;
-    const lastFileTime  = (await dbGet(scopeKeyFor('lastFileTime')))  || 0;
-
-    const response = await fetch(
-      `${getScopedDbUrl()}/.json?nc=${Date.now()}`,
-      { cache: 'no-store' }
-    );
-
-    if (!response.ok) return;
-    const raw = await response.json();
-    // Unwrap nested data strings (handles multiple save layers)
-    let data = raw;
-    while (data && typeof data.data === 'string') {
-      try { data = JSON.parse(data.data); } catch(e) { break; }
-    }
-    if (data && typeof data === 'object' && data.data && typeof data.data === 'object') {
-      data = data.data;
-    }
-
-    // 1. اشعارات الاطباء النصية — FCM يتولى العرض
-    if (data?.recentUpdates?.length) {
-      const newest  = data.recentUpdates[0];
-      const newTime = newest.timestamp || 0;
-      if (newTime > lastNotifTime) {
-        await dbSet(scopeKeyFor('lastNotifTime'), newTime);
-        console.log('[SW] New text notification detected, FCM handles display');
-      }
-    }
-
-    // 2. ملفات جديدة — handled by FCM via Railway API
-
-  } catch(err) {
-    console.error('[SW] Polling error:', err);
-  }
-}
+// Placeholder hook for future Web Push / VAPID notifications:
+// self.addEventListener('push', (event) => { ... });
